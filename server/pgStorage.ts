@@ -9,8 +9,21 @@ import {
 import { eq, and, desc } from 'drizzle-orm';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
+import session from 'express-session';
+import connectPg from 'connect-pg-simple';
+import { pool } from './db';
 
 export class PgStorage implements IStorage {
+  public sessionStore: session.Store;
+
+  constructor() {
+    const PostgresStore = connectPg(session);
+    this.sessionStore = new PostgresStore({
+      pool,
+      createTableIfMissing: true,
+      tableName: 'session'
+    });
+  }
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     const result = await db.select().from(users).where(eq(users.id, id));

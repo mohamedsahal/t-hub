@@ -1,32 +1,30 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { useAuth } from "@/context/AuthContext";
-import { Link, useLocation } from "wouter";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { userRoleEnum } from "@shared/schema";
 
+// Registration schema
 const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().optional(),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
-  termsAccepted: z.literal(true, {
-    errorMap: () => ({ message: "You must accept the terms and conditions" }),
-  }),
+  firstName: z.string().min(2, "First name must be at least 2 characters"),
+  lastName: z.string().min(2, "Last name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().min(8, "Please enter a valid phone number"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -35,54 +33,73 @@ const registerSchema = z.object({
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 const RegisterForm = () => {
-  const { register } = useAuth();
+  const { registerMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
+      firstName: "",
+      lastName: "",
       email: "",
       phone: "",
       password: "",
       confirmPassword: "",
-      termsAccepted: false,
     },
   });
 
   const onSubmit = async (data: RegisterFormValues) => {
+    const { confirmPassword, firstName, lastName, ...userData } = data;
+    
     try {
-      setIsSubmitting(true);
-      await register(data.name, data.email, data.password, data.phone);
+      await registerMutation.mutateAsync({
+        ...userData,
+        name: `${firstName} ${lastName}`,
+        role: userRoleEnum.enumValues[2], // student role
+      });
+      
       setLocation("/dashboard");
     } catch (error) {
       console.error("Registration failed:", error);
-      // Error is handled by the Auth context
-    } finally {
-      setIsSubmitting(false);
+      // Error is handled by the Auth hook
     }
   };
 
   return (
     <div className="w-full max-w-md mx-auto">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Smith" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
           <FormField
             control={form.control}
@@ -107,13 +124,14 @@ const RegisterForm = () => {
             name="phone"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone (Optional)</FormLabel>
+                <FormLabel>Phone</FormLabel>
                 <FormControl>
-                  <Input placeholder="+2525251111" {...field} />
+                  <Input 
+                    placeholder="+252 61 1234567" 
+                    type="tel" 
+                    {...field} 
+                  />
                 </FormControl>
-                <FormDescription>
-                  Used for communication and payment verification
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -185,40 +203,12 @@ const RegisterForm = () => {
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="termsAccepted"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="text-sm font-normal">
-                    I agree to the{" "}
-                    <Link href="/terms">
-                      <a className="text-primary hover:underline">
-                        terms of service
-                      </a>
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/privacy">
-                      <a className="text-primary hover:underline">
-                        privacy policy
-                      </a>
-                    </Link>
-                  </FormLabel>
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? (
+          <Button 
+            type="submit" 
+            className="w-full mt-6" 
+            disabled={registerMutation.isPending}
+          >
+            {registerMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Creating account...
@@ -227,15 +217,6 @@ const RegisterForm = () => {
               "Create Account"
             )}
           </Button>
-
-          <div className="text-center text-sm">
-            Already have an account?{" "}
-            <Link href="/login">
-              <a className="text-primary hover:underline font-medium">
-                Sign in
-              </a>
-            </Link>
-          </div>
         </form>
       </Form>
     </div>

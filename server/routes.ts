@@ -9,69 +9,15 @@ import {
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { ZodError } from "zod";
-import session from "express-session";
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import MemoryStore from "memorystore";
 import waafiPayService from "./services/waafiPayService";
 import notificationService from "./services/notificationService";
+import { setupAuth } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
-  // Set up sessions
-  const MemoryStoreSession = MemoryStore(session);
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || "thub-innovation-secret",
-      resave: false,
-      saveUninitialized: false,
-      store: new MemoryStoreSession({
-        checkPeriod: 86400000, // prune expired entries every 24h
-      }),
-      cookie: {
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      },
-    })
-  );
-
-  // Set up passport
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  // Configure passport local strategy
-  passport.use(
-    new LocalStrategy(
-      { usernameField: "email" },
-      async (email, password, done) => {
-        try {
-          const user = await storage.getUserByEmail(email);
-          if (!user) {
-            return done(null, false, { message: "Incorrect email or password" });
-          }
-          if (user.password !== password) { // In a real app, use bcrypt to compare passwords
-            return done(null, false, { message: "Incorrect email or password" });
-          }
-          return done(null, user);
-        } catch (error) {
-          return done(error);
-        }
-      }
-    )
-  );
-
-  passport.serializeUser((user: any, done) => {
-    done(null, user.id);
-  });
-
-  passport.deserializeUser(async (id: number, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (error) {
-      done(error);
-    }
-  });
+  // Setup authentication
+  setupAuth(app);
 
   // Authentication middleware
   const isAuthenticated = (req: Request, res: Response, next: Function) => {
@@ -102,71 +48,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     return res.status(500).json({ message: "Internal server error" });
   };
-
-  // Auth routes
-  app.post("/api/auth/login", (req, res, next) => {
-    passport.authenticate("local", (err: Error | null, user: any, info: { message: string }) => {
-      if (err) {
-        return next(err);
-      }
-      if (!user) {
-        return res.status(401).json({ message: info.message });
-      }
-      req.logIn(user, (err) => {
-        if (err) {
-          return next(err);
-        }
-        return res.json({ id: user.id, name: user.name, email: user.email, role: user.role });
-      });
-    })(req, res, next);
-  });
-
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const userData = insertUserSchema.parse(req.body);
-      const existingUser = await storage.getUserByEmail(userData.email);
-      
-      if (existingUser) {
-        return res.status(400).json({ message: "Email already registered" });
-      }
-      
-      const user = await storage.createUser(userData);
-      
-      res.status(201).json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      });
-    } catch (error) {
-      handleZodError(error, res);
-    }
-  });
-
-  app.post("/api/auth/logout", (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Error during logout" });
-      }
-      res.json({ message: "Logged out successfully" });
-    });
-  });
-
-  app.get("/api/auth/session", (req, res) => {
-    if (req.isAuthenticated()) {
-      const user = req.user as any;
-      return res.json({
-        authenticated: true,
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        },
-      });
-    }
-    res.json({ authenticated: false });
-  });
 
   // Course routes
   app.get("/api/courses", async (req, res) => {

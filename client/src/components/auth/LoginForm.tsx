@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { Link, useLocation } from "wouter";
 import {
   Form,
@@ -26,10 +26,9 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 const LoginForm = () => {
-  const { login } = useAuth();
+  const { loginMutation } = useAuth();
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -42,14 +41,14 @@ const LoginForm = () => {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      setIsSubmitting(true);
-      await login(data.email, data.password);
+      await loginMutation.mutateAsync({
+        email: data.email,
+        password: data.password
+      });
       setLocation("/dashboard");
     } catch (error) {
       console.error("Login failed:", error);
-      // Error is handled by the Auth context
-    } finally {
-      setIsSubmitting(false);
+      // Error is handled by the Auth hook
     }
   };
 
@@ -127,15 +126,13 @@ const LoginForm = () => {
               )}
             />
 
-            <Link href="/forgot-password">
-              <a className="text-sm text-primary hover:underline">
-                Forgot password?
-              </a>
+            <Link href="/forgot-password" className="text-sm text-primary hover:underline">
+              Forgot password?
             </Link>
           </div>
 
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? (
+          <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+            {loginMutation.isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Signing in...
@@ -147,10 +144,8 @@ const LoginForm = () => {
 
           <div className="text-center text-sm">
             Don't have an account?{" "}
-            <Link href="/register">
-              <a className="text-primary hover:underline font-medium">
-                Sign up
-              </a>
+            <Link href="/auth?tab=register" className="text-primary hover:underline font-medium">
+              Sign up
             </Link>
           </div>
         </form>

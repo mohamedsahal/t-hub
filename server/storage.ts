@@ -7,8 +7,12 @@ import {
   certificates, type Certificate, type InsertCertificate,
   testimonials, type Testimonial, type InsertTestimonial
 } from "@shared/schema";
+import session from "express-session";
 
 export interface IStorage {
+  // Session store
+  sessionStore: session.Store;
+
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -75,6 +79,8 @@ export class MemStorage implements IStorage {
   private enrollmentIdCounter: number;
   private certificateIdCounter: number;
   private testimonialIdCounter: number;
+  
+  public sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
@@ -92,6 +98,12 @@ export class MemStorage implements IStorage {
     this.enrollmentIdCounter = 1;
     this.certificateIdCounter = 1;
     this.testimonialIdCounter = 1;
+    
+    // Create the memory store for sessions
+    const MemoryStore = require('memorystore')(session);
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000 // prune expired entries every 24h
+    });
 
     // Initialize with some sample data
     this.initializeData();
