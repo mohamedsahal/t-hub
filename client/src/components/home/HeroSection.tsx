@@ -1,7 +1,7 @@
+import { useEffect, useState } from "react";
 import { ArrowRight, GraduationCap, BookOpen, Layers, Database, Server } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 // App logos for animation - Design & Multimedia tools + MERN stack
@@ -51,58 +51,97 @@ const roadmapSteps = [
 const techStacks = [
   { 
     title: "Design & Multimedia", 
-    icon: <Layers className="h-8 w-8 text-[#FF9A00]" />,
+    iconType: "Layers",
+    iconColor: "text-[#FF9A00]",
     color: "from-[#FF9A00]/20 to-[#31A8FF]/20"
   },
   { 
     title: "Business & Accounting", 
-    icon: <BookOpen className="h-8 w-8 text-[#2CA01C]" />,
+    iconType: "BookOpen",
+    iconColor: "text-[#2CA01C]",
     color: "from-[#2CA01C]/20 to-[#217346]/20"
   },
   { 
     title: "Web Development", 
-    icon: <Server className="h-8 w-8 text-[#61DAFB]" />,
+    iconType: "Server",
+    iconColor: "text-[#61DAFB]",
     color: "from-[#4DB33D]/20 to-[#61DAFB]/20"
   },
   { 
     title: "Digital Marketing", 
-    icon: <Database className="h-8 w-8 text-[#0080c9]" />,
+    iconType: "Database",
+    iconColor: "text-[#0080c9]",
     color: "from-[#0080c9]/20 to-[#3cb878]/20"
   }
 ];
 
+// Get mobile-friendly positions for tech logos
+const getMobilePosition = (category: string, index: number) => {
+  if (category === "design") {
+    return { top: `${50 + (index % 4) * 40}px`, left: `${20 + (index % 3) * 30}px` };
+  } else if (category === "business") {
+    return { top: `${70 + (index % 4) * 40}px`, right: `${20 + (index % 3) * 25}px` };
+  } else if (category === "mern") {
+    return { bottom: `${100 + (index % 4) * 35}px`, left: `${30 + (index % 4) * 25}px` };
+  } else if (category === "dev") {
+    return { bottom: `${120 + (index % 4) * 35}px`, right: `${30 + (index % 4) * 25}px` };
+  }
+  return {};
+};
+
+// Get desktop-friendly positions for tech logos
+const getDesktopPosition = (category: string, index: number) => {
+  if (category === "design") {
+    return { top: `${15 + (index % 4) * 25}%`, left: `${10 + (index % 3) * 15}%` };
+  } else if (category === "business") {
+    return { top: `${20 + (index % 4) * 20}%`, right: `${10 + (index % 3) * 10}%` };
+  } else if (category === "mern") {
+    return { bottom: `${10 + (index % 4) * 15}%`, left: `${20 + (index % 4) * 15}%` };
+  } else if (category === "dev") {
+    return { bottom: `${15 + (index % 4) * 15}%`, right: `${15 + (index % 4) * 12}%` };
+  }
+  return {};
+};
+
 // Animated logo component
 const AnimatedLogo = ({ name, color, index, category }: { name: string; color: string; index: number; category: string }) => {
-  // Position differently based on category
-  let positionStyle = {};
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [position, setPosition] = useState(isMobile ? 
+    getMobilePosition(category, index) : 
+    getDesktopPosition(category, index)
+  );
   
-  if (category === "design") {
-    positionStyle = { top: `${15 + (index % 4) * 25}%`, left: `${10 + (index % 3) * 15}%` };
-  } else if (category === "business") {
-    positionStyle = { top: `${20 + (index % 4) * 20}%`, right: `${10 + (index % 3) * 10}%` };
-  } else if (category === "mern") {
-    positionStyle = { bottom: `${10 + (index % 4) * 15}%`, left: `${20 + (index % 4) * 15}%` };
-  } else if (category === "dev") {
-    positionStyle = { bottom: `${15 + (index % 4) * 15}%`, right: `${15 + (index % 4) * 12}%` };
-  }
-  
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setPosition(mobile ? 
+        getMobilePosition(category, index) : 
+        getDesktopPosition(category, index)
+      );
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [category, index]);
+
   return (
     <motion.div 
-      className="flex items-center shadow-sm bg-white/90 px-3 py-2 rounded-full absolute z-10"
+      className={`flex items-center shadow-sm bg-white/90 ${isMobile ? 'px-2 py-1' : 'px-3 py-2'} rounded-full absolute z-10`}
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       transition={{ duration: 0.5, delay: 0.1 * (index % 8) }}
       style={{ 
         boxShadow: `0 2px 10px ${color}40`,
         border: `1px solid ${color}30`,
-        ...positionStyle
+        ...position
       }}
     >
       <div 
-        className="w-3 h-3 rounded-full mr-2" 
+        className={`${isMobile ? 'w-2 h-2' : 'w-3 h-3'} rounded-full mr-1.5`} 
         style={{ backgroundColor: color }}
       ></div>
-      <span className="text-xs font-medium">{name}</span>
+      <span className={`${isMobile ? 'text-[10px]' : 'text-xs'} font-medium`}>{name}</span>
     </motion.div>
   );
 };
@@ -157,20 +196,25 @@ const HeroSection = () => {
           </div>
           
           {/* Right side - Tech stack visualization with animated tech bubbles */}
-          <div className="relative h-[400px] md:h-[450px] bg-white/40 rounded-xl overflow-hidden shadow-sm border border-gray-100">
+          <div className="relative h-[450px] md:h-[450px] bg-white/40 rounded-xl overflow-hidden shadow-sm border border-gray-100">
             {/* Tech stack category cards */}
-            <div className="grid grid-cols-2 gap-4 p-6 z-20 relative">
+            <div className="grid grid-cols-2 gap-2 sm:gap-4 p-3 sm:p-6 z-20 relative">
               {techStacks.map((stack, index) => (
                 <motion.div 
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 * index }}
-                  className={`bg-gradient-to-br ${stack.color} p-4 rounded-lg shadow-sm`}
+                  className={`bg-gradient-to-br ${stack.color} p-2 sm:p-4 rounded-lg shadow-sm`}
                 >
-                  <div className="flex items-center space-x-3">
-                    {stack.icon}
-                    <h3 className="font-semibold">{stack.title}</h3>
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <div className="flex-shrink-0">
+                      {stack.iconType === "Layers" && <Layers className={`h-5 w-5 sm:h-8 sm:w-8 ${stack.iconColor}`} />}
+                      {stack.iconType === "BookOpen" && <BookOpen className={`h-5 w-5 sm:h-8 sm:w-8 ${stack.iconColor}`} />}
+                      {stack.iconType === "Server" && <Server className={`h-5 w-5 sm:h-8 sm:w-8 ${stack.iconColor}`} />}
+                      {stack.iconType === "Database" && <Database className={`h-5 w-5 sm:h-8 sm:w-8 ${stack.iconColor}`} />}
+                    </div>
+                    <h3 className="text-xs sm:text-base font-semibold line-clamp-2">{stack.title}</h3>
                   </div>
                 </motion.div>
               ))}
