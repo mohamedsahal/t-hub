@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,7 +12,7 @@ import { ChevronDown, Menu, User } from "lucide-react";
 import logoPath from "@assets/FB_IMG_1743600608616.png";
 
 const Header = () => {
-  const { isAuthenticated, user, logout, hasRole } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileCoursesOpen, setMobileCoursesOpen] = useState(false);
@@ -26,6 +26,11 @@ const Header = () => {
 
   const toggleMobileCourses = () => {
     setMobileCoursesOpen(!mobileCoursesOpen);
+  };
+
+  const handleLogout = async () => {
+    await logoutMutation.mutateAsync();
+    window.location.href = "/";
   };
 
   const navLinks = [
@@ -42,11 +47,6 @@ const Header = () => {
     { name: "Web Development Bootcamp", path: "/courses?type=development" },
     { name: "Diploma Courses", path: "/courses?type=diploma" },
   ];
-
-  const handleLogout = async () => {
-    await logout();
-    window.location.href = "/";
-  };
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
@@ -96,12 +96,12 @@ const Header = () => {
           
           <div className="flex items-center">
             <div className="hidden md:flex md:space-x-4">
-              {isAuthenticated ? (
+              {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="flex items-center gap-2">
                       <User className="h-4 w-4" />
-                      {user?.name}
+                      {user.name}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -118,13 +118,13 @@ const Header = () => {
               ) : (
                 <>
                   <Link 
-                    href="/login"
+                    href="/auth"
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                   >
                     Sign In
                   </Link>
                   <Link 
-                    href="/register"
+                    href="/auth?tab=register"
                     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                   >
                     Register
@@ -192,7 +192,7 @@ const Header = () => {
           
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="flex items-center px-4 space-x-3">
-              {isAuthenticated ? (
+              {user ? (
                 <>
                   <Link 
                     href="/dashboard"
@@ -211,14 +211,14 @@ const Header = () => {
               ) : (
                 <>
                   <Link 
-                    href="/login"
+                    href="/auth"
                     className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
                     onClick={() => setMobileMenuOpen(false)}
                   >
                     Sign In
                   </Link>
                   <Link 
-                    href="/register"
+                    href="/auth?tab=register"
                     className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50"
                     onClick={() => setMobileMenuOpen(false)}
                   >
