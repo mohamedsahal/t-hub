@@ -105,15 +105,16 @@ const Header = () => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="w-full cursor-pointer">
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
-                    {user?.role === 'admin' && (
+                    {user?.role === 'admin' ? (
                       <DropdownMenuItem asChild>
                         <Link href="/admin" className="w-full cursor-pointer">
                           Admin Dashboard
+                        </Link>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem asChild>
+                        <Link href="/dashboard" className="w-full cursor-pointer">
+                          Dashboard
                         </Link>
                       </DropdownMenuItem>
                     )}
@@ -202,13 +203,23 @@ const Header = () => {
               {user ? (
                 <div className="flex flex-col gap-2">
                   <div className="flex gap-2 w-full">
-                    <Link 
-                      href="/dashboard"
-                      className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Dashboard
-                    </Link>
+                    {user?.role === 'admin' ? (
+                      <Link 
+                        href="/admin"
+                        className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Admin Dashboard
+                      </Link>
+                    ) : (
+                      <Link 
+                        href="/dashboard"
+                        className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50"
@@ -216,15 +227,6 @@ const Header = () => {
                       Logout
                     </button>
                   </div>
-                  {user?.role === 'admin' && (
-                    <Link 
-                      href="/admin"
-                      className="block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Admin Dashboard
-                    </Link>
-                  )}
                 </div>
               ) : (
                 <div className="flex gap-2">
