@@ -27,12 +27,14 @@ export interface IStorage {
   getPaymentsByUser(userId: number): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: number, payment: Partial<Payment>): Promise<Payment | undefined>;
+  getAllPayments(): Promise<Payment[]>;
   
   // Installment operations
   getInstallment(id: number): Promise<Installment | undefined>;
   getInstallmentsByPayment(paymentId: number): Promise<Installment[]>;
   createInstallment(installment: InsertInstallment): Promise<Installment>;
   updateInstallment(id: number, installment: Partial<Installment>): Promise<Installment | undefined>;
+  getAllInstallments(): Promise<Installment[]>;
   
   // Enrollment operations
   getEnrollment(id: number): Promise<Enrollment | undefined>;
@@ -40,6 +42,7 @@ export interface IStorage {
   getEnrollmentsByCourse(courseId: number): Promise<Enrollment[]>;
   createEnrollment(enrollment: InsertEnrollment): Promise<Enrollment>;
   updateEnrollment(id: number, enrollment: Partial<Enrollment>): Promise<Enrollment | undefined>;
+  getAllEnrollments(): Promise<Enrollment[]>;
   
   // Certificate operations
   getCertificate(id: number): Promise<Certificate | undefined>;
@@ -176,6 +179,8 @@ export class MemStorage implements IStorage {
     const newUser: User = {
       ...user,
       id,
+      role: user.role || "student",
+      phone: user.phone || null,
       createdAt: new Date()
     };
     this.users.set(id, newUser);
@@ -204,6 +209,9 @@ export class MemStorage implements IStorage {
     const newCourse: Course = {
       ...course,
       id,
+      status: course.status || "draft",
+      imageUrl: course.imageUrl || null,
+      teacherId: course.teacherId || null,
       createdAt: new Date()
     };
     this.courses.set(id, newCourse);
@@ -233,7 +241,11 @@ export class MemStorage implements IStorage {
     const newPayment: Payment = {
       ...payment,
       id,
-      paymentDate: new Date()
+      paymentDate: new Date(),
+      status: payment.status || "pending",
+      transactionId: payment.transactionId || null,
+      numberOfInstallments: payment.numberOfInstallments || null,
+      dueDate: payment.dueDate || null
     };
     this.payments.set(id, newPayment);
     return newPayment;
@@ -246,6 +258,10 @@ export class MemStorage implements IStorage {
     const updatedPayment = { ...payment, ...paymentData };
     this.payments.set(id, updatedPayment);
     return updatedPayment;
+  }
+  
+  async getAllPayments(): Promise<Payment[]> {
+    return Array.from(this.payments.values());
   }
 
   // Installment operations
@@ -262,7 +278,11 @@ export class MemStorage implements IStorage {
     const newInstallment: Installment = {
       ...installment,
       id,
-      paymentDate: undefined
+      status: installment.status || "pending",
+      transactionId: installment.transactionId || null,
+      paymentDate: null,
+      isPaid: installment.isPaid || false,
+      installmentNumber: installment.installmentNumber || 1
     };
     this.installments.set(id, newInstallment);
     return newInstallment;
@@ -275,6 +295,10 @@ export class MemStorage implements IStorage {
     const updatedInstallment = { ...installment, ...installmentData };
     this.installments.set(id, updatedInstallment);
     return updatedInstallment;
+  }
+  
+  async getAllInstallments(): Promise<Installment[]> {
+    return Array.from(this.installments.values());
   }
 
   // Enrollment operations
@@ -295,8 +319,9 @@ export class MemStorage implements IStorage {
     const newEnrollment: Enrollment = {
       ...enrollment,
       id,
+      status: enrollment.status || "active",
       enrollmentDate: new Date(),
-      completionDate: undefined
+      completionDate: null
     };
     this.enrollments.set(id, newEnrollment);
     return newEnrollment;
@@ -309,6 +334,10 @@ export class MemStorage implements IStorage {
     const updatedEnrollment = { ...enrollment, ...enrollmentData };
     this.enrollments.set(id, updatedEnrollment);
     return updatedEnrollment;
+  }
+  
+  async getAllEnrollments(): Promise<Enrollment[]> {
+    return Array.from(this.enrollments.values());
   }
 
   // Certificate operations
@@ -335,7 +364,7 @@ export class MemStorage implements IStorage {
       ...certificate,
       id,
       issueDate: new Date(),
-      expiryDate: undefined
+      expiryDate: null
     };
     this.certificates.set(id, newCertificate);
     return newCertificate;
@@ -363,6 +392,7 @@ export class MemStorage implements IStorage {
     const newTestimonial: Testimonial = {
       ...testimonial,
       id,
+      isPublished: testimonial.isPublished || false,
       createdAt: new Date()
     };
     this.testimonials.set(id, newTestimonial);

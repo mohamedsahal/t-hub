@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import notificationService from "./services/notificationService";
+import emailService from "./services/emailService";
 
 const app = express();
 app.use(express.json());
@@ -39,6 +41,7 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
+  // Handle errors
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -46,6 +49,18 @@ app.use((req, res, next) => {
     res.status(status).json({ message });
     throw err;
   });
+
+  // Initialize notification service
+  try {
+    // Ask for email credentials if needed
+    await emailService.askForEmailCredentials();
+    
+    // Start notification service
+    notificationService.startNotificationService();
+    log("Notification service started successfully", "notification");
+  } catch (error) {
+    log(`Failed to start notification service: ${error}`, "notification");
+  }
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route

@@ -45,7 +45,12 @@ export const payments = pgTable("payments", {
   status: paymentStatusEnum("status").notNull().default('pending'),
   transactionId: text("transaction_id"),
   paymentDate: timestamp("payment_date").defaultNow().notNull(),
+  numberOfInstallments: integer("number_of_installments").default(1),
+  dueDate: timestamp("due_date"),
 });
+
+// Enum for installment status
+export const installmentStatusEnum = pgEnum('installment_status', ['pending', 'completed', 'failed']);
 
 // Installments table
 export const installments = pgTable("installments", {
@@ -56,6 +61,8 @@ export const installments = pgTable("installments", {
   isPaid: boolean("is_paid").default(false).notNull(),
   transactionId: text("transaction_id"),
   paymentDate: timestamp("payment_date"),
+  installmentNumber: integer("installment_number").notNull().default(1),
+  status: installmentStatusEnum("status").notNull().default('pending'),
 });
 
 // Enrollments table
