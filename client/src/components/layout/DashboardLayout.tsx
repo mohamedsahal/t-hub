@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <Link href="/admin" className="text-xl font-bold text-white flex items-center gap-2">
-            <ThubLogo width={110} height={35} useOriginalColors={true} bgColor="white" />
+            <ThubLogo width={110} height={35} useDarkBg={true} />
             <span className="ml-1 text-purple-300">Admin</span>
           </Link>
         </div>
@@ -121,7 +121,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           )}
         >
           <div className="p-4 pt-6 pb-2 border-b border-gray-800 flex justify-center">
-            <ThubLogo width={100} height={32} useOriginalColors={true} bgColor="white" />
+            <ThubLogo width={100} height={32} useDarkBg={true} />
           </div>
           <nav className="p-4 space-y-6">
             <SidebarCategory label="GENERAL">
