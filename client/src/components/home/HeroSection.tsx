@@ -1,22 +1,34 @@
-import { ArrowRight, Code, GraduationCap, BookOpen } from "lucide-react";
+import { ArrowRight, GraduationCap, BookOpen, Layers, Database, Server } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
-// Import the THub logo
-import logoPath from "@assets/FB_IMG_1743600608616.png";
-
-// App logos for animation
+// App logos for animation - Design & Multimedia tools + MERN stack
 const appLogos = [
-  { name: "Photoshop", color: "#31A8FF" },
-  { name: "Illustrator", color: "#FF9A00" },
-  { name: "Premiere Pro", color: "#9999FF" },
-  { name: "Capcut", color: "#00FFA3" },
-  { name: "QuickBooks", color: "#2CA01C" },
-  { name: "Odoo", color: "#714B67" },
-  { name: "Excel", color: "#217346" },
-  { name: "Word", color: "#2B579A" }
+  // Design Tools
+  { name: "Photoshop", color: "#31A8FF", category: "design" },
+  { name: "Illustrator", color: "#FF9A00", category: "design" },
+  { name: "Premiere Pro", color: "#9999FF", category: "design" },
+  { name: "Capcut", color: "#00FFA3", category: "design" },
+  
+  // Business Tools
+  { name: "QuickBooks", color: "#2CA01C", category: "business" },
+  { name: "Odoo", color: "#714B67", category: "business" },
+  { name: "Excel", color: "#217346", category: "business" },
+  { name: "Word", color: "#2B579A", category: "business" },
+  
+  // MERN Stack
+  { name: "MongoDB", color: "#4DB33D", category: "mern" },
+  { name: "Express", color: "#000000", category: "mern" },
+  { name: "React", color: "#61DAFB", category: "mern" },
+  { name: "Node.js", color: "#68A063", category: "mern" },
+  
+  // Additional Development Tools
+  { name: "JavaScript", color: "#F7DF1E", category: "dev" },
+  { name: "Python", color: "#3776AB", category: "dev" },
+  { name: "HTML5", color: "#E34F26", category: "dev" },
+  { name: "CSS3", color: "#1572B6", category: "dev" }
 ];
 
 // Stats for the hero section
@@ -35,55 +47,55 @@ const roadmapSteps = [
   { number: "04", text: "Start learning & building your future" }
 ];
 
-// Code snippet to display in the window
-const codeSnippet = `// THub Innovation Learning Path
-class CareerSuccess {
-  constructor() {
-    this.skills = [];
-    this.credentials = [];
-    this.careerOpportunities = [];
+// Tech stack items for visualization
+const techStacks = [
+  { 
+    title: "Design & Multimedia", 
+    icon: <Layers className="h-8 w-8 text-[#FF9A00]" />,
+    color: "from-[#FF9A00]/20 to-[#31A8FF]/20"
+  },
+  { 
+    title: "Business & Accounting", 
+    icon: <BookOpen className="h-8 w-8 text-[#2CA01C]" />,
+    color: "from-[#2CA01C]/20 to-[#217346]/20"
+  },
+  { 
+    title: "Web Development", 
+    icon: <Server className="h-8 w-8 text-[#61DAFB]" />,
+    color: "from-[#4DB33D]/20 to-[#61DAFB]/20"
+  },
+  { 
+    title: "Digital Marketing", 
+    icon: <Database className="h-8 w-8 text-[#0080c9]" />,
+    color: "from-[#0080c9]/20 to-[#3cb878]/20"
   }
-
-  enrollCourse(courseName) {
-    console.log(\`Enrolled in \${courseName}\`);
-    this.skills.push(courseName);
-    return this;
-  }
-
-  completeCertification() {
-    this.credentials.push("THub Certification");
-    return this;
-  }
-
-  applyForJobs() {
-    this.careerOpportunities = [
-      "Digital Marketing Specialist",
-      "Graphic Designer", 
-      "Web Developer",
-      "Accounting Professional"
-    ];
-    return this;
-  }
-}
-
-// Start your journey today
-const myCareer = new CareerSuccess();
-myCareer
-  .enrollCourse("Multimedia Design")
-  .completeCertification()
-  .applyForJobs();`;
+];
 
 // Animated logo component
-const AnimatedLogo = ({ name, color }: { name: string; color: string }) => {
+const AnimatedLogo = ({ name, color, index, category }: { name: string; color: string; index: number; category: string }) => {
+  // Position differently based on category
+  let positionStyle = {};
+  
+  if (category === "design") {
+    positionStyle = { top: `${15 + (index % 4) * 25}%`, left: `${10 + (index % 3) * 15}%` };
+  } else if (category === "business") {
+    positionStyle = { top: `${20 + (index % 4) * 20}%`, right: `${10 + (index % 3) * 10}%` };
+  } else if (category === "mern") {
+    positionStyle = { bottom: `${10 + (index % 4) * 15}%`, left: `${20 + (index % 4) * 15}%` };
+  } else if (category === "dev") {
+    positionStyle = { bottom: `${15 + (index % 4) * 15}%`, right: `${15 + (index % 4) * 12}%` };
+  }
+  
   return (
     <motion.div 
-      className="flex items-center shadow-sm bg-white/90 px-3 py-2 rounded-full absolute"
+      className="flex items-center shadow-sm bg-white/90 px-3 py-2 rounded-full absolute z-10"
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.5, delay: 0.1 * (index % 8) }}
       style={{ 
         boxShadow: `0 2px 10px ${color}40`,
         border: `1px solid ${color}30`,
+        ...positionStyle
       }}
     >
       <div 
@@ -92,25 +104,6 @@ const AnimatedLogo = ({ name, color }: { name: string; color: string }) => {
       ></div>
       <span className="text-xs font-medium">{name}</span>
     </motion.div>
-  );
-};
-
-// Mac window component for code snippet
-const MacWindow = ({ children }: { children: React.ReactNode }) => {
-  return (
-    <div className="rounded-lg overflow-hidden shadow-xl border border-gray-200 bg-white w-full max-w-xl mx-auto">
-      <div className="bg-gray-100 px-4 py-2 border-b border-gray-200 flex items-center">
-        <div className="flex space-x-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
-        </div>
-        <div className="text-xs text-gray-500 mx-auto">learn-to-code.js</div>
-      </div>
-      <div className="bg-gray-900 p-4 overflow-auto max-h-80 text-sm">
-        <pre className="text-green-400 font-mono">{children}</pre>
-      </div>
-    </div>
   );
 };
 
@@ -130,13 +123,6 @@ const HeroSection = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left side - Text content */}
           <div>
-            <div className="flex items-center mb-6">
-              <img src={logoPath} alt="THub Logo" className="h-14 mr-4" />
-              <div className="bg-gradient-to-r from-[#3cb878] to-[#0080c9] text-white text-xs px-3 py-1 rounded-full">
-                Innovation Center
-              </div>
-            </div>
-            
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 font-inter">
               <span className="bg-gradient-to-r from-[#3cb878] to-[#0080c9] text-transparent bg-clip-text">
                 Transform Your Skills
@@ -170,34 +156,35 @@ const HeroSection = () => {
             </div>
           </div>
           
-          {/* Right side - Code window and animated elements */}
-          <div className="relative">
-            {/* Mac-style window with code */}
-            <MacWindow>
-              {codeSnippet}
-            </MacWindow>
+          {/* Right side - Tech stack visualization with animated tech bubbles */}
+          <div className="relative h-[400px] md:h-[450px] bg-white/40 rounded-xl overflow-hidden shadow-sm border border-gray-100">
+            {/* Tech stack category cards */}
+            <div className="grid grid-cols-2 gap-4 p-6 z-20 relative">
+              {techStacks.map((stack, index) => (
+                <motion.div 
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                  className={`bg-gradient-to-br ${stack.color} p-4 rounded-lg shadow-sm`}
+                >
+                  <div className="flex items-center space-x-3">
+                    {stack.icon}
+                    <h3 className="font-semibold">{stack.title}</h3>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
             
-            {/* Animated app logos positioned around */}
+            {/* Animated app logos */}
             {mounted && appLogos.map((logo, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ 
-                  opacity: 1, 
-                  y: 0,
-                  x: Math.sin(index * 1.5) * 40,
-                  top: 80 + (index * 35) % 280,
-                  right: ((index * 30) % 100) - 40,
-                  zIndex: 10 - (index % 10)
-                }}
-                transition={{ delay: 0.2 + index * 0.1 }}
-                className="absolute"
-                style={{ 
-                  display: index < 8 ? 'block' : 'none'
-                }}
-              >
-                <AnimatedLogo name={logo.name} color={logo.color} />
-              </motion.div>
+              <AnimatedLogo 
+                key={index} 
+                name={logo.name} 
+                color={logo.color} 
+                index={index}
+                category={logo.category} 
+              />
             ))}
           </div>
         </div>

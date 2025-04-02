@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Menu, User } from "lucide-react";
+import logoPath from "@assets/FB_IMG_1743600608616.png";
 
 const Header = () => {
   const { isAuthenticated, user, logout, hasRole } = useAuth();
@@ -54,8 +55,9 @@ const Header = () => {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/">
-                <a className="h-8 w-auto text-primary-dark font-bold text-xl cursor-pointer">
-                  <span className="text-primary">T</span>hub Innovation
+                <a className="flex items-center cursor-pointer">
+                  <img src={logoPath} alt="THub Logo" className="h-8 w-auto mr-2" />
+                  <span className="font-bold text-lg text-gray-800">Innovation</span>
                 </a>
               </Link>
             </div>
