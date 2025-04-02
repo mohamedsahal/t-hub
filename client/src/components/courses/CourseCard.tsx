@@ -51,7 +51,7 @@ const CourseCard = ({ course }: CourseCardProps) => {
             <span className="text-sm text-gray-500 ml-1">/ {formatDuration(course.duration)}</span>
           </div>
           <Link href={`/courses/${course.id}`}>
-            <Button className="bg-gradient-to-r from-[#3cb878] to-[#0080c9] hover:from-[#359e6a] hover:to-[#0070b3] text-white font-semibold">
+            <Button className="bg-[#3cb878] hover:bg-[#359e6a] text-white font-semibold shadow-md">
               Enroll Now
             </Button>
           </Link>
