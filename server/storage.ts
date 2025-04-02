@@ -166,12 +166,13 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    for (const user of this.users.values()) {
+    let foundUser: User | undefined = undefined;
+    this.users.forEach(user => {
       if (user.email === email) {
-        return user;
+        foundUser = user;
       }
-    }
-    return undefined;
+    });
+    return foundUser;
   }
 
   async createUser(user: InsertUser): Promise<User> {
@@ -346,12 +347,13 @@ export class MemStorage implements IStorage {
   }
 
   async getCertificateByUniqueId(certificateId: string): Promise<Certificate | undefined> {
-    for (const certificate of this.certificates.values()) {
+    let foundCertificate: Certificate | undefined = undefined;
+    this.certificates.forEach(certificate => {
       if (certificate.certificateId === certificateId) {
-        return certificate;
+        foundCertificate = certificate;
       }
-    }
-    return undefined;
+    });
+    return foundCertificate;
   }
 
   async getCertificatesByUser(userId: number): Promise<Certificate[]> {
@@ -409,4 +411,9 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+import { PgStorage } from './pgStorage';
+
+// Choose storage implementation based on environment
+export const storage: IStorage = process.env.USE_MEMORY_STORAGE === 'true' 
+  ? new MemStorage() 
+  : new PgStorage();

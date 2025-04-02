@@ -1,4 +1,5 @@
 import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, uniqueIndex, varchar, pgEnum } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -20,6 +21,8 @@ export const users = pgTable("users", {
   phone: text("phone"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Relations will be added after all tables are defined
 
 // Courses table
 export const courses = pgTable("courses", {
@@ -126,3 +129,76 @@ export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
 
 export type Testimonial = typeof testimonials.$inferSelect;
 export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+
+// Define relationships between tables
+export const usersRelations = relations(users, ({ many }) => ({
+  courses: many(courses, { relationName: "teacher_courses" }),
+  payments: many(payments),
+  enrollments: many(enrollments),
+  certificates: many(certificates),
+  testimonials: many(testimonials),
+}));
+
+export const coursesRelations = relations(courses, ({ one, many }) => ({
+  teacher: one(users, {
+    fields: [courses.teacherId],
+    references: [users.id],
+    relationName: "teacher_courses"
+  }),
+  payments: many(payments),
+  enrollments: many(enrollments),
+  certificates: many(certificates),
+  testimonials: many(testimonials),
+}));
+
+export const paymentsRelations = relations(payments, ({ one, many }) => ({
+  user: one(users, {
+    fields: [payments.userId],
+    references: [users.id]
+  }),
+  course: one(courses, {
+    fields: [payments.courseId],
+    references: [courses.id]
+  }),
+  installments: many(installments)
+}));
+
+export const installmentsRelations = relations(installments, ({ one }) => ({
+  payment: one(payments, {
+    fields: [installments.paymentId],
+    references: [payments.id]
+  })
+}));
+
+export const enrollmentsRelations = relations(enrollments, ({ one }) => ({
+  user: one(users, {
+    fields: [enrollments.userId],
+    references: [users.id]
+  }),
+  course: one(courses, {
+    fields: [enrollments.courseId],
+    references: [courses.id]
+  })
+}));
+
+export const certificatesRelations = relations(certificates, ({ one }) => ({
+  user: one(users, {
+    fields: [certificates.userId],
+    references: [users.id]
+  }),
+  course: one(courses, {
+    fields: [certificates.courseId],
+    references: [courses.id]
+  })
+}));
+
+export const testimonialsRelations = relations(testimonials, ({ one }) => ({
+  user: one(users, {
+    fields: [testimonials.userId],
+    references: [users.id]
+  }),
+  course: one(courses, {
+    fields: [testimonials.courseId],
+    references: [courses.id]
+  })
+}));
