@@ -55,25 +55,23 @@ const Header = () => {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/">
-                <a className="flex items-center cursor-pointer">
-                  <img src={logoPath} alt="THub Logo" className="h-10 w-auto" />
-                </a>
+                <img src={logoPath} alt="THub Logo" className="h-10 w-auto cursor-pointer" />
               </Link>
             </div>
             
             {/* Desktop Navigation */}
             <nav className="hidden md:ml-6 md:flex md:space-x-8">
               {navLinks.map((link) => (
-                <Link key={link.path} href={link.path}>
-                  <a
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 ${
-                      location === link.path
-                        ? "border-primary text-gray-900"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    } text-sm font-medium`}
-                  >
-                    {link.name}
-                  </a>
+                <Link 
+                  key={link.path} 
+                  href={link.path}
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 ${
+                    location === link.path
+                      ? "border-primary text-gray-900"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  } text-sm font-medium`}
+                >
+                  {link.name}
                 </Link>
               ))}
               
@@ -83,10 +81,12 @@ const Header = () => {
                 </button>
                 <div className="absolute z-10 hidden group-hover:block bg-white shadow-lg rounded-md w-60 py-2">
                   {courseCategories.map((category) => (
-                    <Link key={category.path} href={category.path}>
-                      <a className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        {category.name}
-                      </a>
+                    <Link 
+                      key={category.path} 
+                      href={category.path}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      {category.name}
                     </Link>
                   ))}
                 </div>
@@ -106,8 +106,8 @@ const Header = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem asChild>
-                      <Link href="/dashboard">
-                        <a className="w-full cursor-pointer">Dashboard</a>
+                      <Link href="/dashboard" className="w-full cursor-pointer">
+                        Dashboard
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleLogout}>
@@ -117,15 +117,17 @@ const Header = () => {
                 </DropdownMenu>
               ) : (
                 <>
-                  <Link href="/login">
-                    <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                      Sign In
-                    </a>
+                  <Link 
+                    href="/login"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  >
+                    Sign In
                   </Link>
-                  <Link href="/register">
-                    <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
-                      Register
-                    </a>
+                  <Link 
+                    href="/register"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  >
+                    Register
                   </Link>
                 </>
               )}
@@ -150,17 +152,17 @@ const Header = () => {
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
             {navLinks.map((link) => (
-              <Link key={link.path} href={link.path}>
-                <a
-                  className={`block pl-3 pr-4 py-2 border-l-4 ${
-                    location === link.path
-                      ? "border-primary text-primary-dark bg-primary-50"
-                      : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
-                  } text-base font-medium`}
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  {link.name}
-                </a>
+              <Link 
+                key={link.path} 
+                href={link.path}
+                className={`block pl-3 pr-4 py-2 border-l-4 ${
+                  location === link.path
+                    ? "border-primary text-primary-dark bg-primary-50"
+                    : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
+                } text-base font-medium`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {link.name}
               </Link>
             ))}
             
@@ -175,13 +177,13 @@ const Header = () => {
             {mobileCoursesOpen && (
               <div className="pl-6">
                 {courseCategories.map((category) => (
-                  <Link key={category.path} href={category.path}>
-                    <a
-                      className="block pl-3 pr-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {category.name}
-                    </a>
+                  <Link 
+                    key={category.path} 
+                    href={category.path}
+                    className="block pl-3 pr-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {category.name}
                   </Link>
                 ))}
               </div>
@@ -192,13 +194,12 @@ const Header = () => {
             <div className="flex items-center px-4 space-x-3">
               {isAuthenticated ? (
                 <>
-                  <Link href="/dashboard">
-                    <a
-                      className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Dashboard
-                    </a>
+                  <Link 
+                    href="/dashboard"
+                    className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Dashboard
                   </Link>
                   <button
                     onClick={handleLogout}
@@ -209,21 +210,19 @@ const Header = () => {
                 </>
               ) : (
                 <>
-                  <Link href="/login">
-                    <a
-                      className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Sign In
-                    </a>
+                  <Link 
+                    href="/login"
+                    className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
                   </Link>
-                  <Link href="/register">
-                    <a
-                      className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Register
-                    </a>
+                  <Link 
+                    href="/register"
+                    className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Register
                   </Link>
                 </>
               )}
