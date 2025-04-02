@@ -18,6 +18,7 @@ import {
   X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ThubLogo from "@/components/ui/ThubLogo";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -88,7 +89,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-      <header className="bg-gray-900 border-b border-gray-800 flex items-center justify-between h-16 px-4 lg:px-6">
+      <header className="bg-gray-900 border-b border-gray-800 flex items-center justify-between h-16 px-4 lg:px-6 shadow-md">
         <div className="flex items-center gap-2">
           <button 
             className="lg:hidden text-white p-2"
@@ -96,9 +97,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           >
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
-          <Link href="/" className="text-xl font-bold text-white flex items-center gap-2">
-            <span className="bg-gradient-to-r from-blue-500 to-green-500 text-white px-2 py-1 rounded">T</span>
-            <span>Admin</span>
+          <Link href="/admin" className="text-xl font-bold text-white flex items-center gap-2">
+            <ThubLogo width={110} height={35} />
+            <span className="ml-1 text-purple-300">Admin</span>
           </Link>
         </div>
         <div className="flex items-center gap-4">
@@ -119,6 +120,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
+          <div className="p-4 pt-6 pb-2 border-b border-gray-800">
+            <ThubLogo width={100} height={32} />
+          </div>
           <nav className="p-4 space-y-6">
             <SidebarCategory label="GENERAL">
               <SidebarItem 
