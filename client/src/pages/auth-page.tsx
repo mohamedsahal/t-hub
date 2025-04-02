@@ -21,10 +21,14 @@ const AuthPage = () => {
     }
   }, [search]);
 
-  // Redirect to home if already logged in
+  // Redirect to proper dashboard if already logged in
   useEffect(() => {
     if (user && !isLoading) {
-      setLocation("/");
+      if (user.role === 'admin') {
+        setLocation("/admin");
+      } else {
+        setLocation("/dashboard");
+      }
     }
   }, [user, isLoading, setLocation]);
 

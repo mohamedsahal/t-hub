@@ -11,7 +11,12 @@ const Login = () => {
   useEffect(() => {
     // Redirect if already logged in
     if (isAuthenticated) {
-      setLocation("/dashboard");
+      const user = useAuth().user;
+      if (user?.role === 'admin') {
+        setLocation("/admin");
+      } else {
+        setLocation("/dashboard");
+      }
     }
   }, [isAuthenticated, setLocation]);
 

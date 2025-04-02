@@ -41,11 +41,17 @@ const LoginForm = () => {
 
   const onSubmit = async (data: LoginFormValues) => {
     try {
-      await loginMutation.mutateAsync({
+      const user = await loginMutation.mutateAsync({
         email: data.email,
         password: data.password
       });
-      setLocation("/dashboard");
+      
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        setLocation("/admin");
+      } else {
+        setLocation("/dashboard");
+      }
     } catch (error) {
       console.error("Login failed:", error);
       // Error is handled by the Auth hook

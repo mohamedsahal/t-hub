@@ -54,13 +54,18 @@ const RegisterForm = () => {
     const { confirmPassword, firstName, lastName, ...userData } = data;
     
     try {
-      await registerMutation.mutateAsync({
+      const user = await registerMutation.mutateAsync({
         ...userData,
         name: `${firstName} ${lastName}`,
         role: userRoleEnum.enumValues[2], // student role
       });
       
-      setLocation("/dashboard");
+      // Redirect based on user role - for registration, this will typically be student
+      if (user.role === 'admin') {
+        setLocation("/admin");
+      } else {
+        setLocation("/dashboard");
+      }
     } catch (error) {
       console.error("Registration failed:", error);
       // Error is handled by the Auth hook
