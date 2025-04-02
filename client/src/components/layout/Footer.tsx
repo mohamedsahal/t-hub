@@ -20,9 +20,8 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-1">
-            <div className="text-2xl font-bold mb-4 flex items-center">
-              <img src="/attached_assets/FB_IMG_1743600608616.png" alt="THub Logo" className="h-8 w-auto mr-2" />
-              <span className="text-gray-800">Innovation</span>
+            <div className="mb-4 flex items-center">
+              <img src="/attached_assets/FB_IMG_1743600608616.png" alt="THub Logo" className="h-10 w-auto" />
             </div>
             <p className="text-gray-600 mb-6">
               Providing quality education and professional skills training to help students achieve their career goals.

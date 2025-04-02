@@ -56,8 +56,7 @@ const Header = () => {
             <div className="flex-shrink-0 flex items-center">
               <Link href="/">
                 <a className="flex items-center cursor-pointer">
-                  <img src={logoPath} alt="THub Logo" className="h-8 w-auto mr-2" />
-                  <span className="font-bold text-lg text-gray-800">Innovation</span>
+                  <img src={logoPath} alt="THub Logo" className="h-10 w-auto" />
                 </a>
               </Link>
             </div>

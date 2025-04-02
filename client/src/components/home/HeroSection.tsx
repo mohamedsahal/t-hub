@@ -115,7 +115,7 @@ const HeroSection = () => {
                   Browse Courses <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button variant="outline" size="lg" asChild>
+              <Button variant="outline" size="lg" asChild className="border-primary text-primary hover:bg-primary/10 font-semibold">
                 <Link href="/verify-certificate">Verify Certificate</Link>
               </Button>
             </div>

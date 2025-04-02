@@ -12,12 +12,12 @@ const CallToAction = () => {
           </p>
           <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
             <Link href="/courses">
-              <Button size="lg" variant="secondary" className="px-8">
+              <Button size="lg" className="px-8 bg-white hover:bg-gray-100 text-primary font-semibold shadow-md">
                 Browse All Courses
               </Button>
             </Link>
             <Link href="/contact">
-              <Button size="lg" variant="outline" className="px-8 border-white text-white hover:bg-white hover:text-primary">
+              <Button size="lg" className="px-8 bg-gradient-to-r from-[#3cb878] to-[#0080c9] hover:from-[#359e6a] hover:to-[#0070b3] text-white font-semibold shadow-md">
                 Contact Us
               </Button>
             </Link>
