@@ -1,0 +1,237 @@
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown, Menu, User } from "lucide-react";
+
+const Header = () => {
+  const { isAuthenticated, user, logout, hasRole } = useAuth();
+  const [location] = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileCoursesOpen, setMobileCoursesOpen] = useState(false);
+
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+    if (!mobileMenuOpen) {
+      setMobileCoursesOpen(false);
+    }
+  };
+
+  const toggleMobileCourses = () => {
+    setMobileCoursesOpen(!mobileCoursesOpen);
+  };
+
+  const navLinks = [
+    { name: "Home", path: "/" },
+    { name: "About Us", path: "/about" },
+    { name: "Contact", path: "/contact" },
+    { name: "Verify Certificate", path: "/verify-certificate" },
+  ];
+
+  const courseCategories = [
+    { name: "Multimedia Courses", path: "/courses?type=multimedia" },
+    { name: "Computerized Accounting", path: "/courses?type=accounting" },
+    { name: "Digital Marketing & Data Analysis", path: "/courses?type=marketing" },
+    { name: "Web Development Bootcamp", path: "/courses?type=development" },
+    { name: "Diploma Courses", path: "/courses?type=diploma" },
+  ];
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = "/";
+  };
+
+  return (
+    <header className="bg-white shadow-md sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <Link href="/">
+                <a className="h-8 w-auto text-primary-dark font-bold text-xl cursor-pointer">
+                  <span className="text-primary">T</span>hub Innovation
+                </a>
+              </Link>
+            </div>
+            
+            {/* Desktop Navigation */}
+            <nav className="hidden md:ml-6 md:flex md:space-x-8">
+              {navLinks.map((link) => (
+                <Link key={link.path} href={link.path}>
+                  <a
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 ${
+                      location === link.path
+                        ? "border-primary text-gray-900"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    } text-sm font-medium`}
+                  >
+                    {link.name}
+                  </a>
+                </Link>
+              ))}
+              
+              <div className="relative group">
+                <button className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                  Courses <ChevronDown className="ml-1 h-4 w-4" />
+                </button>
+                <div className="absolute z-10 hidden group-hover:block bg-white shadow-lg rounded-md w-60 py-2">
+                  {courseCategories.map((category) => (
+                    <Link key={category.path} href={category.path}>
+                      <a className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        {category.name}
+                      </a>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </nav>
+          </div>
+          
+          <div className="flex items-center">
+            <div className="hidden md:flex md:space-x-4">
+              {isAuthenticated ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      {user?.name}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href="/dashboard">
+                        <a className="w-full cursor-pointer">Dashboard</a>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout}>
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                      Sign In
+                    </a>
+                  </Link>
+                  <Link href="/register">
+                    <a className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                      Register
+                    </a>
+                  </Link>
+                </>
+              )}
+            </div>
+            
+            {/* Mobile menu button */}
+            <div className="md:hidden -mr-2 flex items-center">
+              <button
+                onClick={toggleMobileMenu}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+              >
+                <span className="sr-only">Open main menu</span>
+                <Menu className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile menu */}
+      {mobileMenuOpen && (
+        <div className="md:hidden">
+          <div className="pt-2 pb-3 space-y-1">
+            {navLinks.map((link) => (
+              <Link key={link.path} href={link.path}>
+                <a
+                  className={`block pl-3 pr-4 py-2 border-l-4 ${
+                    location === link.path
+                      ? "border-primary text-primary-dark bg-primary-50"
+                      : "border-transparent text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
+                  } text-base font-medium`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.name}
+                </a>
+              </Link>
+            ))}
+            
+            <button
+              onClick={toggleMobileCourses}
+              className="flex justify-between w-full text-left pl-3 pr-4 py-2 border-l-4 border-transparent text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 hover:border-gray-300"
+            >
+              Courses
+              <ChevronDown className="mr-3 h-4 w-4 self-center" />
+            </button>
+            
+            {mobileCoursesOpen && (
+              <div className="pl-6">
+                {courseCategories.map((category) => (
+                  <Link key={category.path} href={category.path}>
+                    <a
+                      className="block pl-3 pr-4 py-2 text-base font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {category.name}
+                    </a>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <div className="pt-4 pb-3 border-t border-gray-200">
+            <div className="flex items-center px-4 space-x-3">
+              {isAuthenticated ? (
+                <>
+                  <Link href="/dashboard">
+                    <a
+                      className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </a>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/login">
+                    <a
+                      className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Sign In
+                    </a>
+                  </Link>
+                  <Link href="/register">
+                    <a
+                      className="flex-1 block text-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-primary bg-white border-primary hover:bg-gray-50"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Register
+                    </a>
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
+  );
+};
+
+export default Header;
