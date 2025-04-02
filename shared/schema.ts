@@ -10,6 +10,12 @@ export const courseTypeEnum = pgEnum('course_type', ['multimedia', 'accounting',
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'completed', 'failed']);
 export const paymentTypeEnum = pgEnum('payment_type', ['one_time', 'installment']);
 export const enrollmentStatusEnum = pgEnum('enrollment_status', ['active', 'completed', 'dropped']);
+export const productTypeEnum = pgEnum('product_type', [
+  'restaurant', 'school', 'laundry', 'inventory', 
+  'task', 'hotel', 'hospital', 'dental', 
+  'realestate', 'travel', 'shop', 'custom'
+]);
+export const contentTypeEnum = pgEnum('content_type', ['hero', 'about', 'feature', 'testimonial', 'event', 'partner', 'contact']);
 
 // Users table
 export const users = pgTable("users", {
@@ -99,6 +105,59 @@ export const testimonials = pgTable("testimonials", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// SaaS Products table
+export const products = pgTable("products", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: productTypeEnum("type").notNull(),
+  price: doublePrecision("price"),
+  features: text("features").array(),
+  imageUrl: text("image_url"),
+  demoUrl: text("demo_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Partner Universities table
+export const partners = pgTable("partners", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  logoUrl: text("logo_url"),
+  websiteUrl: text("website_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Landing Page Content table
+export const landingContent = pgTable("landing_content", {
+  id: serial("id").primaryKey(),
+  type: contentTypeEnum("type").notNull(),
+  title: text("title"),
+  subtitle: text("subtitle"),
+  content: text("content"),
+  imageUrl: text("image_url"),
+  buttonText: text("button_text"),
+  buttonUrl: text("button_url"),
+  sortOrder: integer("sort_order").default(0),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Events table
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  imageUrl: text("image_url"),
+  date: timestamp("date").notNull(),
+  location: text("location").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Define insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
@@ -107,6 +166,10 @@ export const insertInstallmentSchema = createInsertSchema(installments).omit({ i
 export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id: true, enrollmentDate: true, completionDate: true });
 export const insertCertificateSchema = createInsertSchema(certificates).omit({ id: true, issueDate: true, expiryDate: true });
 export const insertTestimonialSchema = createInsertSchema(testimonials).omit({ id: true, createdAt: true });
+export const insertProductSchema = createInsertSchema(products).omit({ id: true, createdAt: true });
+export const insertPartnerSchema = createInsertSchema(partners).omit({ id: true, createdAt: true });
+export const insertLandingContentSchema = createInsertSchema(landingContent).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertEventSchema = createInsertSchema(events).omit({ id: true, createdAt: true });
 
 // Define types
 export type User = typeof users.$inferSelect;
@@ -129,6 +192,18 @@ export type InsertCertificate = z.infer<typeof insertCertificateSchema>;
 
 export type Testimonial = typeof testimonials.$inferSelect;
 export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+
+export type Partner = typeof partners.$inferSelect;
+export type InsertPartner = z.infer<typeof insertPartnerSchema>;
+
+export type LandingContent = typeof landingContent.$inferSelect;
+export type InsertLandingContent = z.infer<typeof insertLandingContentSchema>;
+
+export type Event = typeof events.$inferSelect;
+export type InsertEvent = z.infer<typeof insertEventSchema>;
 
 // Define relationships between tables
 export const usersRelations = relations(users, ({ many }) => ({
