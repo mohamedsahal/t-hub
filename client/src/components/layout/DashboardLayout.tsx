@@ -98,7 +98,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
           <Link href="/admin" className="text-xl font-bold text-white flex items-center gap-2">
-            <ThubLogo width={110} height={35} />
+            <ThubLogo width={110} height={35} useOriginalColors={true} bgColor="white" />
             <span className="ml-1 text-purple-300">Admin</span>
           </Link>
         </div>
@@ -120,8 +120,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
           )}
         >
-          <div className="p-4 pt-6 pb-2 border-b border-gray-800">
-            <ThubLogo width={100} height={32} />
+          <div className="p-4 pt-6 pb-2 border-b border-gray-800 flex justify-center">
+            <ThubLogo width={100} height={32} useOriginalColors={true} bgColor="white" />
           </div>
           <nav className="p-4 space-y-6">
             <SidebarCategory label="GENERAL">
