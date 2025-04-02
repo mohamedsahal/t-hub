@@ -414,6 +414,5 @@ export class MemStorage implements IStorage {
 import { PgStorage } from './pgStorage';
 
 // Choose storage implementation based on environment
-export const storage: IStorage = process.env.USE_MEMORY_STORAGE === 'true' 
-  ? new MemStorage() 
-  : new PgStorage();
+// By default, use PostgreSQL storage for persistent data
+export const storage: IStorage = new PgStorage();
