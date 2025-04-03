@@ -45,8 +45,14 @@ export async function apiRequest(
     }
   }
   
+  // Make sure method is a valid HTTP method
+  const validMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+  if (!validMethods.includes(method.toUpperCase())) {
+    throw new Error(`'${method}' is not a valid HTTP method.`);
+  }
+  
   const res = await fetch(url, {
-    method,
+    method: method.toUpperCase(),
     headers: options ? { "Content-Type": "application/json" } : {},
     body: options ? JSON.stringify(options) : undefined,
     credentials: "include",

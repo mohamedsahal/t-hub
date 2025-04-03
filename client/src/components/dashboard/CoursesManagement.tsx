@@ -468,10 +468,9 @@ export default function CoursesManagement() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="multimedia">Multimedia</SelectItem>
-                          <SelectItem value="accounting">Accounting</SelectItem>
-                          <SelectItem value="marketing">Marketing</SelectItem>
-                          <SelectItem value="development">Development</SelectItem>
+                          <SelectItem value="short_course">Short Course</SelectItem>
+                          <SelectItem value="group_course">Group Course</SelectItem>
+                          <SelectItem value="bootcamp">Bootcamp</SelectItem>
                           <SelectItem value="diploma">Diploma</SelectItem>
                         </SelectContent>
                       </Select>
@@ -657,10 +656,9 @@ export default function CoursesManagement() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="multimedia">Multimedia</SelectItem>
-                          <SelectItem value="accounting">Accounting</SelectItem>
-                          <SelectItem value="marketing">Marketing</SelectItem>
-                          <SelectItem value="development">Development</SelectItem>
+                          <SelectItem value="short_course">Short Course</SelectItem>
+                          <SelectItem value="group_course">Group Course</SelectItem>
+                          <SelectItem value="bootcamp">Bootcamp</SelectItem>
                           <SelectItem value="diploma">Diploma</SelectItem>
                         </SelectContent>
                       </Select>

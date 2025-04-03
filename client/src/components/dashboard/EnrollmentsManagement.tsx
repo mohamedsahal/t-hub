@@ -99,10 +99,10 @@ export default function EnrollmentsManagement() {
     isLoading: isEnrollmentsLoading,
     isError: isEnrollmentsError,
   } = useQuery({
-    queryKey: ['/api/admin/enrollments'],
+    queryKey: ['/api/enrollments'],
     queryFn: async () => {
       try {
-        const response = await apiRequest('/api/admin/enrollments');
+        const response = await apiRequest('/api/enrollments');
         return response;
       } catch (error) {
         console.error("Failed to fetch enrollments:", error);
@@ -116,10 +116,10 @@ export default function EnrollmentsManagement() {
     data: users,
     isLoading: isUsersLoading,
   } = useQuery({
-    queryKey: ['/api/admin/users'],
+    queryKey: ['/api/users'],
     queryFn: async () => {
       try {
-        const response = await apiRequest('/api/admin/users');
+        const response = await apiRequest('/api/users');
         return response;
       } catch (error) {
         console.error("Failed to fetch users:", error);
@@ -133,10 +133,10 @@ export default function EnrollmentsManagement() {
     data: courses,
     isLoading: isCoursesLoading,
   } = useQuery({
-    queryKey: ['/api/admin/courses'],
+    queryKey: ['/api/courses'],
     queryFn: async () => {
       try {
-        const response = await apiRequest('/api/admin/courses');
+        const response = await apiRequest('/api/courses');
         return response;
       } catch (error) {
         console.error("Failed to fetch courses:", error);
@@ -148,11 +148,11 @@ export default function EnrollmentsManagement() {
   // Create enrollment mutation
   const createEnrollmentMutation = useMutation({
     mutationFn: async (newEnrollment: EnrollmentFormValues) => {
-      const response = await apiRequest('POST', '/api/admin/enrollments', newEnrollment);
+      const response = await apiRequest('POST', '/api/enrollments', newEnrollment);
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/enrollments'] });
       setIsAddDialogOpen(false);
       toast({
         title: "Enrollment Created",
@@ -174,11 +174,11 @@ export default function EnrollmentsManagement() {
   // Update enrollment mutation
   const updateEnrollmentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: EnrollmentFormValues }) => {
-      const response = await apiRequest('PATCH', `/api/admin/enrollments/${id}`, data);
+      const response = await apiRequest('PATCH', `/api/enrollments/${id}`, data);
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/enrollments'] });
       setIsEditDialogOpen(false);
       toast({
         title: "Enrollment Updated",
@@ -199,11 +199,11 @@ export default function EnrollmentsManagement() {
   // Delete enrollment mutation
   const deleteEnrollmentMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest('DELETE', `/api/admin/enrollments/${id}`);
+      const response = await apiRequest('DELETE', `/api/enrollments/${id}`);
       return response;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/admin/enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/enrollments'] });
       setIsDeleteDialogOpen(false);
       toast({
         title: "Enrollment Deleted",
