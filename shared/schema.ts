@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: userRoleEnum("role").notNull().default('student'),
   phone: text("phone"),
+  preferredCourse: courseTypeEnum("preferred_course"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

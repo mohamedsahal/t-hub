@@ -36,10 +36,50 @@ export class PgStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
+    // Default short name mapping for course types
+    const courseTypeToShortName: Record<string, string> = {
+      'multimedia': 'MULT',
+      'accounting': 'ACCT',
+      'marketing': 'MRKT',
+      'development': 'DEV',
+      'diploma': 'DIPL'
+    };
+    
+    // Default to "THUB" if no preferred course is specified
+    let courseShortName = "THUB";
+    
+    // If user has a preferred course, use that for the short name
+    if (user.preferredCourse) {
+      courseShortName = courseTypeToShortName[user.preferredCourse] || courseShortName;
+    } else {
+      try {
+        // If no preferred course, try to get a course from database
+        const allCourses = await db.select().from(courses);
+        if (allCourses.length > 0) {
+          const selectedCourse = allCourses[0];
+          // Generate a short name from course title or type
+          courseShortName = selectedCourse.title
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase())
+            .join('')
+            .substring(0, 4) || 
+            courseTypeToShortName[selectedCourse.type] || 
+            selectedCourse.type.toUpperCase().substring(0, 4);
+        }
+      } catch (error) {
+        console.error("Error getting courses for user ID prefix:", error);
+      }
+    }
+    
+    // Generate a user ID using the course short name and a unique timestamp
+    const userIdSuffix = Date.now().toString().substring(7);
+    const userIdPrefix = `${courseShortName}-${userIdSuffix}`;
+    
     const result = await db.insert(users).values({
       ...user,
       role: user.role || "student",
       phone: user.phone || null,
+      preferredCourse: user.preferredCourse || null,
       createdAt: new Date()
     }).returning();
     return result[0];

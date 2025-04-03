@@ -583,7 +583,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/users", checkRole(["admin"]), async (req, res) => {
     try {
       const userSchema = insertUserSchema.extend({
-        password: z.string().min(6, "Password must be at least 6 characters")
+        password: z.string().min(6, "Password must be at least 6 characters"),
+        preferredCourse: z.enum(["multimedia", "accounting", "marketing", "development", "diploma"])
       });
       
       const result = userSchema.safeParse(req.body);
@@ -630,7 +631,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: z.string().optional(),
         email: z.string().email().optional(),
         role: z.enum(["admin", "teacher", "student"]).optional(),
+        preferredCourse: z.enum(["multimedia", "accounting", "marketing", "development", "diploma"]).optional(),
         password: z.string().min(6).optional(),
+        phone: z.string().optional(),
       });
       
       const result = updateSchema.safeParse(req.body);

@@ -1,8 +1,13 @@
 import { useState, useEffect } from "react";
-import { User } from "@shared/schema";
+import { User as SchemaUser, courseTypeEnum } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+
+// Extended User type with preferredCourse
+interface User extends Omit<SchemaUser, 'preferredCourse'> {
+  preferredCourse: "multimedia" | "accounting" | "marketing" | "development" | "diploma" | null;
+}
 import {
   Card,
   CardContent,
@@ -69,6 +74,7 @@ const userFormSchema = z.object({
   role: z.enum(["admin", "teacher", "student"]),
   phone: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  preferredCourse: z.enum(["multimedia", "accounting", "marketing", "development", "diploma"]),
 });
 
 const userUpdateSchema = userFormSchema
@@ -87,10 +93,12 @@ export default function UsersManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Queries
-  const { data: users, isLoading } = useQuery<User[]>({
+  // Queries - improve error handling and add refetch
+  const { data: users, isLoading, error, refetch } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
     retry: 1,
+    staleTime: 0, // Always refetch when tab is selected
+    refetchOnWindowFocus: true,
   });
 
   // Create user form
@@ -102,6 +110,7 @@ export default function UsersManagement() {
       role: "student",
       phone: "",
       password: "",
+      preferredCourse: "multimedia",
     },
   });
 
@@ -125,6 +134,7 @@ export default function UsersManagement() {
         email: selectedUser.email,
         role: selectedUser.role,
         phone: selectedUser.phone || "",
+        preferredCourse: selectedUser.preferredCourse || "multimedia",
       });
     }
   }, [selectedUser, editForm]);
@@ -354,6 +364,37 @@ export default function UsersManagement() {
                       </FormItem>
                     )}
                   />
+                  
+                  <FormField
+                    control={createForm.control}
+                    name="preferredCourse"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Preferred Course</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select course type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="multimedia">Multimedia</SelectItem>
+                            <SelectItem value="accounting">Accounting</SelectItem>
+                            <SelectItem value="marketing">Marketing</SelectItem>
+                            <SelectItem value="development">Development</SelectItem>
+                            <SelectItem value="diploma">Diploma</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          This will determine the user's ID prefix
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <DialogFooter>
                     <Button
@@ -400,7 +441,32 @@ export default function UsersManagement() {
               {users && users.length > 0 ? (
                 users.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell>{user.id}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        // Get course prefix based on preferredCourse if available
+                        let coursePrefix = "";
+                        if (user.preferredCourse) {
+                          switch(user.preferredCourse) {
+                            case "multimedia": coursePrefix = "MM"; break;
+                            case "accounting": coursePrefix = "ACC"; break;
+                            case "marketing": coursePrefix = "MKT"; break;
+                            case "development": coursePrefix = "DEV"; break;
+                            case "diploma": coursePrefix = "DIP"; break;
+                            default: coursePrefix = "TH"; break;
+                          }
+                        } else {
+                          // Fallback to role-based prefix
+                          coursePrefix = user.role === 'student' ? 'STDN' : 
+                                         user.role === 'teacher' ? 'TCHR' : 'ADMN';
+                        }
+                        
+                        // Format ID with leading zeros
+                        const formattedId = user.id < 10 ? `00${user.id}` : 
+                                           user.id < 100 ? `0${user.id}` : user.id;
+                                           
+                        return `${coursePrefix}-${formattedId}`;
+                      })()}
+                    </TableCell>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
@@ -411,7 +477,7 @@ export default function UsersManagement() {
                     <TableCell>{user.phone || "-"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                        <Dialog>
                           <DialogTrigger asChild>
                             <Button
                               variant="outline"
@@ -424,7 +490,7 @@ export default function UsersManagement() {
                               <Pencil className="h-4 w-4" />
                             </Button>
                           </DialogTrigger>
-                          {selectedUser && (
+                          {selectedUser && selectedUser.id === user.id && isEditing && (
                             <DialogContent className="max-w-md">
                               <DialogHeader>
                                 <DialogTitle>Edit User</DialogTitle>
@@ -542,6 +608,37 @@ export default function UsersManagement() {
                                         </FormControl>
                                         <FormDescription>
                                           Leave blank to keep the current password
+                                        </FormDescription>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                  
+                                  <FormField
+                                    control={editForm.control}
+                                    name="preferredCourse"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Preferred Course</FormLabel>
+                                        <Select
+                                          onValueChange={field.onChange}
+                                          defaultValue={field.value}
+                                        >
+                                          <FormControl>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select course type" />
+                                            </SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            <SelectItem value="multimedia">Multimedia</SelectItem>
+                                            <SelectItem value="accounting">Accounting</SelectItem>
+                                            <SelectItem value="marketing">Marketing</SelectItem>
+                                            <SelectItem value="development">Development</SelectItem>
+                                            <SelectItem value="diploma">Diploma</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        <FormDescription>
+                                          This will determine the user's ID prefix
                                         </FormDescription>
                                         <FormMessage />
                                       </FormItem>
