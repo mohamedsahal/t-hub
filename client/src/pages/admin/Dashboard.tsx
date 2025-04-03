@@ -22,6 +22,7 @@ import { Users, BookOpen, CreditCard, Award, ArrowUpRight, Loader2 } from "lucid
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import UsersManagement from "@/components/dashboard/UsersManagement";
+import ProductsManagement from "@/components/dashboard/ProductsManagement";
 
 // Color definitions
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -171,6 +172,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="products">Products</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview" className="space-y-4">
@@ -411,6 +413,10 @@ export default function AdminDashboard() {
           
           <TabsContent value="users" className="space-y-4">
             <UsersManagement />
+          </TabsContent>
+          
+          <TabsContent value="products" className="space-y-4">
+            <ProductsManagement />
           </TabsContent>
         </Tabs>
       </div>
