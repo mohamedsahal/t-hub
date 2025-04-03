@@ -838,7 +838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userSchema = insertUserSchema.extend({
         password: z.string().min(6, "Password must be at least 6 characters"),
-        preferredCourse: z.enum(["short_course", "group_course", "bootcamp", "diploma"])
+        preferredCourse: z.enum(["short_course", "group_course", "bootcamp", "diploma"]).optional()
       });
       
       const result = userSchema.safeParse(req.body);
