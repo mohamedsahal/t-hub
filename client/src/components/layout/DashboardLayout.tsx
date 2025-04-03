@@ -15,10 +15,21 @@ import {
   Settings,
   ChevronDown,
   Menu,
-  X
+  X,
+  User,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ThubLogo from "@/components/ui/ThubLogo";
+import { useAuth } from "@/context/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -80,11 +91,23 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { user, logout, isLoading } = useAuth();
   
   // Close mobile menu when changing routes
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location]);
+  
+  // Handle user logout
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // After successful logout, redirect to login page
+      window.location.href = "/auth";
+    } catch (error) {
+      console.error("Error logging out:", error);
+    }
+  };
 
   return (
     <div className="h-screen flex flex-col">
@@ -106,9 +129,34 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <Link href="/" className="text-gray-300 hover:text-white text-sm">
             View Site
           </Link>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-green-500 flex items-center justify-center text-white font-semibold">
-            A
-          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger className="outline-none">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-green-500 flex items-center justify-center text-white font-semibold hover:opacity-90 transition-opacity cursor-pointer">
+                {user?.name?.charAt(0).toUpperCase() || 'A'}
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span className="font-medium">{user?.name || 'Administrator'}</span>
+                  <span className="text-xs text-gray-500">{user?.email || 'admin@example.com'}</span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <Link href="/admin/profile">
+                <DropdownMenuItem className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>My Profile</span>
+                </DropdownMenuItem>
+              </Link>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer text-red-500 focus:text-red-500" onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       
@@ -208,6 +256,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 label="Settings" 
                 href="/admin/settings" 
                 isActive={location === "/admin/settings"} 
+              />
+              <SidebarItem 
+                icon={<User size={18} />} 
+                label="My Profile" 
+                href="/admin/profile" 
+                isActive={location === "/admin/profile"} 
               />
             </SidebarCategory>
           </nav>

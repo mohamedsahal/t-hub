@@ -15,6 +15,7 @@ import VerifyCertificate from "@/pages/VerifyCertificate";
 import AdminPage from "@/pages/admin";
 import UsersAdminPage from "@/pages/admin/Users";
 import CoursesAdminPage from "@/pages/admin/Courses";
+import ProfilePage from "@/pages/admin/Profile";
 
 import { ProtectedRoute } from "./lib/protected-route";
 import { AdminProtectedRoute } from "./lib/admin-protected-route";
@@ -49,6 +50,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/content" component={() => <div>Content Admin Page</div>} />
       <AdminProtectedRoute path="/admin/events" component={() => <div>Events Admin Page</div>} />
       <AdminProtectedRoute path="/admin/settings" component={() => <div>Settings Admin Page</div>} />
+      <AdminProtectedRoute path="/admin/profile" component={ProfilePage} />
 
       {/* 404 Route */}
       <Route component={NotFound} />

@@ -11,7 +11,7 @@ import { fromZodError } from "zod-validation-error";
 import { ZodError } from "zod";
 import waafiPayService from "./services/waafiPayService";
 import notificationService from "./services/notificationService";
-import { setupAuth, hashPassword } from "./auth";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -812,6 +812,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(sortedEnrollments);
     } catch (error) {
       res.status(500).json({ message: "Error fetching recent enrollments" });
+    }
+  });
+
+  // Profile management
+  app.put("/api/profile", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const { name, email, currentPassword, newPassword } = req.body;
+      
+      // Check if email already exists and it's not the current user's email
+      if (email && email !== user.email) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser) {
+          return res.status(400).json({ message: "Email already exists" });
+        }
+      }
+      
+      // If user is trying to change password, verify current password
+      if (currentPassword && newPassword) {
+        const isValid = await comparePasswords(currentPassword, user.password);
+        if (!isValid) {
+          return res.status(400).json({ message: "Current password is incorrect" });
+        }
+        
+        // Update user with new password
+        const hashedPassword = await hashPassword(newPassword);
+        await storage.updateUser(user.id, { 
+          name: name || user.name,
+          email: email || user.email,
+          password: hashedPassword
+        });
+      } else {
+        // Update user without changing password
+        await storage.updateUser(user.id, { 
+          name: name || user.name,
+          email: email || user.email
+        });
+      }
+      
+      // Get updated user data
+      const updatedUser = await storage.getUser(user.id);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return updated user data without password
+      const { password, ...userData } = updatedUser;
+      res.status(200).json(userData);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Error updating profile" });
     }
   });
 
