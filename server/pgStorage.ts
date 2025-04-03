@@ -1,14 +1,14 @@
 import { db } from './db';
+import { eq, and, desc, asc, gte } from 'drizzle-orm';
 import { 
-  User, InsertUser, Course, InsertCourse, 
+  User, InsertUser, Course, InsertCourse, CourseSection, InsertCourseSection,
   Payment, InsertPayment, Installment, InsertInstallment, 
   Enrollment, InsertEnrollment, Certificate, InsertCertificate, 
   Testimonial, InsertTestimonial, Product, InsertProduct,
   Partner, InsertPartner, Event, InsertEvent, LandingContent, InsertLandingContent,
-  users, courses, payments, installments, enrollments, certificates, testimonials,
+  users, courses, courseSections, payments, installments, enrollments, certificates, testimonials,
   products, partners, events, landingContent
 } from '@shared/schema';
-import { eq, and, desc, asc, gte } from 'drizzle-orm';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
@@ -465,5 +465,74 @@ export class PgStorage implements IStorage {
       .where(eq(landingContent.id, id))
       .returning();
     return result[0];
+  }
+
+  // Course Sections operations
+  async getCourseSections(courseId: number): Promise<CourseSection[]> {
+    return await db.select().from(courseSections)
+      .where(eq(courseSections.courseId, courseId))
+      .orderBy(courseSections.order);
+  }
+
+  async getCourseSection(id: number): Promise<CourseSection | undefined> {
+    const result = await db.select().from(courseSections).where(eq(courseSections.id, id));
+    return result[0];
+  }
+
+  async createCourseSection(section: InsertCourseSection): Promise<CourseSection> {
+    // Find the maximum order value for the course
+    const existingSections = await this.getCourseSections(section.courseId);
+    const maxOrder = existingSections.length > 0 
+      ? Math.max(...existingSections.map(s => s.order)) 
+      : 0;
+    
+    // Set the order to be one more than the current maximum
+    const sectionToCreate = {
+      ...section,
+      order: section.order || maxOrder + 1,
+    };
+    
+    const result = await db.insert(courseSections).values(sectionToCreate).returning();
+    return result[0];
+  }
+
+  async updateCourseSection(id: number, sectionData: Partial<CourseSection>): Promise<CourseSection | undefined> {
+    const result = await db.update(courseSections)
+      .set(sectionData)
+      .where(eq(courseSections.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCourseSection(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(courseSections)
+        .where(eq(courseSections.id, id))
+        .returning({ id: courseSections.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting course section:", error);
+      return false;
+    }
+  }
+
+  // Implement deleteCourse that was used in routes but not defined
+  async deleteCourse(id: number): Promise<boolean> {
+    try {
+      // First, delete all sections associated with this course
+      await db.delete(courseSections)
+        .where(eq(courseSections.courseId, id));
+      
+      // Then delete the course itself
+      const result = await db.delete(courses)
+        .where(eq(courses.id, id))
+        .returning({ id: courses.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      return false;
+    }
   }
 }

@@ -5,7 +5,7 @@ import {
   insertUserSchema, insertCourseSchema, insertPaymentSchema, 
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
   insertTestimonialSchema, insertProductSchema, insertPartnerSchema,
-  insertEventSchema, insertLandingContentSchema
+  insertEventSchema, insertLandingContentSchema, insertCourseSectionSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1578,6 +1578,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ message: "Error fetching dashboard data" });
+    }
+  });
+
+  // Course section routes for the course builder
+  app.get("/api/admin/courses/:courseId/sections", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const course = await storage.getCourse(courseId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if the user is an admin or the teacher of this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to view this course's sections" });
+      }
+      
+      // Get sections for the course
+      const sections = await storage.getCourseSections(courseId);
+      res.json(sections);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching course sections" });
+    }
+  });
+  
+  app.post("/api/admin/courses/:courseId/sections", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const course = await storage.getCourse(courseId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if the user is an admin or the teacher of this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to add sections to this course" });
+      }
+      
+      // Validate and parse the request body
+      const sectionData = insertCourseSectionSchema.parse({
+        ...req.body,
+        courseId,
+      });
+      
+      // Create the section
+      const section = await storage.createCourseSection(sectionData);
+      res.status(201).json(section);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+  
+  app.patch("/api/admin/courses/:courseId/sections/:sectionId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const sectionId = parseInt(req.params.sectionId);
+      
+      // Get the course and section
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if the user is an admin or the teacher of this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to update sections in this course" });
+      }
+      
+      // Update the section
+      const updatedSection = await storage.updateCourseSection(sectionId, req.body);
+      if (!updatedSection) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      res.json(updatedSection);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating course section" });
+    }
+  });
+  
+  app.delete("/api/admin/courses/:courseId/sections/:sectionId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const sectionId = parseInt(req.params.sectionId);
+      
+      // Get the course
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if the user is an admin or the teacher of this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to delete sections in this course" });
+      }
+      
+      // Delete the section
+      const success = await storage.deleteCourseSection(sectionId);
+      if (!success) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting course section" });
+    }
+  });
+  
+  // Reorder sections
+  app.patch("/api/admin/courses/:courseId/sections/reorder", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      
+      // Get the course
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if the user is an admin or the teacher of this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to reorder sections in this course" });
+      }
+      
+      // Validate request body
+      if (!req.body.sections || !Array.isArray(req.body.sections)) {
+        return res.status(400).json({ message: "Invalid request body - sections array required" });
+      }
+      
+      // Update each section's order
+      const sections = req.body.sections;
+      for (const section of sections) {
+        await storage.updateCourseSection(section.id, { order: section.order });
+      }
+      
+      // Return the updated sections
+      const updatedSections = await storage.getCourseSections(courseId);
+      res.json(updatedSections);
+    } catch (error) {
+      res.status(500).json({ message: "Error reordering course sections" });
     }
   });
 

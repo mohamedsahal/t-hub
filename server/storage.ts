@@ -1,6 +1,7 @@
 import {
   users, type User, type InsertUser,
   courses, type Course, type InsertCourse,
+  courseSections, type CourseSection, type InsertCourseSection,
   payments, type Payment, type InsertPayment,
   installments, type Installment, type InsertInstallment,
   enrollments, type Enrollment, type InsertEnrollment,
@@ -31,6 +32,14 @@ export interface IStorage {
   getAllCourses(): Promise<Course[]>;
   createCourse(course: InsertCourse): Promise<Course>;
   updateCourse(id: number, course: Partial<Course>): Promise<Course | undefined>;
+  deleteCourse(id: number): Promise<boolean>;
+  
+  // Course Sections operations
+  getCourseSections(courseId: number): Promise<CourseSection[]>;
+  getCourseSection(id: number): Promise<CourseSection | undefined>;
+  createCourseSection(section: InsertCourseSection): Promise<CourseSection>;
+  updateCourseSection(id: number, section: Partial<CourseSection>): Promise<CourseSection | undefined>;
+  deleteCourseSection(id: number): Promise<boolean>;
   
   // Payment operations
   getPayment(id: number): Promise<Payment | undefined>;
@@ -103,6 +112,7 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private courses: Map<number, Course>;
+  private courseSections: Map<number, CourseSection>;
   private payments: Map<number, Payment>;
   private installments: Map<number, Installment>;
   private enrollments: Map<number, Enrollment>;
@@ -115,6 +125,7 @@ export class MemStorage implements IStorage {
   
   private userIdCounter: number;
   private courseIdCounter: number;
+  private courseSectionIdCounter: number;
   private paymentIdCounter: number;
   private installmentIdCounter: number;
   private enrollmentIdCounter: number;
@@ -130,6 +141,7 @@ export class MemStorage implements IStorage {
   constructor() {
     this.users = new Map();
     this.courses = new Map();
+    this.courseSections = new Map();
     this.payments = new Map();
     this.installments = new Map();
     this.enrollments = new Map();
@@ -142,6 +154,7 @@ export class MemStorage implements IStorage {
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
+    this.courseSectionIdCounter = 1;
     this.paymentIdCounter = 1;
     this.installmentIdCounter = 1;
     this.enrollmentIdCounter = 1;
@@ -194,34 +207,49 @@ export class MemStorage implements IStorage {
     this.createCourse({
       title: "Photoshop for Graphic Designers",
       description: "Learn professional graphic design skills with Adobe Photoshop. Master selection tools, layer management, filters, and design principles.",
-      type: "multimedia",
+      type: "short_course",
+      category: "multimedia",
+      shortName: "PS",
       duration: 8,
       price: 120,
       status: "published",
       imageUrl: "https://images.unsplash.com/photo-1587440871875-191322ee64b0",
-      teacherId: 2
+      teacherId: 2,
+      isHasExams: false,
+      hasCertificate: true,
+      hasOnlineSessions: false
     });
 
     this.createCourse({
       title: "QuickBooks Accounting",
       description: "Master QuickBooks for small business accounting. Set up company files, manage customers and vendors, reconcile accounts, and generate reports.",
-      type: "accounting",
+      type: "short_course",
+      category: "accounting",
+      shortName: "QB",
       duration: 6,
       price: 90,
       status: "published",
       imageUrl: "https://images.unsplash.com/photo-1566837945700-30057527ade0",
-      teacherId: 2
+      teacherId: 2,
+      isHasExams: false,
+      hasCertificate: true,
+      hasOnlineSessions: false
     });
 
     this.createCourse({
       title: "Full Stack Web Development",
       description: "Comprehensive 24-week bootcamp covering MERN stack development with AI integration. Project-based learning with real-world applications.",
-      type: "development",
+      type: "bootcamp",
+      category: "development",
+      shortName: "FSWD",
       duration: 24,
       price: 1200,
       status: "published",
       imageUrl: "https://images.unsplash.com/photo-1543286386-713bdd548da4",
-      teacherId: 2
+      teacherId: 2,
+      isHasExams: true,
+      hasCertificate: true,
+      hasOnlineSessions: true
     });
 
     // Create SaaS products
@@ -411,12 +439,25 @@ export class MemStorage implements IStorage {
   async createCourse(course: InsertCourse): Promise<Course> {
     const id = this.courseIdCounter++;
     const newCourse: Course = {
-      ...course,
       id,
-      status: course.status || "draft",
+      title: course.title,
+      description: course.description,
+      type: course.type,
+      category: course.category,
+      shortName: course.shortName,
+      price: course.price,
+      duration: course.duration || 0,
       imageUrl: course.imageUrl || null,
+      status: course.status || "draft",
       teacherId: course.teacherId || null,
-      createdAt: new Date()
+      createdAt: new Date(),
+      hasCertificate: course.hasCertificate || false,
+      isHasExams: course.isHasExams || false,
+      hasOnlineSessions: course.hasOnlineSessions || false,
+      examPassingGrade: course.examPassingGrade || 60,
+      hasSemesters: course.hasSemesters || false,
+      numberOfSemesters: course.numberOfSemesters || 1,
+      isDripping: course.isDripping || false
     };
     this.courses.set(id, newCourse);
     return newCourse;
@@ -429,6 +470,64 @@ export class MemStorage implements IStorage {
     const updatedCourse = { ...course, ...courseData };
     this.courses.set(id, updatedCourse);
     return updatedCourse;
+  }
+  
+  async deleteCourse(id: number): Promise<boolean> {
+    if (!this.courses.has(id)) return false;
+    return this.courses.delete(id);
+  }
+  
+  // Course Sections operations
+  
+  async getCourseSections(courseId: number): Promise<CourseSection[]> {
+    const sections: CourseSection[] = [];
+    this.courseSections.forEach(section => {
+      if (section.courseId === courseId) {
+        sections.push(section);
+      }
+    });
+    return sections.sort((a, b) => a.order - b.order);
+  }
+  
+  async getCourseSection(id: number): Promise<CourseSection | undefined> {
+    return this.courseSections.get(id);
+  }
+  
+  async createCourseSection(section: InsertCourseSection): Promise<CourseSection> {
+    // Find the maximum order value for the course
+    const existingSections = await this.getCourseSections(section.courseId);
+    const maxOrder = existingSections.length > 0 
+      ? Math.max(...existingSections.map(s => s.order)) 
+      : 0;
+    
+    const id = this.courseSectionIdCounter++;
+    const newSection: CourseSection = {
+      id,
+      title: section.title,
+      description: section.description || null,
+      courseId: section.courseId,
+      semesterId: section.semesterId || null,
+      duration: section.duration || null,
+      unlockDate: section.unlockDate || null,
+      order: section.order || maxOrder + 1
+    };
+    
+    this.courseSections.set(id, newSection);
+    return newSection;
+  }
+  
+  async updateCourseSection(id: number, sectionData: Partial<CourseSection>): Promise<CourseSection | undefined> {
+    const section = this.courseSections.get(id);
+    if (!section) return undefined;
+    
+    const updatedSection = { ...section, ...sectionData };
+    this.courseSections.set(id, updatedSection);
+    return updatedSection;
+  }
+  
+  async deleteCourseSection(id: number): Promise<boolean> {
+    if (!this.courseSections.has(id)) return false;
+    return this.courseSections.delete(id);
   }
 
   // Payment operations
@@ -633,8 +732,14 @@ export class MemStorage implements IStorage {
   async createProduct(product: InsertProduct): Promise<Product> {
     const id = this.productIdCounter++;
     const newProduct: Product = {
-      ...product,
       id,
+      name: product.name,
+      description: product.description,
+      type: product.type,
+      price: product.price || null,
+      features: product.features || [],
+      imageUrl: product.imageUrl || null,
+      demoUrl: product.demoUrl || null,
       isActive: product.isActive ?? true,
       createdAt: new Date()
     };
@@ -667,8 +772,11 @@ export class MemStorage implements IStorage {
   async createPartner(partner: InsertPartner): Promise<Partner> {
     const id = this.partnerIdCounter++;
     const newPartner: Partner = {
-      ...partner,
       id,
+      name: partner.name,
+      description: partner.description || null,
+      logoUrl: partner.logoUrl || null,
+      websiteUrl: partner.websiteUrl || null,
       isActive: partner.isActive ?? true,
       createdAt: new Date()
     };
@@ -759,10 +867,16 @@ export class MemStorage implements IStorage {
   async createLandingContent(content: InsertLandingContent): Promise<LandingContent> {
     const id = this.landingContentIdCounter++;
     const newContent: LandingContent = {
-      ...content,
       id,
-      isActive: content.isActive ?? true,
+      type: content.type,
+      title: content.title || null,
+      subtitle: content.subtitle || null,
+      content: content.content || null,
+      imageUrl: content.imageUrl || null,
+      buttonText: content.buttonText || null,
+      buttonUrl: content.buttonUrl || null,
       sortOrder: content.sortOrder || 0,
+      isActive: content.isActive ?? true,
       createdAt: new Date(),
       updatedAt: new Date()
     };

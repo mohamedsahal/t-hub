@@ -53,7 +53,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, LayoutList } from "lucide-react";
+import CourseBuilder from "@/components/dashboard/CourseBuilder";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -456,6 +457,29 @@ export default function CoursesManagement() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  title="Manage Sections"
+                                >
+                                  <LayoutList className="h-4 w-4" />
+                                  <span className="sr-only">Manage Sections</span>
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-5xl">
+                                <DialogHeader>
+                                  <DialogTitle>Course Builder - {course.title}</DialogTitle>
+                                  <DialogDescription>
+                                    Manage sections and content for this course
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="mt-4">
+                                  <CourseBuilder courseId={course.id} />
+                                </div>
+                              </DialogContent>
+                            </Dialog>
                             <Button
                               variant="ghost"
                               size="icon"

@@ -53,6 +53,7 @@ export const courses = pgTable("courses", {
   numberOfSemesters: integer("number_of_semesters").default(1), // For diploma courses
   isDripping: boolean("is_dripping").default(false).notNull(), // If content is released over time
   hasOnlineSessions: boolean("has_online_sessions").default(false).notNull(), // For bootcamps
+  hasCertificate: boolean("has_certificate").default(true).notNull(), // Whether this course awards a certificate
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
