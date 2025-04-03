@@ -3,10 +3,12 @@ import {
   User, InsertUser, Course, InsertCourse, 
   Payment, InsertPayment, Installment, InsertInstallment, 
   Enrollment, InsertEnrollment, Certificate, InsertCertificate, 
-  Testimonial, InsertTestimonial,
-  users, courses, payments, installments, enrollments, certificates, testimonials
+  Testimonial, InsertTestimonial, Product, InsertProduct,
+  Partner, InsertPartner, Event, InsertEvent, LandingContent, InsertLandingContent,
+  users, courses, payments, installments, enrollments, certificates, testimonials,
+  products, partners, events, landingContent
 } from '@shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, asc, gte } from 'drizzle-orm';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
@@ -307,6 +309,160 @@ export class PgStorage implements IStorage {
     const result = await db.update(testimonials)
       .set(testimonialData)
       .where(eq(testimonials.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Product operations
+  async getProduct(id: number): Promise<Product | undefined> {
+    const result = await db.select().from(products).where(eq(products.id, id));
+    return result[0];
+  }
+
+  async getProductsByType(type: string): Promise<Product[]> {
+    return await db.select().from(products).where(eq(products.type, type));
+  }
+
+  async getActiveProducts(): Promise<Product[]> {
+    return await db.select().from(products).where(eq(products.isActive, true));
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    return await db.select().from(products);
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const result = await db.insert(products).values({
+      ...product,
+      isActive: product.isActive === undefined ? true : product.isActive,
+      createdAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateProduct(id: number, productData: Partial<Product>): Promise<Product | undefined> {
+    const result = await db.update(products)
+      .set(productData)
+      .where(eq(products.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Partner operations
+  async getPartner(id: number): Promise<Partner | undefined> {
+    const result = await db.select().from(partners).where(eq(partners.id, id));
+    return result[0];
+  }
+
+  async getActivePartners(): Promise<Partner[]> {
+    return await db.select().from(partners).where(eq(partners.isActive, true));
+  }
+
+  async getAllPartners(): Promise<Partner[]> {
+    return await db.select().from(partners);
+  }
+
+  async createPartner(partner: InsertPartner): Promise<Partner> {
+    const result = await db.insert(partners).values({
+      ...partner,
+      isActive: partner.isActive === undefined ? true : partner.isActive,
+      createdAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updatePartner(id: number, partnerData: Partial<Partner>): Promise<Partner | undefined> {
+    const result = await db.update(partners)
+      .set(partnerData)
+      .where(eq(partners.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Event operations
+  async getEvent(id: number): Promise<Event | undefined> {
+    const result = await db.select().from(events).where(eq(events.id, id));
+    return result[0];
+  }
+
+  async getActiveEvents(): Promise<Event[]> {
+    return await db.select().from(events).where(eq(events.isActive, true));
+  }
+
+  async getUpcomingEvents(): Promise<Event[]> {
+    return await db.select()
+      .from(events)
+      .where(
+        and(
+          eq(events.isActive, true),
+          gte(events.date, new Date())
+        )
+      )
+      .orderBy(asc(events.date));
+  }
+
+  async getAllEvents(): Promise<Event[]> {
+    return await db.select().from(events);
+  }
+
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const result = await db.insert(events).values({
+      ...event,
+      isActive: event.isActive === undefined ? true : event.isActive,
+      createdAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateEvent(id: number, eventData: Partial<Event>): Promise<Event | undefined> {
+    const result = await db.update(events)
+      .set(eventData)
+      .where(eq(events.id, id))
+      .returning();
+    return result[0];
+  }
+
+  // Landing Content operations
+  async getLandingContent(id: number): Promise<LandingContent | undefined> {
+    const result = await db.select().from(landingContent).where(eq(landingContent.id, id));
+    return result[0];
+  }
+
+  async getLandingContentByType(type: string): Promise<LandingContent[]> {
+    return await db.select()
+      .from(landingContent)
+      .where(eq(landingContent.type, type))
+      .orderBy(asc(landingContent.sortOrder));
+  }
+
+  async getActiveLandingContent(): Promise<LandingContent[]> {
+    return await db.select()
+      .from(landingContent)
+      .where(eq(landingContent.isActive, true))
+      .orderBy(asc(landingContent.sortOrder));
+  }
+
+  async getAllLandingContent(): Promise<LandingContent[]> {
+    return await db.select().from(landingContent);
+  }
+
+  async createLandingContent(content: InsertLandingContent): Promise<LandingContent> {
+    const result = await db.insert(landingContent).values({
+      ...content,
+      isActive: content.isActive === undefined ? true : content.isActive,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateLandingContent(id: number, contentData: Partial<LandingContent>): Promise<LandingContent | undefined> {
+    const result = await db.update(landingContent)
+      .set({
+        ...contentData,
+        updatedAt: new Date()
+      })
+      .where(eq(landingContent.id, id))
       .returning();
     return result[0];
   }

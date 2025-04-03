@@ -5,7 +5,11 @@ import {
   installments, type Installment, type InsertInstallment,
   enrollments, type Enrollment, type InsertEnrollment,
   certificates, type Certificate, type InsertCertificate,
-  testimonials, type Testimonial, type InsertTestimonial
+  testimonials, type Testimonial, type InsertTestimonial,
+  products, type Product, type InsertProduct,
+  partners, type Partner, type InsertPartner,
+  events, type Event, type InsertEvent,
+  landingContent, type LandingContent, type InsertLandingContent
 } from "@shared/schema";
 import session from "express-session";
 
@@ -63,6 +67,37 @@ export interface IStorage {
   getPublishedTestimonials(): Promise<Testimonial[]>;
   createTestimonial(testimonial: InsertTestimonial): Promise<Testimonial>;
   updateTestimonial(id: number, testimonial: Partial<Testimonial>): Promise<Testimonial | undefined>;
+  
+  // Product operations
+  getProduct(id: number): Promise<Product | undefined>;
+  getProductsByType(type: string): Promise<Product[]>;
+  getActiveProducts(): Promise<Product[]>;
+  getAllProducts(): Promise<Product[]>;
+  createProduct(product: InsertProduct): Promise<Product>;
+  updateProduct(id: number, product: Partial<Product>): Promise<Product | undefined>;
+  
+  // Partner operations
+  getPartner(id: number): Promise<Partner | undefined>;
+  getActivePartners(): Promise<Partner[]>;
+  getAllPartners(): Promise<Partner[]>;
+  createPartner(partner: InsertPartner): Promise<Partner>;
+  updatePartner(id: number, partner: Partial<Partner>): Promise<Partner | undefined>;
+  
+  // Event operations
+  getEvent(id: number): Promise<Event | undefined>;
+  getActiveEvents(): Promise<Event[]>;
+  getUpcomingEvents(): Promise<Event[]>;
+  getAllEvents(): Promise<Event[]>;
+  createEvent(event: InsertEvent): Promise<Event>;
+  updateEvent(id: number, event: Partial<Event>): Promise<Event | undefined>;
+  
+  // Landing Content operations
+  getLandingContent(id: number): Promise<LandingContent | undefined>;
+  getLandingContentByType(type: string): Promise<LandingContent[]>;
+  getActiveLandingContent(): Promise<LandingContent[]>;
+  getAllLandingContent(): Promise<LandingContent[]>;
+  createLandingContent(content: InsertLandingContent): Promise<LandingContent>;
+  updateLandingContent(id: number, content: Partial<LandingContent>): Promise<LandingContent | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -73,6 +108,10 @@ export class MemStorage implements IStorage {
   private enrollments: Map<number, Enrollment>;
   private certificates: Map<number, Certificate>;
   private testimonials: Map<number, Testimonial>;
+  private products: Map<number, Product>;
+  private partners: Map<number, Partner>;
+  private events: Map<number, Event>;
+  private landingContents: Map<number, LandingContent>;
   
   private userIdCounter: number;
   private courseIdCounter: number;
@@ -81,6 +120,10 @@ export class MemStorage implements IStorage {
   private enrollmentIdCounter: number;
   private certificateIdCounter: number;
   private testimonialIdCounter: number;
+  private productIdCounter: number;
+  private partnerIdCounter: number;
+  private eventIdCounter: number;
+  private landingContentIdCounter: number;
   
   public sessionStore: session.Store;
 
@@ -92,6 +135,10 @@ export class MemStorage implements IStorage {
     this.enrollments = new Map();
     this.certificates = new Map();
     this.testimonials = new Map();
+    this.products = new Map();
+    this.partners = new Map();
+    this.events = new Map();
+    this.landingContents = new Map();
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
@@ -100,6 +147,10 @@ export class MemStorage implements IStorage {
     this.enrollmentIdCounter = 1;
     this.certificateIdCounter = 1;
     this.testimonialIdCounter = 1;
+    this.productIdCounter = 1;
+    this.partnerIdCounter = 1;
+    this.eventIdCounter = 1;
+    this.landingContentIdCounter = 1;
     
     // Create the memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -171,6 +222,129 @@ export class MemStorage implements IStorage {
       status: "published",
       imageUrl: "https://images.unsplash.com/photo-1543286386-713bdd548da4",
       teacherId: 2
+    });
+
+    // Create SaaS products
+    this.createProduct({
+      name: "T-Hub POS System",
+      description: "Complete point-of-sale solution for retail businesses with inventory management and sales analytics.",
+      type: "shop",
+      price: 49.99,
+      features: ["Inventory tracking", "Customer management", "Receipt printing", "Sales reports", "Cloud backup"],
+      demoUrl: "https://pos-demo.thub.so",
+      isActive: true
+    });
+
+    this.createProduct({
+      name: "T-Hub School Management",
+      description: "Comprehensive school management system for educational institutions of all sizes.",
+      type: "school",
+      price: 199.99,
+      features: ["Student records", "Attendance tracking", "Grade management", "Fee collection", "Parent portal"],
+      demoUrl: "https://school-demo.thub.so",
+      isActive: true
+    });
+
+    this.createProduct({
+      name: "T-Hub Accounting Software",
+      description: "Financial management solution for small to medium businesses with integrated payroll.",
+      type: "shop", // Changed from "accounting" to a valid enum value
+      price: 79.99,
+      features: ["General ledger", "Accounts payable/receivable", "Financial reporting", "Tax preparation", "Multi-currency support"],
+      demoUrl: "https://accounting-demo.thub.so",
+      isActive: true
+    });
+
+    // Create partners
+    this.createPartner({
+      name: "Hormuud Telecom",
+      description: "Leading telecommunications company in Somalia providing mobile, internet, and financial services.",
+      logoUrl: "https://example.com/hormuud-logo.png",
+      websiteUrl: "https://hormuud.com",
+      isActive: true
+    });
+
+    this.createPartner({
+      name: "Somali Chamber of Commerce",
+      description: "Official chamber of commerce supporting business growth and development in Somalia.",
+      logoUrl: "https://example.com/scci-logo.png",
+      websiteUrl: "https://somalichamber.so",
+      isActive: true
+    });
+
+    this.createPartner({
+      name: "University of Somalia",
+      description: "Premier educational institution offering degree programs in business, technology, and healthcare.",
+      logoUrl: "https://example.com/uniso-logo.png",
+      websiteUrl: "https://uniso.edu.so",
+      isActive: true
+    });
+
+    // Create events
+    this.createEvent({
+      title: "Tech Innovation Summit 2025",
+      description: "Annual technology conference showcasing the latest innovations in tech and entrepreneurship in East Africa.",
+      date: new Date(2025, 5, 15), // June 15, 2025
+      location: "Mogadishu, Somalia",
+      imageUrl: "https://example.com/tech-summit.jpg",
+      isActive: true
+    });
+
+    this.createEvent({
+      title: "Digital Skills Workshop",
+      description: "Hands-on workshop for developing essential digital skills for the modern workplace.",
+      date: new Date(2025, 4, 10), // May 10, 2025
+      location: "T-Hub Training Center, Mogadishu",
+      imageUrl: "https://example.com/digital-workshop.jpg",
+      isActive: true
+    });
+
+    this.createEvent({
+      title: "Entrepreneurship Bootcamp",
+      description: "Intensive three-day bootcamp for aspiring entrepreneurs to develop business ideas and pitch to investors.",
+      date: new Date(2025, 7, 22), // August 22, 2025
+      location: "Business Innovation Hub, Hargeisa",
+      imageUrl: "https://example.com/bootcamp.jpg",
+      isActive: true
+    });
+
+    // Create landing content
+    this.createLandingContent({
+      type: "hero",
+      title: "Transform Your Future with T-Hub",
+      content: "Quality education and professional training for the digital economy",
+      imageUrl: "https://example.com/hero-image.jpg",
+      buttonText: "Explore Courses",
+      buttonUrl: "/courses",
+      isActive: true,
+      sortOrder: 1
+    });
+
+    this.createLandingContent({
+      type: "feature",
+      title: "Expert-Led Courses",
+      content: "Learn from industry professionals with real-world experience",
+      imageUrl: "https://example.com/expert-led.jpg",
+      isActive: true,
+      sortOrder: 1
+    });
+
+    this.createLandingContent({
+      type: "feature",
+      title: "Flexible Learning",
+      content: "Study at your own pace with online and in-person options",
+      imageUrl: "https://example.com/flexible-learning.jpg",
+      isActive: true,
+      sortOrder: 2
+    });
+
+    this.createLandingContent({
+      type: "feature",
+      title: "Industry-Recognized Certificates",
+      content: "Earn credentials valued by employers across industries",
+      imageUrl: "https://example.com/certificates.jpg",
+      isActive: true,
+      sortOrder: 3
     });
   }
 
@@ -437,6 +611,176 @@ export class MemStorage implements IStorage {
     const updatedTestimonial = { ...testimonial, ...testimonialData };
     this.testimonials.set(id, updatedTestimonial);
     return updatedTestimonial;
+  }
+
+  // Product operations
+  async getProduct(id: number): Promise<Product | undefined> {
+    return this.products.get(id);
+  }
+
+  async getProductsByType(type: string): Promise<Product[]> {
+    return Array.from(this.products.values()).filter(product => product.type === type);
+  }
+
+  async getActiveProducts(): Promise<Product[]> {
+    return Array.from(this.products.values()).filter(product => product.isActive);
+  }
+
+  async getAllProducts(): Promise<Product[]> {
+    return Array.from(this.products.values());
+  }
+
+  async createProduct(product: InsertProduct): Promise<Product> {
+    const id = this.productIdCounter++;
+    const newProduct: Product = {
+      ...product,
+      id,
+      isActive: product.isActive ?? true,
+      createdAt: new Date()
+    };
+    this.products.set(id, newProduct);
+    return newProduct;
+  }
+
+  async updateProduct(id: number, productData: Partial<Product>): Promise<Product | undefined> {
+    const product = this.products.get(id);
+    if (!product) return undefined;
+    
+    const updatedProduct = { ...product, ...productData };
+    this.products.set(id, updatedProduct);
+    return updatedProduct;
+  }
+
+  // Partner operations
+  async getPartner(id: number): Promise<Partner | undefined> {
+    return this.partners.get(id);
+  }
+
+  async getActivePartners(): Promise<Partner[]> {
+    return Array.from(this.partners.values()).filter(partner => partner.isActive);
+  }
+
+  async getAllPartners(): Promise<Partner[]> {
+    return Array.from(this.partners.values());
+  }
+
+  async createPartner(partner: InsertPartner): Promise<Partner> {
+    const id = this.partnerIdCounter++;
+    const newPartner: Partner = {
+      ...partner,
+      id,
+      isActive: partner.isActive ?? true,
+      createdAt: new Date()
+    };
+    this.partners.set(id, newPartner);
+    return newPartner;
+  }
+
+  async updatePartner(id: number, partnerData: Partial<Partner>): Promise<Partner | undefined> {
+    const partner = this.partners.get(id);
+    if (!partner) return undefined;
+    
+    const updatedPartner = { ...partner, ...partnerData };
+    this.partners.set(id, updatedPartner);
+    return updatedPartner;
+  }
+
+  // Event operations
+  async getEvent(id: number): Promise<Event | undefined> {
+    return this.events.get(id);
+  }
+
+  async getActiveEvents(): Promise<Event[]> {
+    return Array.from(this.events.values()).filter(event => event.isActive);
+  }
+
+  async getUpcomingEvents(): Promise<Event[]> {
+    const now = new Date();
+    return Array.from(this.events.values())
+      .filter(event => event.isActive && event.date >= now)
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }
+
+  async getAllEvents(): Promise<Event[]> {
+    return Array.from(this.events.values());
+  }
+
+  async createEvent(event: InsertEvent): Promise<Event> {
+    const id = this.eventIdCounter++;
+    const newEvent = {
+      ...event,
+      id,
+      isActive: event.isActive ?? true,
+      imageUrl: event.imageUrl ?? null,
+      createdAt: new Date()
+    } as Event;
+    this.events.set(id, newEvent);
+    return newEvent;
+  }
+
+  async updateEvent(id: number, eventData: Partial<Event>): Promise<Event | undefined> {
+    const event = this.events.get(id);
+    if (!event) return undefined;
+    
+    const updatedEvent = { ...event, ...eventData };
+    this.events.set(id, updatedEvent);
+    return updatedEvent;
+  }
+
+  // Landing Content operations
+  async getLandingContent(id: number): Promise<LandingContent | undefined> {
+    return this.landingContents.get(id);
+  }
+
+  async getLandingContentByType(type: string): Promise<LandingContent[]> {
+    return Array.from(this.landingContents.values())
+      .filter(content => content.type === type)
+      .sort((a, b) => {
+        const orderA = a.sortOrder ?? 0;
+        const orderB = b.sortOrder ?? 0;
+        return orderA - orderB;
+      });
+  }
+
+  async getActiveLandingContent(): Promise<LandingContent[]> {
+    return Array.from(this.landingContents.values())
+      .filter(content => content.isActive)
+      .sort((a, b) => {
+        const orderA = a.sortOrder ?? 0;
+        const orderB = b.sortOrder ?? 0;
+        return orderA - orderB;
+      });
+  }
+
+  async getAllLandingContent(): Promise<LandingContent[]> {
+    return Array.from(this.landingContents.values());
+  }
+
+  async createLandingContent(content: InsertLandingContent): Promise<LandingContent> {
+    const id = this.landingContentIdCounter++;
+    const newContent: LandingContent = {
+      ...content,
+      id,
+      isActive: content.isActive ?? true,
+      sortOrder: content.sortOrder || 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.landingContents.set(id, newContent);
+    return newContent;
+  }
+
+  async updateLandingContent(id: number, contentData: Partial<LandingContent>): Promise<LandingContent | undefined> {
+    const content = this.landingContents.get(id);
+    if (!content) return undefined;
+    
+    const updatedContent = { 
+      ...content, 
+      ...contentData,
+      updatedAt: new Date()
+    };
+    this.landingContents.set(id, updatedContent);
+    return updatedContent;
   }
 }
 

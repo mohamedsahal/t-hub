@@ -4,6 +4,9 @@ import FeatureHighlights from "@/components/home/FeatureHighlights";
 import PopularPrograms from "@/components/home/PopularPrograms";
 import CertificateVerification from "@/components/home/CertificateVerification";
 import Testimonials from "@/components/home/Testimonials";
+import SaasProducts from "@/components/home/SaasProducts";
+import Partners from "@/components/home/Partners";
+import RecentEvents from "@/components/home/RecentEvents";
 import CallToAction from "@/components/home/CallToAction";
 
 const Home = () => {
@@ -13,6 +16,9 @@ const Home = () => {
       <CourseCategories />
       <FeatureHighlights />
       <PopularPrograms />
+      <SaasProducts />
+      <Partners />
+      <RecentEvents />
       <CertificateVerification />
       <Testimonials />
       <CallToAction />

@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { 
   insertUserSchema, insertCourseSchema, insertPaymentSchema, 
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
-  insertTestimonialSchema 
+  insertTestimonialSchema, insertProductSchema, insertPartnerSchema,
+  insertEventSchema, insertLandingContentSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -359,6 +360,259 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedTestimonial);
     } catch (error) {
       res.status(500).json({ message: "Error publishing testimonial" });
+    }
+  });
+
+  // Product routes
+  app.get("/api/products", async (req, res) => {
+    try {
+      const type = req.query.type as string | undefined;
+      const activeOnly = req.query.active === "true";
+      
+      let products;
+      if (type) {
+        products = await storage.getProductsByType(type);
+      } else if (activeOnly) {
+        products = await storage.getActiveProducts();
+      } else {
+        products = await storage.getAllProducts();
+      }
+      
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching products" });
+    }
+  });
+
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const product = await storage.getProduct(productId);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      res.json(product);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching product" });
+    }
+  });
+
+  app.post("/api/products", checkRole(["admin"]), async (req, res) => {
+    try {
+      const productData = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct(productData);
+      res.status(201).json(product);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/products/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const productId = parseInt(req.params.id);
+      const product = await storage.getProduct(productId);
+      
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      
+      const productData = req.body;
+      const updatedProduct = await storage.updateProduct(productId, productData);
+      
+      res.json(updatedProduct);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating product" });
+    }
+  });
+
+  // Partner routes
+  app.get("/api/partners", async (req, res) => {
+    try {
+      const activeOnly = req.query.active === "true";
+      
+      let partners;
+      if (activeOnly) {
+        partners = await storage.getActivePartners();
+      } else {
+        partners = await storage.getAllPartners();
+      }
+      
+      res.json(partners);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching partners" });
+    }
+  });
+
+  app.get("/api/partners/:id", async (req, res) => {
+    try {
+      const partnerId = parseInt(req.params.id);
+      const partner = await storage.getPartner(partnerId);
+      
+      if (!partner) {
+        return res.status(404).json({ message: "Partner not found" });
+      }
+      
+      res.json(partner);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching partner" });
+    }
+  });
+
+  app.post("/api/partners", checkRole(["admin"]), async (req, res) => {
+    try {
+      const partnerData = insertPartnerSchema.parse(req.body);
+      const partner = await storage.createPartner(partnerData);
+      res.status(201).json(partner);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/partners/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const partnerId = parseInt(req.params.id);
+      const partner = await storage.getPartner(partnerId);
+      
+      if (!partner) {
+        return res.status(404).json({ message: "Partner not found" });
+      }
+      
+      const partnerData = req.body;
+      const updatedPartner = await storage.updatePartner(partnerId, partnerData);
+      
+      res.json(updatedPartner);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating partner" });
+    }
+  });
+
+  // Event routes
+  app.get("/api/events", async (req, res) => {
+    try {
+      const activeOnly = req.query.active === "true";
+      const upcoming = req.query.upcoming === "true";
+      
+      let events;
+      if (activeOnly && upcoming) {
+        events = await storage.getUpcomingEvents();
+      } else if (activeOnly) {
+        events = await storage.getActiveEvents();
+      } else {
+        events = await storage.getAllEvents();
+      }
+      
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching events" });
+    }
+  });
+
+  app.get("/api/events/:id", async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const event = await storage.getEvent(eventId);
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      res.json(event);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching event" });
+    }
+  });
+
+  app.post("/api/events", checkRole(["admin"]), async (req, res) => {
+    try {
+      const eventData = insertEventSchema.parse(req.body);
+      const event = await storage.createEvent(eventData);
+      res.status(201).json(event);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/events/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const eventId = parseInt(req.params.id);
+      const event = await storage.getEvent(eventId);
+      
+      if (!event) {
+        return res.status(404).json({ message: "Event not found" });
+      }
+      
+      const eventData = req.body;
+      const updatedEvent = await storage.updateEvent(eventId, eventData);
+      
+      res.json(updatedEvent);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating event" });
+    }
+  });
+
+  // Landing Content routes
+  app.get("/api/landing-content", async (req, res) => {
+    try {
+      const type = req.query.type as string | undefined;
+      const activeOnly = req.query.active === "true";
+      
+      let landingContent;
+      if (type) {
+        landingContent = await storage.getLandingContentByType(type);
+      } else if (activeOnly) {
+        landingContent = await storage.getActiveLandingContent();
+      } else {
+        landingContent = await storage.getAllLandingContent();
+      }
+      
+      res.json(landingContent);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching landing content" });
+    }
+  });
+
+  app.get("/api/landing-content/:id", async (req, res) => {
+    try {
+      const contentId = parseInt(req.params.id);
+      const content = await storage.getLandingContent(contentId);
+      
+      if (!content) {
+        return res.status(404).json({ message: "Landing content not found" });
+      }
+      
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching landing content" });
+    }
+  });
+
+  app.post("/api/landing-content", checkRole(["admin"]), async (req, res) => {
+    try {
+      const contentData = insertLandingContentSchema.parse(req.body);
+      const content = await storage.createLandingContent(contentData);
+      res.status(201).json(content);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/landing-content/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const contentId = parseInt(req.params.id);
+      const content = await storage.getLandingContent(contentId);
+      
+      if (!content) {
+        return res.status(404).json({ message: "Landing content not found" });
+      }
+      
+      const contentData = req.body;
+      const updatedContent = await storage.updateLandingContent(contentId, contentData);
+      
+      res.json(updatedContent);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating landing content" });
     }
   });
 
