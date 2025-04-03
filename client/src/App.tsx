@@ -15,6 +15,7 @@ import VerifyCertificate from "@/pages/VerifyCertificate";
 import AdminPage from "@/pages/admin";
 import UsersAdminPage from "@/pages/admin/Users";
 import CoursesAdminPage from "@/pages/admin/Courses";
+import ProductsAdminPage from "@/pages/admin/Products";
 import ProfilePage from "@/pages/admin/Profile";
 
 import { ProtectedRoute } from "./lib/protected-route";
@@ -45,7 +46,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/enrollments" component={() => <div>Enrollments Admin Page</div>} />
       <AdminProtectedRoute path="/admin/certificates" component={() => <div>Certificates Admin Page</div>} />
       <AdminProtectedRoute path="/admin/testimonials" component={() => <div>Testimonials Admin Page</div>} />
-      <AdminProtectedRoute path="/admin/products" component={() => <div>Products Admin Page</div>} />
+      <AdminProtectedRoute path="/admin/products" component={ProductsAdminPage} />
       <AdminProtectedRoute path="/admin/partners" component={() => <div>Partners Admin Page</div>} />
       <AdminProtectedRoute path="/admin/content" component={() => <div>Content Admin Page</div>} />
       <AdminProtectedRoute path="/admin/events" component={() => <div>Events Admin Page</div>} />
