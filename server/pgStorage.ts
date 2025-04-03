@@ -320,7 +320,10 @@ export class PgStorage implements IStorage {
   }
 
   async getProductsByType(type: string): Promise<Product[]> {
-    return await db.select().from(products).where(eq(products.type, type));
+    // Cast the type to the enum to avoid type issues
+    return await db.select()
+      .from(products)
+      .where(eq(products.type as any, type));
   }
 
   async getActiveProducts(): Promise<Product[]> {
@@ -429,9 +432,10 @@ export class PgStorage implements IStorage {
   }
 
   async getLandingContentByType(type: string): Promise<LandingContent[]> {
+    // Cast the type to the enum to avoid type issues
     return await db.select()
       .from(landingContent)
-      .where(eq(landingContent.type, type))
+      .where(eq(landingContent.type as any, type))
       .orderBy(asc(landingContent.sortOrder));
   }
 

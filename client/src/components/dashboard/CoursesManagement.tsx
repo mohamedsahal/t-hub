@@ -52,6 +52,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, Trash2, LayoutList } from "lucide-react";
 import CourseBuilder from "@/components/dashboard/CourseBuilder";
@@ -226,6 +227,9 @@ export default function CoursesManagement() {
       hasOnlineSessions: false,
     },
   });
+  
+  // Watch for changes in course type to show/hide conditional fields
+  const addCourseType = addForm.watch("type");
 
   // Form for editing a course
   const editForm = useForm<CourseFormValues>({
@@ -249,6 +253,9 @@ export default function CoursesManagement() {
       hasOnlineSessions: false,
     },
   });
+  
+  // Watch for changes in course type to show/hide conditional fields
+  const editCourseType = editForm.watch("type");
 
   // Handle adding a new course
   const onAddSubmit = (data: CourseFormValues) => {
@@ -269,11 +276,20 @@ export default function CoursesManagement() {
       title: course.title,
       description: course.description,
       type: course.type,
+      shortName: course.shortName,
+      category: course.category,
       duration: course.duration,
       price: course.price,
       status: course.status,
       imageUrl: course.imageUrl || "",
       teacherId: course.teacherId || undefined,
+      // Course specific fields with defaults if not present
+      isHasExams: course.isHasExams !== undefined ? course.isHasExams : false,
+      examPassingGrade: course.examPassingGrade || 60,
+      hasSemesters: course.hasSemesters !== undefined ? course.hasSemesters : false,
+      numberOfSemesters: course.numberOfSemesters || 1,
+      isDripping: course.isDripping !== undefined ? course.isDripping : false,
+      hasOnlineSessions: course.hasOnlineSessions !== undefined ? course.hasOnlineSessions : false,
     });
     setIsEditDialogOpen(true);
   };
@@ -358,16 +374,16 @@ export default function CoursesManagement() {
           Add Course
         </Button>
       </div>
-
-      {/* Course Type Tabs */}
+      
+      {/* Filters */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="p-4">
           <h3 className="text-lg font-medium mb-3">Course Types</h3>
-          <Tabs defaultValue="all" className="w-full" onValueChange={setCourseTypeTab}>
+          <Tabs value={courseTypeTab} className="w-full" onValueChange={setCourseTypeTab}>
             <TabsList className="grid grid-cols-5 w-full">
               <TabsTrigger value="all">All Types</TabsTrigger>
               <TabsTrigger value="short_course">Short Courses</TabsTrigger>
-              <TabsTrigger value="group_course">Group Courses</TabsTrigger>
+              <TabsTrigger value="group_course">Specialist</TabsTrigger>
               <TabsTrigger value="bootcamp">Bootcamps</TabsTrigger>
               <TabsTrigger value="diploma">Diplomas</TabsTrigger>
             </TabsList>
@@ -376,7 +392,7 @@ export default function CoursesManagement() {
         
         <Card className="p-4">
           <h3 className="text-lg font-medium mb-3">Course Status</h3>
-          <Tabs defaultValue="all" className="w-full" onValueChange={setStatusTab}>
+          <Tabs value={statusTab} className="w-full" onValueChange={setStatusTab}>
             <TabsList className="grid grid-cols-4 w-full">
               <TabsTrigger value="all">All Statuses</TabsTrigger>
               <TabsTrigger value="published">Published</TabsTrigger>
@@ -690,6 +706,241 @@ export default function CoursesManagement() {
                 />
               </div>
 
+              {/* Conditional fields based on course type */}
+              <div className="space-y-4 mt-6">
+                <h3 className="text-lg font-medium">Course Settings</h3>
+
+                {/* Short course settings */}
+                {addCourseType === "short_course" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={addForm.control}
+                      name="isHasExams"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Has Exams
+                            </FormLabel>
+                            <FormDescription>
+                              Enable exams/quizzes for this course
+                            </FormDescription>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Group course settings */}
+                {addCourseType === "group_course" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={addForm.control}
+                      name="isHasExams"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Has Exams
+                            </FormLabel>
+                            <FormDescription>
+                              Enable exams/quizzes for this package
+                            </FormDescription>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Bootcamp settings */}
+                {addCourseType === "bootcamp" && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={addForm.control}
+                        name="isDripping"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Enable Content Dripping
+                              </FormLabel>
+                              <FormDescription>
+                                Release content progressively over time
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={addForm.control}
+                        name="hasOnlineSessions"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Online Sessions
+                              </FormLabel>
+                              <FormDescription>
+                                Include scheduled online sessions
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={addForm.control}
+                      name="isHasExams"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Has Exams
+                            </FormLabel>
+                            <FormDescription>
+                              Enable exams/quizzes for this bootcamp
+                            </FormDescription>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Diploma settings */}
+                {addCourseType === "diploma" && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={addForm.control}
+                        name="hasSemesters"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Organize by Semesters
+                              </FormLabel>
+                              <FormDescription>
+                                Structure content into academic semesters
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={addForm.control}
+                        name="numberOfSemesters"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Number of Semesters</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="1" 
+                                disabled={!addForm.watch("hasSemesters")} 
+                                {...field} 
+                                onChange={(e) => field.onChange(Number(e.target.value))} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={addForm.control}
+                        name="isHasExams"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Has Exams
+                              </FormLabel>
+                              <FormDescription>
+                                Enable exams/quizzes for this diploma
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={addForm.control}
+                        name="examPassingGrade"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Passing Grade (%)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                disabled={!addForm.watch("isHasExams")} 
+                                {...field} 
+                                onChange={(e) => field.onChange(Number(e.target.value))} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
@@ -876,6 +1127,241 @@ export default function CoursesManagement() {
                     </FormItem>
                   )}
                 />
+              </div>
+
+              {/* Conditional fields based on course type */}
+              <div className="space-y-4 mt-6">
+                <h3 className="text-lg font-medium">Course Settings</h3>
+
+                {/* Short course settings */}
+                {editCourseType === "short_course" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="isHasExams"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Has Exams
+                            </FormLabel>
+                            <FormDescription>
+                              Enable exams/quizzes for this course
+                            </FormDescription>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Group course settings */}
+                {editCourseType === "group_course" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={editForm.control}
+                      name="isHasExams"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Has Exams
+                            </FormLabel>
+                            <FormDescription>
+                              Enable exams/quizzes for this package
+                            </FormDescription>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Bootcamp settings */}
+                {editCourseType === "bootcamp" && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name="isDripping"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Enable Content Dripping
+                              </FormLabel>
+                              <FormDescription>
+                                Release content progressively over time
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="hasOnlineSessions"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Online Sessions
+                              </FormLabel>
+                              <FormDescription>
+                                Include scheduled online sessions
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <FormField
+                      control={editForm.control}
+                      name="isHasExams"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Has Exams
+                            </FormLabel>
+                            <FormDescription>
+                              Enable exams/quizzes for this bootcamp
+                            </FormDescription>
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* Diploma settings */}
+                {editCourseType === "diploma" && (
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name="hasSemesters"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Organize by Semesters
+                              </FormLabel>
+                              <FormDescription>
+                                Structure content into academic semesters
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="numberOfSemesters"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Number of Semesters</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="1" 
+                                disabled={!editForm.watch("hasSemesters")} 
+                                {...field} 
+                                onChange={(e) => field.onChange(Number(e.target.value))} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={editForm.control}
+                        name="isHasExams"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Has Exams
+                              </FormLabel>
+                              <FormDescription>
+                                Enable exams/quizzes for this diploma
+                              </FormDescription>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={editForm.control}
+                        name="examPassingGrade"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Passing Grade (%)</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="0" 
+                                max="100" 
+                                disabled={!editForm.watch("isHasExams")} 
+                                {...field} 
+                                onChange={(e) => field.onChange(Number(e.target.value))} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <DialogFooter>
