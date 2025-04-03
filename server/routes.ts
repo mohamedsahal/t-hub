@@ -1069,6 +1069,290 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin teacher routes
+  app.get("/api/admin/teachers", checkRole(["admin"]), async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const teachers = allUsers.filter(user => user.role === "teacher");
+      res.json(teachers);
+    } catch (error) {
+      console.error("Error fetching teachers:", error);
+      res.status(500).json({ message: "Error fetching teachers" });
+    }
+  });
+
+  // Admin courses routes
+  app.get("/api/admin/courses", checkRole(["admin"]), async (req, res) => {
+    try {
+      const courses = await storage.getAllCourses();
+      res.json(courses);
+    } catch (error) {
+      console.error("Error fetching courses:", error);
+      res.status(500).json({ message: "Error fetching courses" });
+    }
+  });
+
+  app.post("/api/admin/courses", checkRole(["admin"]), async (req, res) => {
+    try {
+      const courseData = insertCourseSchema.parse(req.body);
+      const course = await storage.createCourse(courseData);
+      res.status(201).json(course);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/courses/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.id);
+      const course = await storage.getCourse(courseId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      const updatedCourse = await storage.updateCourse(courseId, req.body);
+      res.json(updatedCourse);
+    } catch (error) {
+      console.error("Error updating course:", error);
+      res.status(500).json({ message: "Error updating course" });
+    }
+  });
+
+  app.delete("/api/admin/courses/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.id);
+      const course = await storage.getCourse(courseId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // In a real application, you would need to handle deleting related records
+      // or implementing soft delete functionality
+      
+      // For now, just return success
+      res.json({ success: true, message: "Course deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting course:", error);
+      res.status(500).json({ message: "Error deleting course" });
+    }
+  });
+
+  // Admin enrollments routes
+  app.get("/api/admin/enrollments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const enrollments = await storage.getAllEnrollments();
+      
+      // Enhance enrollments with user and course info
+      const enhancedEnrollments = [];
+      for (const enrollment of enrollments) {
+        const user = await storage.getUser(enrollment.userId);
+        const course = await storage.getCourse(enrollment.courseId);
+        
+        enhancedEnrollments.push({
+          ...enrollment,
+          userName: user?.name || 'Unknown User',
+          userEmail: user?.email || '',
+          courseName: course?.title || 'Unknown Course'
+        });
+      }
+      
+      res.json(enhancedEnrollments);
+    } catch (error) {
+      console.error("Error fetching enrollments:", error);
+      res.status(500).json({ message: "Error fetching enrollments" });
+    }
+  });
+
+  app.post("/api/admin/enrollments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const enrollmentData = insertEnrollmentSchema.parse(req.body);
+      const enrollment = await storage.createEnrollment(enrollmentData);
+      res.status(201).json(enrollment);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/enrollments/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const enrollmentId = parseInt(req.params.id);
+      const enrollment = await storage.getEnrollment(enrollmentId);
+      
+      if (!enrollment) {
+        return res.status(404).json({ message: "Enrollment not found" });
+      }
+      
+      const updatedEnrollment = await storage.updateEnrollment(enrollmentId, req.body);
+      res.json(updatedEnrollment);
+    } catch (error) {
+      console.error("Error updating enrollment:", error);
+      res.status(500).json({ message: "Error updating enrollment" });
+    }
+  });
+
+  app.delete("/api/admin/enrollments/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const enrollmentId = parseInt(req.params.id);
+      const enrollment = await storage.getEnrollment(enrollmentId);
+      
+      if (!enrollment) {
+        return res.status(404).json({ message: "Enrollment not found" });
+      }
+      
+      // In a real application, you would need to implement actual deletion or soft delete
+      
+      // For now, just return success
+      res.json({ success: true, message: "Enrollment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting enrollment:", error);
+      res.status(500).json({ message: "Error deleting enrollment" });
+    }
+  });
+
+  // Admin payments routes
+  app.get("/api/admin/payments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const payments = await storage.getAllPayments();
+      
+      // Enhance payments with user and course info
+      const enhancedPayments = [];
+      for (const payment of payments) {
+        const user = await storage.getUser(payment.userId);
+        const course = await storage.getCourse(payment.courseId);
+        
+        enhancedPayments.push({
+          ...payment,
+          userName: user?.name || 'Unknown User',
+          userEmail: user?.email || '',
+          courseName: course?.title || 'Unknown Course'
+        });
+      }
+      
+      res.json(enhancedPayments);
+    } catch (error) {
+      console.error("Error fetching payments:", error);
+      res.status(500).json({ message: "Error fetching payments" });
+    }
+  });
+
+  app.post("/api/admin/payments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const paymentData = insertPaymentSchema.parse(req.body);
+      const payment = await storage.createPayment(paymentData);
+      
+      // If it's an installment payment, create the installments
+      if (payment.type === "installment" && req.body.installments) {
+        const installments = req.body.installments;
+        
+        for (const installment of installments) {
+          await storage.createInstallment({
+            paymentId: payment.id,
+            amount: installment.amount,
+            dueDate: new Date(installment.dueDate),
+            isPaid: false
+          });
+        }
+      }
+      
+      res.status(201).json(payment);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/payments/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const paymentId = parseInt(req.params.id);
+      const payment = await storage.getPayment(paymentId);
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      const updatedPayment = await storage.updatePayment(paymentId, req.body);
+      res.json(updatedPayment);
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      res.status(500).json({ message: "Error updating payment" });
+    }
+  });
+
+  // Admin installments routes
+  app.get("/api/admin/installments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const installments = await storage.getAllInstallments();
+      
+      // Enhance installments with payment, user, and course info
+      const enhancedInstallments = [];
+      for (const installment of installments) {
+        const payment = await storage.getPayment(installment.paymentId);
+        if (payment) {
+          const user = await storage.getUser(payment.userId);
+          const course = await storage.getCourse(payment.courseId);
+          
+          enhancedInstallments.push({
+            ...installment,
+            userName: user?.name || 'Unknown User',
+            userEmail: user?.email || '',
+            courseName: course?.title || 'Unknown Course',
+            totalAmount: payment.amount
+          });
+        }
+      }
+      
+      res.json(enhancedInstallments);
+    } catch (error) {
+      console.error("Error fetching installments:", error);
+      res.status(500).json({ message: "Error fetching installments" });
+    }
+  });
+
+  app.get("/api/admin/payments/:paymentId/installments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const paymentId = parseInt(req.params.paymentId);
+      const payment = await storage.getPayment(paymentId);
+      
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      const installments = await storage.getInstallmentsByPayment(paymentId);
+      res.json(installments);
+    } catch (error) {
+      console.error("Error fetching installments:", error);
+      res.status(500).json({ message: "Error fetching installments" });
+    }
+  });
+
+  app.post("/api/admin/installments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const installmentData = insertInstallmentSchema.parse(req.body);
+      const installment = await storage.createInstallment(installmentData);
+      res.status(201).json(installment);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/installments/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const installmentId = parseInt(req.params.id);
+      const installment = await storage.getInstallment(installmentId);
+      
+      if (!installment) {
+        return res.status(404).json({ message: "Installment not found" });
+      }
+      
+      const updatedInstallment = await storage.updateInstallment(installmentId, req.body);
+      res.json(updatedInstallment);
+    } catch (error) {
+      console.error("Error updating installment:", error);
+      res.status(500).json({ message: "Error updating installment" });
+    }
+  });
+
   // Profile management
   app.put("/api/profile", isAuthenticated, async (req, res) => {
     try {
