@@ -74,7 +74,6 @@ const userFormSchema = z.object({
   role: z.enum(["admin", "teacher", "student"]),
   phone: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  preferredCourse: z.enum(["short_course", "group_course", "bootcamp", "diploma"]),
 });
 
 const userUpdateSchema = userFormSchema
@@ -110,7 +109,6 @@ export default function UsersManagement() {
       role: "student",
       phone: "",
       password: "",
-      preferredCourse: "short_course",
     },
   });
 
@@ -134,7 +132,6 @@ export default function UsersManagement() {
         email: selectedUser.email,
         role: selectedUser.role,
         phone: selectedUser.phone || "",
-        preferredCourse: selectedUser.preferredCourse || "short_course",
       });
     }
   }, [selectedUser, editForm]);
@@ -365,35 +362,7 @@ export default function UsersManagement() {
                     )}
                   />
                   
-                  <FormField
-                    control={createForm.control}
-                    name="preferredCourse"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Preferred Course</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select course type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="short_course">Short Course</SelectItem>
-                            <SelectItem value="group_course">Group Course</SelectItem>
-                            <SelectItem value="bootcamp">Bootcamp</SelectItem>
-                            <SelectItem value="diploma">Diploma</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          This will determine the user's ID prefix
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+
 
                   <DialogFooter>
                     <Button
@@ -612,35 +581,7 @@ export default function UsersManagement() {
                                     )}
                                   />
                                   
-                                  <FormField
-                                    control={editForm.control}
-                                    name="preferredCourse"
-                                    render={({ field }) => (
-                                      <FormItem>
-                                        <FormLabel>Preferred Course</FormLabel>
-                                        <Select
-                                          onValueChange={field.onChange}
-                                          defaultValue={field.value}
-                                        >
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Select course type" />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="short_course">Short Course</SelectItem>
-                                            <SelectItem value="group_course">Group Course</SelectItem>
-                                            <SelectItem value="bootcamp">Bootcamp</SelectItem>
-                                            <SelectItem value="diploma">Diploma</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        <FormDescription>
-                                          This will determine the user's ID prefix
-                                        </FormDescription>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
+
 
                                   <DialogFooter>
                                     <Button
