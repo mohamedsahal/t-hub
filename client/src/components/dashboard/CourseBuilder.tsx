@@ -50,6 +50,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -72,7 +73,10 @@ const sectionSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
   description: z.string().optional(),
   duration: z.number().optional(),
-  unlockDate: z.string().optional()
+  unlockDate: z.string().optional(),
+  videoUrl: z.string().url("Please enter a valid URL").optional().or(z.literal('')),
+  contentUrl: z.string().url("Please enter a valid URL").optional().or(z.literal('')),
+  isPublished: z.boolean().default(true)
 });
 
 type SectionFormValues = z.infer<typeof sectionSchema>;
@@ -87,6 +91,9 @@ interface CourseSection {
   order: number;
   duration?: number;
   unlockDate?: string;
+  videoUrl?: string;
+  contentUrl?: string;
+  isPublished?: boolean;
 }
 
 interface SortableItemProps {
@@ -166,6 +173,22 @@ function SortableItem({ id, section, onEdit, onDelete }: SortableItemProps) {
                 <span>Unlocks on {new Date(section.unlockDate).toLocaleDateString()}</span>
               </div>
             )}
+            {section.videoUrl && (
+              <div className="flex items-center text-muted-foreground">
+                <Video className="h-4 w-4 mr-1" />
+                <span>Video Available</span>
+              </div>
+            )}
+            {section.contentUrl && (
+              <div className="flex items-center text-muted-foreground">
+                <FileText className="h-4 w-4 mr-1" />
+                <span>Materials Available</span>
+              </div>
+            )}
+            <div className="flex items-center text-muted-foreground">
+              <span className={`h-2 w-2 rounded-full mr-1 ${section.isPublished ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+              <span>{section.isPublished ? 'Published' : 'Draft'}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -229,7 +252,10 @@ export default function CourseBuilder({ courseId }: CourseBuilderProps) {
       title: "",
       description: "",
       duration: undefined,
-      unlockDate: undefined
+      unlockDate: undefined,
+      videoUrl: "",
+      contentUrl: "",
+      isPublished: true
     }
   });
 
@@ -239,7 +265,10 @@ export default function CourseBuilder({ courseId }: CourseBuilderProps) {
       title: "",
       description: "",
       duration: undefined,
-      unlockDate: undefined
+      unlockDate: undefined,
+      videoUrl: "",
+      contentUrl: "",
+      isPublished: true
     }
   });
 
@@ -390,7 +419,10 @@ export default function CourseBuilder({ courseId }: CourseBuilderProps) {
       title: section.title,
       description: section.description || "",
       duration: section.duration,
-      unlockDate: section.unlockDate ? new Date(section.unlockDate).toISOString().split('T')[0] : undefined
+      unlockDate: section.unlockDate ? new Date(section.unlockDate).toISOString().split('T')[0] : undefined,
+      videoUrl: section.videoUrl || "",
+      contentUrl: section.contentUrl || "",
+      isPublished: section.isPublished !== undefined ? section.isPublished : true
     });
     setIsEditDialogOpen(true);
   };
@@ -560,6 +592,69 @@ export default function CourseBuilder({ courseId }: CourseBuilderProps) {
                 />
               </div>
 
+              <FormField
+                control={addSectionForm.control}
+                name="videoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Video URL</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter video URL (optional)" 
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      YouTube, Vimeo, or other video platform URL
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={addSectionForm.control}
+                name="contentUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content URL</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter content URL (optional)" 
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      URL to additional content or materials
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={addSectionForm.control}
+                name="isPublished"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Publish this section
+                      </FormLabel>
+                      <FormDescription>
+                        When checked, this section will be visible to enrolled students
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                   Cancel
@@ -655,6 +750,69 @@ export default function CourseBuilder({ courseId }: CourseBuilderProps) {
                   )}
                 />
               </div>
+
+              <FormField
+                control={editSectionForm.control}
+                name="videoUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Video URL</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter video URL (optional)" 
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      YouTube, Vimeo, or other video platform URL
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editSectionForm.control}
+                name="contentUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Content URL</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter content URL (optional)" 
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      URL to additional content or materials
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={editSectionForm.control}
+                name="isPublished"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Publish this section
+                      </FormLabel>
+                      <FormDescription>
+                        When checked, this section will be visible to enrolled students
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
 
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>

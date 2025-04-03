@@ -75,11 +75,14 @@ export const courseSections = pgTable("course_sections", {
   id: serial("id").primaryKey(),
   courseId: integer("course_id").references(() => courses.id).notNull(),
   semesterId: integer("semester_id").references(() => semesters.id), // Optional, for diploma courses
-  title: text("title").notNull(),
+  title: varchar("title").notNull(),
   description: text("description"),
-  order: integer("order").default(1).notNull(),
+  order: integer("sort_order").default(1).notNull(),
+  videoUrl: text("video_url"),
+  contentUrl: text("content_url"),
   duration: integer("duration"), // Duration in hours
   unlockDate: timestamp("unlock_date"), // For dripping content
+  isPublished: boolean("is_published").default(true),
 });
 
 // Exams table

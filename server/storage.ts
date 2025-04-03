@@ -509,7 +509,10 @@ export class MemStorage implements IStorage {
       semesterId: section.semesterId || null,
       duration: section.duration || null,
       unlockDate: section.unlockDate || null,
-      order: section.order || maxOrder + 1
+      order: section.order || maxOrder + 1,
+      videoUrl: section.videoUrl || null,
+      contentUrl: section.contentUrl || null,
+      isPublished: section.isPublished !== undefined ? section.isPublished : true
     };
     
     this.courseSections.set(id, newSection);
