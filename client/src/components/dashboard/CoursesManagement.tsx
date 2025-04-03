@@ -1,60 +1,84 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardFooter, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger 
+} from "@/components/ui/dialog";
 import {
-  Pencil,
-  Trash2,
-  Plus,
-  FileEdit,
-  Ban,
-  Clock,
-  Calendar,
-  DollarSign,
-  Layers,
-  Image,
-  ClipboardCheck,
-  Info,
-  Search,
-  CheckCircle
-} from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Form, 
+  FormControl, 
+  FormDescription, 
+  FormField, 
+  FormItem, 
+  FormLabel, 
+  FormMessage 
+} from "@/components/ui/form";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { apiRequest } from "@/lib/queryClient";
 
-// Define validation schema based on the insertCourseSchema
+// Form schema for course validation
 const courseFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   type: z.enum(["short_course", "group_course", "bootcamp", "diploma"]),
-  category: z.enum(["multimedia", "accounting", "marketing", "development", "programming", "design", "business", "data_science"]).default("development"),
-  shortName: z.string().min(2, "Short name must be at least 2 characters").default("CRS"),
-  duration: z.coerce.number().min(1, "Duration must be at least 1 week"),
-  price: z.coerce.number().min(0, "Price must be a positive number"),
-  status: z.enum(["draft", "published", "archived"]).default("draft"),
+  category: z.string(),
+  shortName: z.string().min(2, "Short name must be at least 2 characters"),
+  duration: z.number().min(1, "Duration must be at least 1 week"),
+  price: z.number().min(0, "Price cannot be negative"),
+  status: z.enum(["draft", "published", "archived"]),
   imageUrl: z.string().optional(),
-  teacherId: z.coerce.number().optional(),
-  isHasExams: z.boolean().default(true),
-  examPassingGrade: z.coerce.number().min(0).max(100).default(60),
+  teacherId: z.number().optional(),
+  // Course specific fields
+  isHasExams: z.boolean().default(false),
+  examPassingGrade: z.number().min(0).max(100).default(60),
   hasSemesters: z.boolean().default(false),
-  numberOfSemesters: z.coerce.number().min(1).default(1),
+  numberOfSemesters: z.number().min(1).default(1),
   isDripping: z.boolean().default(false),
   hasOnlineSessions: z.boolean().default(false),
 });
 
+// Type for our form values inferred from the schema
 type CourseFormValues = z.infer<typeof courseFormSchema>;
 
 export default function CoursesManagement() {
@@ -65,7 +89,8 @@ export default function CoursesManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("all");
+  const [statusTab, setStatusTab] = useState("all");
+  const [courseTypeTab, setCourseTypeTab] = useState("all");
 
   // Get all teachers for the teacher assignment dropdown
   const { data: teachers, isLoading: isTeachersLoading } = useQuery({
@@ -265,13 +290,19 @@ export default function CoursesManagement() {
     }
   };
 
-  // Filter courses based on search query and active tab
+  // Filter courses based on search query, course type, and status tabs
   const filteredCourses = courses?.filter((course: any) => {
+    // Match search query
     const matchesQuery = course.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                         course.description.toLowerCase().includes(searchQuery.toLowerCase());
     
-    if (activeTab === "all") return matchesQuery;
-    return matchesQuery && course.status === activeTab;
+    // Match course type filter
+    const matchesType = courseTypeTab === "all" || course.type === courseTypeTab;
+    
+    // Match status filter
+    const matchesStatus = statusTab === "all" || course.status === statusTab;
+    
+    return matchesQuery && matchesType && matchesStatus;
   });
 
   // Get course type display
@@ -327,16 +358,46 @@ export default function CoursesManagement() {
         </Button>
       </div>
 
-      {/* Tabs for filtering */}
-      <Tabs defaultValue="all" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-4 w-full sm:w-auto">
-          <TabsTrigger value="all">All Courses</TabsTrigger>
-          <TabsTrigger value="published">Published</TabsTrigger>
-          <TabsTrigger value="draft">Draft</TabsTrigger>
-          <TabsTrigger value="archived">Archived</TabsTrigger>
-        </TabsList>
+      {/* Course Type Tabs */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="p-4">
+          <h3 className="text-lg font-medium mb-3">Course Types</h3>
+          <Tabs defaultValue="all" className="w-full" onValueChange={setCourseTypeTab}>
+            <TabsList className="grid grid-cols-5 w-full">
+              <TabsTrigger value="all">All Types</TabsTrigger>
+              <TabsTrigger value="short_course">Short Courses</TabsTrigger>
+              <TabsTrigger value="group_course">Group Courses</TabsTrigger>
+              <TabsTrigger value="bootcamp">Bootcamps</TabsTrigger>
+              <TabsTrigger value="diploma">Diplomas</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </Card>
+        
+        <Card className="p-4">
+          <h3 className="text-lg font-medium mb-3">Course Status</h3>
+          <Tabs defaultValue="all" className="w-full" onValueChange={setStatusTab}>
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="all">All Statuses</TabsTrigger>
+              <TabsTrigger value="published">Published</TabsTrigger>
+              <TabsTrigger value="draft">Draft</TabsTrigger>
+              <TabsTrigger value="archived">Archived</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </Card>
+      </div>
 
-        <TabsContent value={activeTab} className="mt-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Courses</CardTitle>
+          <CardDescription>
+            {courseTypeTab !== "all" && getCourseTypeDisplay(courseTypeTab).label + " • "}
+            {statusTab !== "all" ? 
+              getCourseStatusDisplay(statusTab).label + " Courses" : 
+              "All Courses"}
+            {filteredCourses && ` (${filteredCourses.length})`}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           {isCoursesLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -427,8 +488,8 @@ export default function CoursesManagement() {
               </Table>
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
 
       {/* Add Course Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -506,7 +567,7 @@ export default function CoursesManagement() {
                     <FormItem>
                       <FormLabel>Duration (weeks)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -519,7 +580,7 @@ export default function CoursesManagement() {
                     <FormItem>
                       <FormLabel>Price ($)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} />
+                        <Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -694,7 +755,7 @@ export default function CoursesManagement() {
                     <FormItem>
                       <FormLabel>Duration (weeks)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -707,7 +768,7 @@ export default function CoursesManagement() {
                     <FormItem>
                       <FormLabel>Price ($)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} />
+                        <Input type="number" step="0.01" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -761,8 +822,8 @@ export default function CoursesManagement() {
                     <FormItem>
                       <FormLabel>Teacher</FormLabel>
                       <Select
-                        onValueChange={(value) => field.onChange(value ? parseInt(value) : undefined)}
-                        defaultValue={field.value?.toString() || ""}
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        defaultValue={field.value?.toString()}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -770,7 +831,6 @@ export default function CoursesManagement() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">No Teacher</SelectItem>
                           {isTeachersLoading ? (
                             <div className="p-2">Loading teachers...</div>
                           ) : (
@@ -808,60 +868,27 @@ export default function CoursesManagement() {
       </Dialog>
 
       {/* Delete Course Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Course</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this course? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            {selectedCourse && (
-              <div className="border rounded-md p-4">
-                <h4 className="font-medium">{selectedCourse.title}</h4>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {selectedCourse.description.length > 100
-                    ? `${selectedCourse.description.substring(0, 100)}...`
-                    : selectedCourse.description}
-                </p>
-                <div className="flex gap-2 mt-2">
-                  <Badge
-                    variant="outline"
-                    className={`${getCourseTypeDisplay(selectedCourse.type).color} border-0`}
-                  >
-                    {getCourseTypeDisplay(selectedCourse.type).label}
-                  </Badge>
-                  <Badge
-                    variant="outline"
-                    className={`${getCourseStatusDisplay(selectedCourse.status).color} border-0`}
-                  >
-                    {getCourseStatusDisplay(selectedCourse.status).label}
-                  </Badge>
-                </div>
-              </div>
-            )}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400">
-              <div className="flex items-center">
-                <Info className="h-4 w-4 mr-2" />
-                <span>Warning: This will also delete all enrollments and certificates associated with this course.</span>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the course
+              and all related data including enrollments and progress.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
               onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deleteCourseMutation.isPending}
             >
-              {deleteCourseMutation.isPending ? "Deleting..." : "Delete Course"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {deleteCourseMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
