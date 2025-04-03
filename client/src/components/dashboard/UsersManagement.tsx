@@ -5,8 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 // Extended User type with preferredCourse
-interface User extends Omit<SchemaUser, 'preferredCourse'> {
-  preferredCourse: "multimedia" | "accounting" | "marketing" | "development" | "diploma" | null;
+interface User extends SchemaUser {
+  preferredCourse: "short_course" | "group_course" | "bootcamp" | "diploma" | null;
 }
 import {
   Card,
@@ -74,7 +74,7 @@ const userFormSchema = z.object({
   role: z.enum(["admin", "teacher", "student"]),
   phone: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  preferredCourse: z.enum(["multimedia", "accounting", "marketing", "development", "diploma"]),
+  preferredCourse: z.enum(["short_course", "group_course", "bootcamp", "diploma"]),
 });
 
 const userUpdateSchema = userFormSchema
@@ -110,7 +110,7 @@ export default function UsersManagement() {
       role: "student",
       phone: "",
       password: "",
-      preferredCourse: "multimedia",
+      preferredCourse: "short_course",
     },
   });
 
@@ -134,7 +134,7 @@ export default function UsersManagement() {
         email: selectedUser.email,
         role: selectedUser.role,
         phone: selectedUser.phone || "",
-        preferredCourse: selectedUser.preferredCourse || "multimedia",
+        preferredCourse: selectedUser.preferredCourse || "short_course",
       });
     }
   }, [selectedUser, editForm]);
@@ -381,10 +381,9 @@ export default function UsersManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="multimedia">Multimedia</SelectItem>
-                            <SelectItem value="accounting">Accounting</SelectItem>
-                            <SelectItem value="marketing">Marketing</SelectItem>
-                            <SelectItem value="development">Development</SelectItem>
+                            <SelectItem value="short_course">Short Course</SelectItem>
+                            <SelectItem value="group_course">Group Course</SelectItem>
+                            <SelectItem value="bootcamp">Bootcamp</SelectItem>
                             <SelectItem value="diploma">Diploma</SelectItem>
                           </SelectContent>
                         </Select>
@@ -447,10 +446,9 @@ export default function UsersManagement() {
                         let coursePrefix = "";
                         if (user.preferredCourse) {
                           switch(user.preferredCourse) {
-                            case "multimedia": coursePrefix = "MM"; break;
-                            case "accounting": coursePrefix = "ACC"; break;
-                            case "marketing": coursePrefix = "MKT"; break;
-                            case "development": coursePrefix = "DEV"; break;
+                            case "short_course": coursePrefix = "SC"; break;
+                            case "group_course": coursePrefix = "GC"; break;
+                            case "bootcamp": coursePrefix = "BC"; break;
                             case "diploma": coursePrefix = "DIP"; break;
                             default: coursePrefix = "TH"; break;
                           }
@@ -630,10 +628,9 @@ export default function UsersManagement() {
                                             </SelectTrigger>
                                           </FormControl>
                                           <SelectContent>
-                                            <SelectItem value="multimedia">Multimedia</SelectItem>
-                                            <SelectItem value="accounting">Accounting</SelectItem>
-                                            <SelectItem value="marketing">Marketing</SelectItem>
-                                            <SelectItem value="development">Development</SelectItem>
+                                            <SelectItem value="short_course">Short Course</SelectItem>
+                                            <SelectItem value="group_course">Group Course</SelectItem>
+                                            <SelectItem value="bootcamp">Bootcamp</SelectItem>
                                             <SelectItem value="diploma">Diploma</SelectItem>
                                           </SelectContent>
                                         </Select>
