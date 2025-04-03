@@ -1,18 +1,18 @@
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import CoursesManagement from "@/components/dashboard/CoursesManagement";
+import EnrollmentsManagement from "@/components/dashboard/EnrollmentsManagement";
 
-export default function CoursesAdminPage() {
+export default function EnrollmentsAdminPage() {
   return (
     <DashboardLayout>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Courses Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Enrollments Management</h1>
           <div className="text-sm text-muted-foreground">
-            Manage all educational courses and programs
+            Manage student enrollment in courses and programs
           </div>
         </div>
         
-        <CoursesManagement />
+        <EnrollmentsManagement />
       </div>
     </DashboardLayout>
   );
