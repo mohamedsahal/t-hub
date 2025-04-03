@@ -148,10 +148,7 @@ export default function EnrollmentsManagement() {
   // Create enrollment mutation
   const createEnrollmentMutation = useMutation({
     mutationFn: async (newEnrollment: EnrollmentFormValues) => {
-      const response = await apiRequest('/api/admin/enrollments', {
-        method: 'POST',
-        body: JSON.stringify(newEnrollment),
-      });
+      const response = await apiRequest('POST', '/api/admin/enrollments', newEnrollment);
       return response;
     },
     onSuccess: () => {
@@ -177,10 +174,7 @@ export default function EnrollmentsManagement() {
   // Update enrollment mutation
   const updateEnrollmentMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: EnrollmentFormValues }) => {
-      const response = await apiRequest(`/api/admin/enrollments/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest('PATCH', `/api/admin/enrollments/${id}`, data);
       return response;
     },
     onSuccess: () => {
@@ -205,9 +199,7 @@ export default function EnrollmentsManagement() {
   // Delete enrollment mutation
   const deleteEnrollmentMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await apiRequest(`/api/admin/enrollments/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await apiRequest('DELETE', `/api/admin/enrollments/${id}`);
       return response;
     },
     onSuccess: () => {

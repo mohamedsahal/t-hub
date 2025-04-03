@@ -8,19 +8,52 @@ async function throwIfResNotOk(res: Response) {
 }
 
 export async function apiRequest(
-  method: string,
-  url: string,
+  methodOrUrl: string,
+  urlOrOptions?: string | object,
   data?: unknown | undefined,
-): Promise<Response> {
+): Promise<any> {
+  // Handle both signatures:
+  // 1. apiRequest(url) - GET request
+  // 2. apiRequest(method, url, data) - Other requests
+  
+  let method = 'GET';
+  let url = methodOrUrl;
+  let options = data;
+  
+  if (urlOrOptions) {
+    if (typeof urlOrOptions === 'string') {
+      // Original signature: apiRequest(method, url, data)
+      method = methodOrUrl;
+      url = urlOrOptions;
+      options = data;
+    } else {
+      // New signature: apiRequest(url, options)
+      const opts = urlOrOptions as any;
+      if (opts.method) {
+        method = opts.method;
+      }
+      if (opts.body) {
+        options = typeof opts.body === 'string' ? JSON.parse(opts.body) : opts.body;
+      } else {
+        // If no body is provided, treat the entire options as the data to send
+        // But exclude method, headers and other fetch options
+        const { method: _, headers: __, ...rest } = opts;
+        if (Object.keys(rest).length > 0) {
+          options = rest;
+        }
+      }
+    }
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    headers: options ? { "Content-Type": "application/json" } : {},
+    body: options ? JSON.stringify(options) : undefined,
     credentials: "include",
   });
 
   await throwIfResNotOk(res);
-  return res;
+  return res.json();
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

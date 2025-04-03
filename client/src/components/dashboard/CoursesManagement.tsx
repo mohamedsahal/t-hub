@@ -39,12 +39,20 @@ import { Switch } from "@/components/ui/switch";
 const courseFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  type: z.enum(["multimedia", "accounting", "marketing", "development", "diploma"]),
+  type: z.enum(["short_course", "group_course", "bootcamp", "diploma"]),
+  category: z.enum(["multimedia", "accounting", "marketing", "development", "programming", "design", "business", "data_science"]).default("development"),
+  shortName: z.string().min(2, "Short name must be at least 2 characters").default("CRS"),
   duration: z.coerce.number().min(1, "Duration must be at least 1 week"),
   price: z.coerce.number().min(0, "Price must be a positive number"),
   status: z.enum(["draft", "published", "archived"]).default("draft"),
   imageUrl: z.string().optional(),
   teacherId: z.coerce.number().optional(),
+  isHasExams: z.boolean().default(true),
+  examPassingGrade: z.coerce.number().min(0).max(100).default(60),
+  hasSemesters: z.boolean().default(false),
+  numberOfSemesters: z.coerce.number().min(1).default(1),
+  isDripping: z.boolean().default(false),
+  hasOnlineSessions: z.boolean().default(false),
 });
 
 type CourseFormValues = z.infer<typeof courseFormSchema>;
@@ -176,12 +184,20 @@ export default function CoursesManagement() {
     defaultValues: {
       title: "",
       description: "",
-      type: "multimedia",
+      type: "short_course",
+      category: "development",
+      shortName: "CRS",
       duration: 4,
       price: 0,
       status: "draft",
       imageUrl: "",
       teacherId: undefined,
+      isHasExams: true,
+      examPassingGrade: 60,
+      hasSemesters: false,
+      numberOfSemesters: 1,
+      isDripping: false,
+      hasOnlineSessions: false,
     },
   });
 
@@ -191,12 +207,20 @@ export default function CoursesManagement() {
     defaultValues: {
       title: "",
       description: "",
-      type: "multimedia",
+      type: "short_course",
+      category: "development",
+      shortName: "CRS",
       duration: 4,
       price: 0,
       status: "draft",
       imageUrl: "",
       teacherId: undefined,
+      isHasExams: true,
+      examPassingGrade: 60,
+      hasSemesters: false,
+      numberOfSemesters: 1,
+      isDripping: false,
+      hasOnlineSessions: false,
     },
   });
 
@@ -253,10 +277,9 @@ export default function CoursesManagement() {
   // Get course type display
   const getCourseTypeDisplay = (type: string) => {
     const typeMap: { [key: string]: { label: string; color: string } } = {
-      multimedia: { label: "Multimedia", color: "bg-blue-100 text-blue-800" },
-      accounting: { label: "Accounting", color: "bg-green-100 text-green-800" },
-      marketing: { label: "Marketing", color: "bg-purple-100 text-purple-800" },
-      development: { label: "Development", color: "bg-amber-100 text-amber-800" },
+      short_course: { label: "Short Course", color: "bg-blue-100 text-blue-800" },
+      group_course: { label: "Group Course", color: "bg-green-100 text-green-800" },
+      bootcamp: { label: "Bootcamp", color: "bg-purple-100 text-purple-800" },
       diploma: { label: "Diploma", color: "bg-pink-100 text-pink-800" },
     };
 
@@ -365,7 +388,7 @@ export default function CoursesManagement() {
                         </TableCell>
                         <TableCell>
                           {course.teacherId ? (
-                            (teachers?.find(t => t.id === course.teacherId)?.name || 'Unknown')
+                            (teachers?.find((t: any) => t.id === course.teacherId)?.name || 'Unknown')
                           ) : (
                             <span className="text-muted-foreground text-sm">Not assigned</span>
                           )}

@@ -140,22 +140,27 @@ let paymentReminderJob: NodeJS.Timeout | null = null;
 /**
  * Start the notification service
  */
-export const startNotificationService = (): void => {
+export const startNotificationService = async (): Promise<void> => {
   try {
     log('Starting notification service...', 'notification');
     
-    // Initialize email service
-    emailService.initializeEmailService();
+    // Initialize email service but don't try to run jobs if email is not configured
+    await emailService.askForEmailCredentials();
     
-    // Schedule jobs
-    courseUpdateJob = setInterval(processCourseUpdates, INTERVALS.COURSE_UPDATES);
-    paymentReminderJob = setInterval(processPaymentReminders, INTERVALS.PAYMENT_REMINDERS);
-    
-    log('Notification service started', 'notification');
-    
-    // Run immediately for testing
-    processCourseUpdates();
-    processPaymentReminders();
+    // Only schedule jobs if email is configured
+    if (process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
+      // Schedule jobs
+      courseUpdateJob = setInterval(processCourseUpdates, INTERVALS.COURSE_UPDATES);
+      paymentReminderJob = setInterval(processPaymentReminders, INTERVALS.PAYMENT_REMINDERS);
+      
+      log('Notification service started with scheduled jobs', 'notification');
+      
+      // Run immediately for testing
+      processCourseUpdates();
+      processPaymentReminders();
+    } else {
+      log('Notification service started but email notifications are disabled', 'notification');
+    }
   } catch (error) {
     log(`Error starting notification service: ${error}`, 'notification');
   }
@@ -221,7 +226,7 @@ export const extendStorage = async (): Promise<void> => {
 
 // Export the notification service
 export default {
-  startNotificationService,
+  startNotificationService: async () => await startNotificationService(),
   stopNotificationService,
   sendEnrollmentConfirmation,
   extendStorage,

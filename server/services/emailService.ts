@@ -147,13 +147,9 @@ export const askForEmailCredentials = async (): Promise<void> => {
   }
   
   log('Email credentials not found, please set EMAIL_USER and EMAIL_PASSWORD environment variables', 'email');
-  
-  // In a real app, we would prompt the user here or use a secrets manager
-  // For now, we'll just initialize with test credentials for development
-  process.env.EMAIL_USER = 'test@example.com';
-  process.env.EMAIL_PASSWORD = 'testpassword';
-  
-  await initializeEmailService();
+  log('Email notifications are disabled until credentials are provided', 'email');
+  // We won't initialize with fake credentials as it could cause errors
+  return;
 };
 
 /**

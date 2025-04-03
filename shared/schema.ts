@@ -6,10 +6,13 @@ import { z } from "zod";
 // Enum definitions
 export const userRoleEnum = pgEnum('user_role', ['admin', 'teacher', 'student']);
 export const courseStatusEnum = pgEnum('course_status', ['draft', 'published', 'archived']);
-export const courseTypeEnum = pgEnum('course_type', ['multimedia', 'accounting', 'marketing', 'development', 'diploma']);
+export const courseTypeEnum = pgEnum('course_type', ['short_course', 'group_course', 'bootcamp', 'diploma']);
+export const courseCategoryEnum = pgEnum('course_category', ['multimedia', 'accounting', 'marketing', 'development', 'programming', 'design', 'business', 'data_science']);
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'completed', 'failed']);
-export const paymentTypeEnum = pgEnum('payment_type', ['one_time', 'installment']);
+export const paymentTypeEnum = pgEnum('payment_type', ['one_time', 'installment', 'subscription']);
 export const enrollmentStatusEnum = pgEnum('enrollment_status', ['active', 'completed', 'dropped']);
+export const examTypeEnum = pgEnum('exam_type', ['quiz', 'midterm', 'final', 're_exam']);
+export const examStatusEnum = pgEnum('exam_status', ['pending', 'completed', 'failed', 'passed']);
 export const productTypeEnum = pgEnum('product_type', [
   'restaurant', 'school', 'laundry', 'inventory', 
   'task', 'hotel', 'hospital', 'dental', 
@@ -37,12 +40,89 @@ export const courses = pgTable("courses", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   type: courseTypeEnum("type").notNull(),
+  category: courseCategoryEnum("category").notNull(),
+  shortName: text("short_name").notNull(), // For student ID prefixes
   duration: integer("duration").notNull(), // in weeks
   price: doublePrecision("price").notNull(),
   status: courseStatusEnum("status").notNull().default('draft'),
   imageUrl: text("image_url"),
   teacherId: integer("teacher_id").references(() => users.id),
+  isHasExams: boolean("is_has_exams").default(true).notNull(),
+  examPassingGrade: integer("exam_passing_grade").default(60), // Percentage needed to pass
+  hasSemesters: boolean("has_semesters").default(false).notNull(), // For diploma courses
+  numberOfSemesters: integer("number_of_semesters").default(1), // For diploma courses
+  isDripping: boolean("is_dripping").default(false).notNull(), // If content is released over time
+  hasOnlineSessions: boolean("has_online_sessions").default(false).notNull(), // For bootcamps
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Semesters table (for diploma courses)
+export const semesters = pgTable("semesters", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  name: text("name").notNull(), // e.g., "Semester 1" or "Spring 2023"
+  description: text("description"),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  price: doublePrecision("price").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  order: integer("order").default(1).notNull(), // Sequence within the course
+});
+
+// Course Sections (parts of a course, chapters)
+export const courseSections = pgTable("course_sections", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  semesterId: integer("semester_id").references(() => semesters.id), // Optional, for diploma courses
+  title: text("title").notNull(),
+  description: text("description"),
+  order: integer("order").default(1).notNull(),
+  duration: integer("duration"), // Duration in hours
+  unlockDate: timestamp("unlock_date"), // For dripping content
+});
+
+// Exams table
+export const exams = pgTable("exams", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  sectionId: integer("section_id").references(() => courseSections.id), // Optional, for section-specific exams
+  semesterId: integer("semester_id").references(() => semesters.id), // Optional, for semester-specific exams
+  title: text("title").notNull(),
+  description: text("description"),
+  type: examTypeEnum("type").notNull(),
+  totalPoints: integer("total_points").notNull(),
+  passingPoints: integer("passing_points").notNull(),
+  duration: integer("duration").notNull(), // in minutes
+  isActive: boolean("is_active").default(true).notNull(),
+  availableFrom: timestamp("available_from"),
+  availableTo: timestamp("available_to"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Exam Questions
+export const examQuestions = pgTable("exam_questions", {
+  id: serial("id").primaryKey(),
+  examId: integer("exam_id").references(() => exams.id).notNull(),
+  question: text("question").notNull(),
+  options: text("options").array(), // Multiple choice options
+  correctAnswer: text("correct_answer").notNull(),
+  points: integer("points").notNull().default(1),
+  order: integer("order").default(1).notNull(),
+});
+
+// Student Exam Results
+export const examResults = pgTable("exam_results", {
+  id: serial("id").primaryKey(),
+  examId: integer("exam_id").references(() => exams.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  score: integer("score").notNull(),
+  status: examStatusEnum("status").notNull(),
+  submittedAt: timestamp("submitted_at").defaultNow().notNull(),
+  attemptNumber: integer("attempt_number").default(1).notNull(),
+  answers: text("answers").array(), // Student's answers
+  feedback: text("feedback"),
+  gradedBy: integer("graded_by").references(() => users.id), // Teacher/admin who graded
+  gradedAt: timestamp("graded_at"),
 });
 
 // Payments table
@@ -162,6 +242,11 @@ export const events = pgTable("events", {
 // Define insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
+export const insertSemesterSchema = createInsertSchema(semesters).omit({ id: true });
+export const insertCourseSectionSchema = createInsertSchema(courseSections).omit({ id: true });
+export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true });
+export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({ id: true });
+export const insertExamResultSchema = createInsertSchema(examResults).omit({ id: true, submittedAt: true, gradedAt: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, paymentDate: true });
 export const insertInstallmentSchema = createInsertSchema(installments).omit({ id: true, paymentDate: true });
 export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id: true, enrollmentDate: true, completionDate: true });
@@ -178,6 +263,21 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export type Course = typeof courses.$inferSelect;
 export type InsertCourse = z.infer<typeof insertCourseSchema>;
+
+export type Semester = typeof semesters.$inferSelect;
+export type InsertSemester = z.infer<typeof insertSemesterSchema>;
+
+export type CourseSection = typeof courseSections.$inferSelect;
+export type InsertCourseSection = z.infer<typeof insertCourseSectionSchema>;
+
+export type Exam = typeof exams.$inferSelect;
+export type InsertExam = z.infer<typeof insertExamSchema>;
+
+export type ExamQuestion = typeof examQuestions.$inferSelect;
+export type InsertExamQuestion = z.infer<typeof insertExamQuestionSchema>;
+
+export type ExamResult = typeof examResults.$inferSelect;
+export type InsertExamResult = z.infer<typeof insertExamResultSchema>;
 
 export type Payment = typeof payments.$inferSelect;
 export type InsertPayment = z.infer<typeof insertPaymentSchema>;
@@ -225,6 +325,9 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
   enrollments: many(enrollments),
   certificates: many(certificates),
   testimonials: many(testimonials),
+  semesters: many(semesters),
+  sections: many(courseSections),
+  exams: many(exams),
 }));
 
 export const paymentsRelations = relations(payments, ({ one, many }) => ({
@@ -276,5 +379,66 @@ export const testimonialsRelations = relations(testimonials, ({ one }) => ({
   course: one(courses, {
     fields: [testimonials.courseId],
     references: [courses.id]
+  })
+}));
+
+// Relations for new tables
+export const semestersRelations = relations(semesters, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [semesters.courseId],
+    references: [courses.id]
+  }),
+  sections: many(courseSections),
+  exams: many(exams)
+}));
+
+export const courseSectionsRelations = relations(courseSections, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [courseSections.courseId],
+    references: [courses.id]
+  }),
+  semester: one(semesters, {
+    fields: [courseSections.semesterId],
+    references: [semesters.id]
+  }),
+  exams: many(exams)
+}));
+
+export const examsRelations = relations(exams, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [exams.courseId],
+    references: [courses.id]
+  }),
+  section: one(courseSections, {
+    fields: [exams.sectionId],
+    references: [courseSections.id]
+  }),
+  semester: one(semesters, {
+    fields: [exams.semesterId],
+    references: [semesters.id]
+  }),
+  questions: many(examQuestions),
+  results: many(examResults)
+}));
+
+export const examQuestionsRelations = relations(examQuestions, ({ one }) => ({
+  exam: one(exams, {
+    fields: [examQuestions.examId],
+    references: [exams.id]
+  })
+}));
+
+export const examResultsRelations = relations(examResults, ({ one }) => ({
+  exam: one(exams, {
+    fields: [examResults.examId],
+    references: [exams.id]
+  }),
+  user: one(users, {
+    fields: [examResults.userId],
+    references: [users.id]
+  }),
+  gradedByUser: one(users, {
+    fields: [examResults.gradedBy],
+    references: [users.id]
   })
 }));

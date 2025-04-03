@@ -52,14 +52,11 @@ app.use((req, res, next) => {
 
   // Initialize notification service
   try {
-    // Ask for email credentials if needed
-    await emailService.askForEmailCredentials();
-    
-    // Start notification service
-    notificationService.startNotificationService();
-    log("Notification service started successfully", "notification");
+    // Start notification service (handles email credential checking internally)
+    await notificationService.startNotificationService();
+    log("Notification service setup completed", "notification");
   } catch (error) {
-    log(`Failed to start notification service: ${error}`, "notification");
+    log(`Failed to setup notification service: ${error}`, "notification");
   }
 
   // importantly only setup vite in development and after
