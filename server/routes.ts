@@ -11,7 +11,7 @@ import { fromZodError } from "zod-validation-error";
 import { ZodError } from "zod";
 import waafiPayService from "./services/waafiPayService";
 import notificationService from "./services/notificationService";
-import { setupAuth } from "./auth";
+import { setupAuth, hashPassword } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -555,6 +555,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin User Management Endpoints
+  app.get("/api/admin/users", checkRole(["admin"]), async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching users" });
+    }
+  });
+  
+  app.get("/api/admin/users/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching user" });
+    }
+  });
+  
+  app.post("/api/admin/users", checkRole(["admin"]), async (req, res) => {
+    try {
+      const userSchema = insertUserSchema.extend({
+        password: z.string().min(6, "Password must be at least 6 characters")
+      });
+      
+      const result = userSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid user data", 
+          errors: fromZodError(result.error).message 
+        });
+      }
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(result.data.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      
+      // Create user with hashed password
+      const hashedPassword = await hashPassword(result.data.password);
+      const newUser = await storage.createUser({
+        ...result.data,
+        password: hashedPassword
+      });
+      
+      // Don't return the password
+      const { password, ...userWithoutPassword } = newUser;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Error creating user" });
+    }
+  });
+  
+  app.put("/api/admin/users/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Create a separate schema for updates that doesn't require all fields
+      const updateSchema = z.object({
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        role: z.enum(["admin", "teacher", "student"]).optional(),
+        password: z.string().min(6).optional(),
+      });
+      
+      const result = updateSchema.safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: "Invalid user data", 
+          errors: fromZodError(result.error).message 
+        });
+      }
+      
+      // Check if email is being changed and if it's already in use
+      if (result.data.email && result.data.email !== user.email) {
+        const existingUser = await storage.getUserByEmail(result.data.email);
+        if (existingUser) {
+          return res.status(400).json({ message: "Email already in use" });
+        }
+      }
+      
+      // Handle password update
+      let updatedFields: any = { ...result.data };
+      if (result.data.password) {
+        updatedFields.password = await hashPassword(result.data.password);
+      }
+      
+      // Update user
+      const updatedUser = await storage.updateUser(userId, updatedFields);
+      
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update user" });
+      }
+      
+      // Don't return the password
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating user" });
+    }
+  });
+  
+  app.delete("/api/admin/users/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Don't allow deleting your own account
+      if (req.user && (req.user as any).id === userId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+      
+      const success = await storage.deleteUser(userId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete user" });
+      }
+      
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting user" });
+    }
+  });
+  
   // Admin Stats Endpoints
   app.get("/api/admin/stats/users", checkRole(["admin"]), async (req, res) => {
     try {

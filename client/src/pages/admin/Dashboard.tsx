@@ -21,6 +21,7 @@ import {
 import { Users, BookOpen, CreditCard, Award, ArrowUpRight, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
+import UsersManagement from "@/components/dashboard/UsersManagement";
 
 // Color definitions
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -169,6 +170,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="payments">Payments</TabsTrigger>
             <TabsTrigger value="enrollments">Enrollments</TabsTrigger>
+            <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
           
           <TabsContent value="overview" className="space-y-4">
@@ -405,6 +407,10 @@ export default function AdminDashboard() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          <TabsContent value="users" className="space-y-4">
+            <UsersManagement />
           </TabsContent>
         </Tabs>
       </div>

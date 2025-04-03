@@ -45,6 +45,31 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    try {
+      const result = await db.update(users)
+        .set(userData)
+        .where(eq(users.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return undefined;
+    }
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(users)
+        .where(eq(users.id, id))
+        .returning({ id: users.id });
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      return false;
+    }
+  }
+  
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
   }
