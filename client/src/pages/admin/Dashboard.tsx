@@ -22,71 +22,106 @@ import { Users, BookOpen, CreditCard, Award, ArrowUpRight, Loader2 } from "lucid
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 
-// Sample data for charts
-const monthlyEnrollments = [
-  { name: 'Jan', count: 12 },
-  { name: 'Feb', count: 19 },
-  { name: 'Mar', count: 15 },
-  { name: 'Apr', count: 23 },
-  { name: 'May', count: 28 },
-  { name: 'Jun', count: 25 },
-  { name: 'Jul', count: 33 },
-  { name: 'Aug', count: 21 },
-  { name: 'Sep', count: 29 },
-  { name: 'Oct', count: 35 },
-  { name: 'Nov', count: 32 },
-  { name: 'Dec', count: 37 },
-];
-
-const courseDistribution = [
-  { name: 'Multimedia', value: 35 },
-  { name: 'Accounting', value: 20 },
-  { name: 'Marketing', value: 15 },
-  { name: 'Development', value: 25 },
-  { name: 'Diploma', value: 5 },
-];
-
-const revenueData = [
-  { name: 'Week 1', oneTime: 2500, installment: 1800 },
-  { name: 'Week 2', oneTime: 3200, installment: 2100 },
-  { name: 'Week 3', oneTime: 2800, installment: 2400 },
-  { name: 'Week 4', oneTime: 3800, installment: 2600 },
-];
-
+// Color definitions
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
-// Recent payment and enrollment data
-const recentPayments = [
-  { id: 1, student: 'Ahmed Mohamed', course: 'Adobe Photoshop Advanced', amount: 120, date: '2025-04-01', status: 'completed' },
-  { id: 2, student: 'Fatima Hassan', course: 'Digital Marketing Basics', amount: 85, date: '2025-04-01', status: 'pending' },
-  { id: 3, student: 'Omar Ali', course: 'Web Development Fundamentals', amount: 150, date: '2025-03-31', status: 'completed' },
-  { id: 4, student: 'Amina Ibrahim', course: 'QuickBooks Introduction', amount: 95, date: '2025-03-30', status: 'failed' },
-  { id: 5, student: 'Yusuf Abdi', course: 'Diploma in IT', amount: 350, date: '2025-03-29', status: 'completed' },
-];
+// Type definitions for our API responses
+interface DashboardData {
+  courseCount: number;
+  studentCount: number;
+  teacherCount: number;
+  totalRevenue: number;
+  recentPayments: PaymentData[];
+  monthlyEnrollments: MonthlyEnrollment[];
+  courseDistribution: CourseDistribution[];
+  topCourses: TopCourse[];
+  revenueData: RevenueData[];
+}
+
+interface PaymentData {
+  id: number;
+  student: string;
+  course: string;
+  amount: number;
+  date: string;
+  status: string;
+}
+
+interface EnrollmentData {
+  id: number;
+  student: string;
+  course: string;
+  enrollmentDate: string;
+  status: string;
+  progress: number;
+}
+
+interface MonthlyEnrollment {
+  name: string;
+  count: number;
+}
+
+interface CourseDistribution {
+  name: string;
+  value: number;
+}
+
+interface TopCourse {
+  id: number;
+  title: string;
+  enrollments: number;
+}
+
+interface RevenueData {
+  name: string;
+  oneTime: number;
+  installment: number;
+}
 
 export default function AdminDashboard() {
   const [tab, setTab] = useState("overview");
   
-  // These would be real queries in production
+  // Fetch real data from API endpoints
   const { data: usersCount, isLoading: isLoadingUsers } = useQuery<number>({
     queryKey: ['/api/admin/stats/users'],
-    enabled: false, // Disabled since we don't have this endpoint yet
   });
   
   const { data: coursesCount, isLoading: isLoadingCourses } = useQuery<number>({
     queryKey: ['/api/admin/stats/courses'],
-    enabled: false,
   });
   
-  const { data: paymentsCount, isLoading: isLoadingPayments } = useQuery<number>({
+  const { data: paymentsTotal, isLoading: isLoadingPayments } = useQuery<number>({
     queryKey: ['/api/admin/stats/payments'],
-    enabled: false,
   });
   
   const { data: certificatesCount, isLoading: isLoadingCertificates } = useQuery<number>({
     queryKey: ['/api/admin/stats/certificates'],
-    enabled: false,
   });
+  
+  // Get dashboard data with charts and detailed information
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useQuery<DashboardData>({
+    queryKey: ['/api/dashboard'],
+  });
+  
+  // Get recent payments for the payments tab
+  const { data: recentPaymentsData, isLoading: isLoadingRecentPayments } = useQuery<PaymentData[]>({
+    queryKey: ['/api/admin/recent-payments'],
+  });
+  
+  // Get recent enrollments for the enrollments tab
+  const { data: recentEnrollmentsData, isLoading: isLoadingRecentEnrollments } = useQuery<EnrollmentData[]>({
+    queryKey: ['/api/admin/recent-enrollments'],
+  });
+  
+  // Extract chart data from dashboardData or provide defaults
+  const monthlyEnrollments = dashboardData?.monthlyEnrollments ?? [];
+  const courseDistribution = dashboardData?.courseDistribution ?? [];
+  const revenueData = dashboardData?.revenueData ?? [];
+  const topCourses = dashboardData?.topCourses ?? [];
+  
+  // Safe access to payments and enrollments data
+  const recentPayments = recentPaymentsData ?? [];
+  const recentEnrollments = recentEnrollmentsData ?? [];
 
   return (
     <DashboardLayout>
@@ -115,7 +150,7 @@ export default function AdminDashboard() {
           />
           <StatsCard 
             title="Revenue (USD)"
-            value={paymentsCount ? `$${paymentsCount}` : "$18,650"}
+            value={paymentsTotal ? `$${paymentsTotal}` : "$0"}
             description="+22% from last month"
             icon={<CreditCard className="h-5 w-5 text-indigo-500" />}
             loading={isLoadingPayments}
@@ -189,7 +224,7 @@ export default function AdminDashboard() {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {courseDistribution.map((entry, index) => (
+                          {courseDistribution.map((entry: CourseDistribution, index: number) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
@@ -266,26 +301,19 @@ export default function AdminDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">Diploma in IT</TableCell>
-                        <TableCell className="text-right">38</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Adobe Photoshop Advanced</TableCell>
-                        <TableCell className="text-right">32</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Web Development Fundamentals</TableCell>
-                        <TableCell className="text-right">29</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Digital Marketing Basics</TableCell>
-                        <TableCell className="text-right">24</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">QuickBooks Introduction</TableCell>
-                        <TableCell className="text-right">21</TableCell>
-                      </TableRow>
+                      {topCourses.map((course: TopCourse) => (
+                        <TableRow key={course.id}>
+                          <TableCell className="font-medium">{course.title}</TableCell>
+                          <TableCell className="text-right">{course.enrollments}</TableCell>
+                        </TableRow>
+                      ))}
+                      {topCourses.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                            No course data available
+                          </TableCell>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </CardContent>
@@ -314,7 +342,7 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {recentPayments.map((payment) => (
+                    {recentPayments.map((payment: PaymentData) => (
                       <TableRow key={payment.id}>
                         <TableCell className="font-medium">#{payment.id}</TableCell>
                         <TableCell>{payment.student}</TableCell>
@@ -352,66 +380,27 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <TableRow>
-                      <TableCell className="font-medium">Ahmed Mohamed</TableCell>
-                      <TableCell>Adobe Photoshop Advanced</TableCell>
-                      <TableCell>2025-04-01</TableCell>
-                      <TableCell>Active</TableCell>
-                      <TableCell className="w-[100px]">
-                        <div className="flex items-center gap-2">
-                          <Progress value={25} className="h-2" />
-                          <span className="text-xs text-muted-foreground">25%</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Fatima Hassan</TableCell>
-                      <TableCell>Digital Marketing Basics</TableCell>
-                      <TableCell>2025-04-01</TableCell>
-                      <TableCell>Active</TableCell>
-                      <TableCell className="w-[100px]">
-                        <div className="flex items-center gap-2">
-                          <Progress value={12} className="h-2" />
-                          <span className="text-xs text-muted-foreground">12%</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Omar Ali</TableCell>
-                      <TableCell>Web Development Fundamentals</TableCell>
-                      <TableCell>2025-03-31</TableCell>
-                      <TableCell>Active</TableCell>
-                      <TableCell className="w-[100px]">
-                        <div className="flex items-center gap-2">
-                          <Progress value={38} className="h-2" />
-                          <span className="text-xs text-muted-foreground">38%</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Amina Ibrahim</TableCell>
-                      <TableCell>QuickBooks Introduction</TableCell>
-                      <TableCell>2025-03-30</TableCell>
-                      <TableCell>Active</TableCell>
-                      <TableCell className="w-[100px]">
-                        <div className="flex items-center gap-2">
-                          <Progress value={45} className="h-2" />
-                          <span className="text-xs text-muted-foreground">45%</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-medium">Yusuf Abdi</TableCell>
-                      <TableCell>Diploma in IT</TableCell>
-                      <TableCell>2025-03-29</TableCell>
-                      <TableCell>Active</TableCell>
-                      <TableCell className="w-[100px]">
-                        <div className="flex items-center gap-2">
-                          <Progress value={67} className="h-2" />
-                          <span className="text-xs text-muted-foreground">67%</span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    {recentEnrollments.map((enrollment: EnrollmentData) => (
+                      <TableRow key={enrollment.id}>
+                        <TableCell className="font-medium">{enrollment.student}</TableCell>
+                        <TableCell>{enrollment.course}</TableCell>
+                        <TableCell>{enrollment.enrollmentDate}</TableCell>
+                        <TableCell>{enrollment.status}</TableCell>
+                        <TableCell className="w-[100px]">
+                          <div className="flex items-center gap-2">
+                            <Progress value={enrollment.progress} className="h-2" />
+                            <span className="text-xs text-muted-foreground">{enrollment.progress}%</span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {recentEnrollments.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
+                          No recent enrollments found
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>
