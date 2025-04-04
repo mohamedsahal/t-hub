@@ -14,6 +14,7 @@ export const enrollmentStatusEnum = pgEnum('enrollment_status', ['active', 'comp
 export const examTypeEnum = pgEnum('exam_type', ['quiz', 'midterm', 'final', 're_exam']);
 export const examStatusEnum = pgEnum('exam_status', ['pending', 'completed', 'failed', 'passed']);
 export const sectionTypeEnum = pgEnum('section_type', ['lesson', 'quiz', 'exam']);
+export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['text', 'video']);
 export const productTypeEnum = pgEnum('product_type', [
   'restaurant', 'school', 'laundry', 'inventory', 
   'task', 'hotel', 'hospital', 'dental', 
@@ -94,8 +95,10 @@ export const courseSections = pgTable("course_sections", {
   description: text("description"),
   order: integer("sort_order").default(1).notNull(),
   type: sectionTypeEnum("type").default('lesson').notNull(), // Can be lesson, quiz, or exam
-  videoUrl: text("video_url"),
-  contentUrl: text("content_url"),
+  contentType: lessonContentTypeEnum("content_type"), // Type of content (text or video)
+  content: text("content"), // For text-based lessons
+  videoUrl: text("video_url"), // For video-based lessons
+  contentUrl: text("content_url"), // For additional materials
   duration: integer("duration"), // Duration in hours
   unlockDate: timestamp("unlock_date"), // For dripping content
   isPublished: boolean("is_published").default(true),

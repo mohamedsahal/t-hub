@@ -97,6 +97,8 @@ const sectionSchema = z.object({
   unlockDate: z.string().optional(),
   videoUrl: z.string().url("Please enter a valid URL").optional().or(z.literal('')),
   contentUrl: z.string().url("Please enter a valid URL").optional().or(z.literal('')),
+  content: z.string().optional(),
+  contentType: z.enum(["text", "video"]).default("text"),
   isPublished: z.boolean().default(true),
   type: z.enum(["lesson", "quiz", "exam"]).default("lesson")
 });
@@ -114,6 +116,8 @@ interface CourseSection {
   description?: string | null;
   order: number;
   type: "lesson" | "quiz" | "exam";
+  contentType?: "text" | "video" | null;
+  content?: string | null;
   videoUrl?: string | null;
   contentUrl?: string | null;
   duration?: number | null;
@@ -554,6 +558,8 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
       unlockDate: undefined,
       videoUrl: "",
       contentUrl: "",
+      content: "",
+      contentType: "text",
       isPublished: true,
       type: "lesson"
     }
@@ -569,6 +575,8 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
       unlockDate: undefined,
       videoUrl: "",
       contentUrl: "",
+      content: "",
+      contentType: "text",
       isPublished: true,
       type: "lesson"
     }
@@ -877,6 +885,8 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
       unlockDate: section.unlockDate ? new Date(section.unlockDate).toISOString().split('T')[0] : undefined,
       videoUrl: section.videoUrl || "",
       contentUrl: section.contentUrl || "",
+      content: section.content || "",
+      contentType: section.contentType || "text",
       isPublished: section.isPublished === null ? true : section.isPublished !== undefined ? section.isPublished : true,
       type: section.type || "lesson"
     });
@@ -895,6 +905,8 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
       unlockDate: undefined,
       videoUrl: "",
       contentUrl: "",
+      content: "",
+      contentType: "text",
       isPublished: true,
       type: "lesson"
     });
@@ -1318,6 +1330,66 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                       </FormItem>
                     )}
                   />
+                  
+                  <FormField
+                    control={addSectionForm.control}
+                    name="contentType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Content Type</FormLabel>
+                        <FormControl>
+                          <Select 
+                            onValueChange={(value) => field.onChange(value as "text" | "video")} 
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select content type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">Text Lesson</SelectItem>
+                              <SelectItem value="video">Video Lesson</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormDescription>
+                          Choose whether this lesson contains text or video content
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Text content area - shown only when contentType is "text" */}
+                  {addSectionForm.watch('contentType') === 'text' && (
+                    <FormField
+                      control={addSectionForm.control}
+                      name="content"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Lesson Content</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              placeholder="Enter the lesson content with formatting..." 
+                              rows={10}
+                              className="font-mono"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Enter the main content for your text lesson. You can use basic formatting:
+                            <ul className="list-disc list-inside mt-1 ml-2 text-xs">
+                              <li>**bold text** for <span className="font-bold">bold text</span></li>
+                              <li>*italic text* for <span className="italic">italic text</span></li>
+                              <li>- item for bullet lists</li>
+                              <li>1. item for numbered lists</li>
+                            </ul>
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={addSectionForm.control}
@@ -1359,25 +1431,28 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                       )}
                     />
                   </div>
-                  <FormField
-                    control={addSectionForm.control}
-                    name="videoUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Video URL</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Enter YouTube or video URL" 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Provide a YouTube, Vimeo, or other video URL for this lesson.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Video URL field - show only when contentType is not text (backward compatibility) */}
+                  {addSectionForm.watch('contentType') !== 'text' && (
+                    <FormField
+                      control={addSectionForm.control}
+                      name="videoUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Video URL</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="Enter YouTube or video URL" 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Provide a YouTube, Vimeo, or other video URL for this lesson.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <FormField
                     control={addSectionForm.control}
                     name="contentUrl"
@@ -1689,6 +1764,66 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                       </FormItem>
                     )}
                   />
+                  
+                  <FormField
+                    control={editSectionForm.control}
+                    name="contentType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Content Type</FormLabel>
+                        <FormControl>
+                          <Select 
+                            onValueChange={(value) => field.onChange(value as "text" | "video")} 
+                            defaultValue={field.value}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select content type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">Text Lesson</SelectItem>
+                              <SelectItem value="video">Video Lesson</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                        <FormDescription>
+                          Choose whether this lesson contains text or video content
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Text content area - shown only when contentType is "text" */}
+                  {editSectionForm.watch('contentType') === 'text' && (
+                    <FormField
+                      control={editSectionForm.control}
+                      name="content"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Lesson Content</FormLabel>
+                          <FormControl>
+                            <Textarea 
+                              {...field} 
+                              placeholder="Enter the lesson content with formatting..." 
+                              rows={10}
+                              className="font-mono"
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Enter the main content for your text lesson. You can use basic formatting:
+                            <ul className="list-disc list-inside mt-1 ml-2 text-xs">
+                              <li>**bold text** for <span className="font-bold">bold text</span></li>
+                              <li>*italic text* for <span className="italic">italic text</span></li>
+                              <li>- item for bullet lists</li>
+                              <li>1. item for numbered lists</li>
+                            </ul>
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={editSectionForm.control}
@@ -1730,25 +1865,28 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                       )}
                     />
                   </div>
-                  <FormField
-                    control={editSectionForm.control}
-                    name="videoUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Video URL</FormLabel>
-                        <FormControl>
-                          <Input 
-                            {...field} 
-                            placeholder="Enter YouTube or video URL" 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Provide a YouTube, Vimeo, or other video URL for this lesson.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Video URL field - show only when contentType is not text */}
+                  {editSectionForm.watch('contentType') !== 'text' && (
+                    <FormField
+                      control={editSectionForm.control}
+                      name="videoUrl"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Video URL</FormLabel>
+                          <FormControl>
+                            <Input 
+                              {...field} 
+                              placeholder="Enter YouTube or video URL" 
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Provide a YouTube, Vimeo, or other video URL for this lesson.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                   <FormField
                     control={editSectionForm.control}
                     name="contentUrl"
