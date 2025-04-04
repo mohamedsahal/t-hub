@@ -19,6 +19,7 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import LessonPreview from './LessonPreview';
 import { 
   Card, 
   CardContent, 
@@ -76,7 +77,8 @@ import {
   FileQuestion,
   FileCheck,
   AlertTriangle,
-  Info
+  Info,
+  Eye
 } from "lucide-react";
 
 // Schema for validating module form inputs
@@ -158,6 +160,7 @@ interface SortableModuleItemProps {
   onAddSection: (moduleId: number) => void;
   onEditSection: (section: CourseSection) => void;
   onDeleteSection: (id: number) => void;
+  onPreviewSection?: (section: CourseSection) => void;
   onSectionDragEnd: (event: DragEndEvent, moduleId: number) => void;
 }
 
@@ -166,10 +169,11 @@ interface SortableSectionItemProps {
   section: CourseSection;
   onEdit: (section: CourseSection) => void;
   onDelete: (id: number) => void;
+  onPreview?: (section: CourseSection) => void;
 }
 
 // Sortable Item Component for each section
-function SortableSectionItem({ id, section, onEdit, onDelete }: SortableSectionItemProps) {
+function SortableSectionItem({ id, section, onEdit, onDelete, onPreview }: SortableSectionItemProps) {
   const {
     attributes,
     listeners,
@@ -194,6 +198,11 @@ function SortableSectionItem({ id, section, onEdit, onDelete }: SortableSectionI
         return <FileText className="h-4 w-4 mr-2 text-primary" />;
     }
   };
+
+  // Determine if the section can be previewed
+  const canBePreviewed = section.type === 'lesson' && 
+                        (section.contentType === 'text' && section.content) || 
+                        (section.contentType === 'video' && section.videoUrl);
 
   return (
     <div 
@@ -230,6 +239,16 @@ function SortableSectionItem({ id, section, onEdit, onDelete }: SortableSectionI
             </div>
           </div>
           <div className="flex space-x-2">
+            {canBePreviewed && onPreview && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="text-blue-600"
+                onClick={() => onPreview(section)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
             <Button 
               variant="ghost" 
               size="sm" 
@@ -287,7 +306,7 @@ function SortableSectionItem({ id, section, onEdit, onDelete }: SortableSectionI
 // Sortable Module Item Component with nested sections
 function SortableModuleItem({ 
   id, module, sections, onEditModule, onDeleteModule, onAddSection, 
-  onEditSection, onDeleteSection, onSectionDragEnd 
+  onEditSection, onDeleteSection, onPreviewSection, onSectionDragEnd 
 }: SortableModuleItemProps) {
   const {
     attributes,
@@ -412,6 +431,7 @@ function SortableModuleItem({
                     section={section}
                     onEdit={onEditSection}
                     onDelete={onDeleteSection}
+                    onPreview={onPreviewSection}
                   />
                 ))}
               </SortableContext>
@@ -456,6 +476,8 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
   const [selectedSection, setSelectedSection] = useState<CourseSection | null>(null);
   const [addToModuleId, setAddToModuleId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<string>("lesson");
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [previewSection, setPreviewSection] = useState<CourseSection | null>(null);
   
   // Setting up sensors for drag detection for modules
   const sensors = useSensors(
@@ -956,6 +978,12 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
       deleteSectionMutation.mutate(sectionId);
     }
   };
+  
+  // Handle previewing a section
+  const handlePreviewSection = (section: CourseSection) => {
+    setPreviewSection(section);
+    setIsPreviewDialogOpen(true);
+  };
 
   // Handle drag end event for modules
   const handleModuleDragEnd = (event: DragEndEvent) => {
@@ -1100,6 +1128,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                   onAddSection={handleAddSectionToModule}
                   onEditSection={handleEditSection}
                   onDeleteSection={handleDeleteSection}
+                  onPreviewSection={handlePreviewSection}
                   onSectionDragEnd={handleSectionDragEnd}
                 />
               ))}
@@ -2138,6 +2167,30 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
               </form>
             </Form>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Preview Section Dialog */}
+      <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Lesson Preview</DialogTitle>
+          </DialogHeader>
+          
+          {previewSection && (
+            <div className="mt-2">
+              <LessonPreview 
+                section={previewSection} 
+                onClose={() => setIsPreviewDialogOpen(false)} 
+              />
+            </div>
+          )}
+          
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsPreviewDialogOpen(false)}>
+              Close Preview
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
