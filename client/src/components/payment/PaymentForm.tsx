@@ -54,7 +54,6 @@ enum PaymentMethod {
 
 // Wallet types
 enum WalletType {
-  WAAFI = 'WAAFI',
   ZAAD = 'ZAAD',
   EVCPLUS = 'EVCPlus',
   SAHAL = 'SAHAL',
@@ -79,7 +78,7 @@ const cardPaymentSchema = basePaymentSchema.extend({
 // Mobile wallet payment schema
 const mobileWalletSchema = basePaymentSchema.extend({
   paymentMethod: z.literal("mobile_wallet"),
-  walletType: z.enum(["WAAFI", "ZAAD", "EVCPlus", "SAHAL"]),
+  walletType: z.enum(["ZAAD", "EVCPlus", "SAHAL"]),
   phone: z.string().min(9, "Phone number is required"),
 });
 
@@ -226,7 +225,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
     return v;
   };
 
-  // Format phone number to ensure it starts with country code
+  // Format phone number to ensure it starts with country code and correct provider prefix
   const formatPhoneNumber = (value: string, walletType?: string) => {
     // Clean the number first
     const cleaned = value.replace(/[^0-9+]/g, "");
@@ -237,23 +236,28 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
     // Standard country code
     const countryCode = "+252";
     
-    // If doesn't start with +, add the country code
-    if (!cleaned.startsWith("+")) {
-      return countryCode + providerPrefix + cleaned.replace(/^0+/, "");
-    }
+    // Extract any digits after the country code and potential provider prefix
+    let userDigits = "";
     
-    // If already has +252 but not the correct provider prefix, handle it
-    if (cleaned.startsWith(countryCode) && providerPrefix) {
-      // Check if the number already has the provider prefix after the country code
-      const afterCountryCode = cleaned.substring(4); // +252 is 4 chars
+    if (cleaned.startsWith(countryCode)) {
+      // Remove country code and extract user digits
+      const afterCountryCode = cleaned.substring(4);
       
-      if (!afterCountryCode.startsWith(providerPrefix)) {
-        // Add the provider prefix after the country code
-        return countryCode + providerPrefix + afterCountryCode;
+      // If there's already a 2-digit provider prefix
+      if (afterCountryCode.length >= 2) {
+        // Skip the first 2 digits (assumed provider prefix) and keep the rest
+        userDigits = afterCountryCode.substring(2);
+      } else {
+        // If no provider prefix yet, use all the digits
+        userDigits = afterCountryCode;
       }
+    } else {
+      // Not starting with country code, just remove any non-digits
+      userDigits = cleaned.replace(/\D/g, "").replace(/^0+/, "");
     }
     
-    return cleaned;
+    // Create the new phone number with correct prefix
+    return countryCode + providerPrefix + userDigits;
   };
   
   // Get provider prefix based on wallet type
@@ -478,9 +482,32 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                         <Select 
                           onValueChange={(value) => {
                             field.onChange(value);
-                            // Update phone number with correct prefix based on wallet
+                            // Get the new provider prefix
+                            const newProviderPrefix = getProviderPrefix(value);
+                            const countryCode = "+252";
+                            
+                            // Replace the phone number entirely to ensure correct prefix
                             const currentPhone = form.getValues("phone") || "";
-                            const newPhone = formatPhoneNumber(currentPhone, value);
+                            
+                            // Extract any digits after the provider prefix (if any)
+                            let userDigits = "";
+                            if (currentPhone.startsWith(countryCode)) {
+                              // Remove country code and check if there's a provider prefix
+                              const afterCountryCode = currentPhone.substring(4);
+                              // Try to find any user-entered digits after potential provider prefix
+                              const match = afterCountryCode.match(/^\d{2}(\d+)$/);
+                              if (match && match[1]) {
+                                userDigits = match[1]; // These are the digits after the provider prefix
+                              } else {
+                                userDigits = afterCountryCode; // No provider prefix, use all digits
+                              }
+                            } else {
+                              // Just remove any non-digits
+                              userDigits = currentPhone.replace(/\D/g, "");
+                            }
+                            
+                            // Create new phone number with correct prefix
+                            const newPhone = countryCode + newProviderPrefix + userDigits;
                             form.setValue("phone", newPhone);
                           }} 
                           defaultValue={field.value}
@@ -494,7 +521,6 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                             <SelectItem value="EVCPlus">EVCPlus (Hormuud)</SelectItem>
                             <SelectItem value="ZAAD">ZAAD Service (Telesom)</SelectItem>
                             <SelectItem value="SAHAL">SAHAL Service (Golis)</SelectItem>
-                            <SelectItem value="WAAFI">WAAFI</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>
