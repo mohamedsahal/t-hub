@@ -286,7 +286,10 @@ export default function ExamManagement() {
   // Mutations
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues) => {
-      return await apiRequest('/api/admin/exams', 'POST', data);
+      return await apiRequest('/api/admin/exams', {
+        method: 'POST',
+        data
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/exams'] });
@@ -309,7 +312,10 @@ export default function ExamManagement() {
   const updateExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues & { id: number }) => {
       const { id, ...examData } = data;
-      return await apiRequest(`/api/admin/exams/${id}`, 'PATCH', examData);
+      return await apiRequest(`/api/admin/exams/${id}`, {
+        method: 'PATCH',
+        data: examData
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/exams'] });
@@ -330,7 +336,9 @@ export default function ExamManagement() {
 
   const deleteExamMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/admin/exams/${id}`, 'DELETE');
+      return await apiRequest(`/api/admin/exams/${id}`, {
+        method: 'DELETE'
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/exams'] });
@@ -353,7 +361,10 @@ export default function ExamManagement() {
   const createQuestionMutation = useMutation({
     mutationFn: async (data: QuestionFormValues & { examId: number }) => {
       const { examId, ...questionData } = data;
-      return await apiRequest(`/api/admin/exams/${examId}/questions`, 'POST', questionData);
+      return await apiRequest(`/api/admin/exams/${examId}/questions`, {
+        method: 'POST',
+        data: questionData
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/exams', currentExam?.id, 'questions'] });
@@ -384,7 +395,10 @@ export default function ExamManagement() {
   const updateQuestionMutation = useMutation({
     mutationFn: async (data: QuestionFormValues & { examId: number, id: number }) => {
       const { examId, id, ...questionData } = data;
-      return await apiRequest(`/api/admin/exams/${examId}/questions/${id}`, 'PATCH', questionData);
+      return await apiRequest(`/api/admin/exams/${examId}/questions/${id}`, {
+        method: 'PATCH',
+        data: questionData
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/exams', currentExam?.id, 'questions'] });
@@ -405,7 +419,9 @@ export default function ExamManagement() {
 
   const deleteQuestionMutation = useMutation({
     mutationFn: async ({ examId, questionId }: { examId: number, questionId: number }) => {
-      return await apiRequest(`/api/admin/exams/${examId}/questions/${questionId}`, 'DELETE');
+      return await apiRequest(`/api/admin/exams/${examId}/questions/${questionId}`, {
+        method: 'DELETE'
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/exams', currentExam?.id, 'questions'] });
@@ -452,6 +468,7 @@ export default function ExamManagement() {
         passing_score: 60,
         time_limit: 60,
         status: "active",
+        course_id: undefined // Explicitly set course_id to undefined
       });
     }
     setIsExamModalOpen(true);
@@ -956,7 +973,7 @@ export default function ExamManagement() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exam Management</h1>
-          <Button onClick={() => window.location.href = '/admin/exam-create'}>
+          <Button onClick={() => openExamModal()}>
             <Plus className="mr-2 h-4 w-4" /> Create Exam
           </Button>
         </div>

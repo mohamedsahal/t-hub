@@ -346,7 +346,22 @@ export function QuizManagement() {
       return;
     }
     
-    examMutation.mutate(values);
+    // Map courseId to course_id for API compatibility and remove frontend-only fields
+    const { courseId, totalPoints, passingPoints, duration, isActive, ...rest } = values;
+    
+    const apiData = {
+      ...rest,
+      course_id: courseId,
+      // Map other fields that might have naming differences 
+      max_score: totalPoints,
+      passing_score: passingPoints,
+      time_limit: duration,
+      status: isActive ? 'active' : 'draft'
+    };
+    
+    console.log('Mapped API data:', apiData);
+    
+    examMutation.mutate(apiData);
   };
 
   // Handle question form submission
@@ -800,7 +815,7 @@ export function QuizManagement() {
                       </FormControl>
                       <SelectContent>
                         {courses.length === 0 ? (
-                          <SelectItem value="" disabled>No courses available</SelectItem>
+                          <SelectItem value="none" disabled>No courses available</SelectItem>
                         ) : (
                           <>
                             {courses.map((course: Course) => (
