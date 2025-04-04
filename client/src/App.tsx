@@ -40,6 +40,7 @@ import ExamCreate from "./pages/admin/ExamCreate";
 import ExamRules from "./pages/admin/ExamRules";
 import ExamMarks from "./pages/admin/ExamMarks";
 import ExamResults from "./pages/admin/ExamResults";
+import AlertsAdminPage from "@/pages/admin/Alerts";
 
 import { ProtectedRoute } from "./lib/protected-route";
 import { AdminProtectedRoute } from "./lib/admin-protected-route";
@@ -101,6 +102,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/partners" component={() => <div>Partners Admin Page</div>} />
       <AdminProtectedRoute path="/admin/content" component={() => <div>Content Admin Page</div>} />
       <AdminProtectedRoute path="/admin/events" component={() => <div>Events Admin Page</div>} />
+      <AdminProtectedRoute path="/admin/alerts" component={() => <AlertsAdminPage />} />
       <AdminProtectedRoute path="/admin/settings" component={() => <div>Settings Admin Page</div>} />
       <AdminProtectedRoute path="/admin/profile" component={() => <ProfilePage />} />
 

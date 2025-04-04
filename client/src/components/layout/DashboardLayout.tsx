@@ -18,7 +18,8 @@ import {
   X,
   User,
   LogOut,
-  ClipboardCheck
+  ClipboardCheck,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ThubLogo from "@/components/ui/ThubLogo";
@@ -363,6 +364,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 label="Events" 
                 href="/admin/events" 
                 isActive={location === "/admin/events"} 
+              />
+              <SidebarItem 
+                icon={<Info size={18} />} 
+                label="Alerts" 
+                href="/admin/alerts" 
+                isActive={location === "/admin/alerts"} 
               />
             </SidebarCategory>
             
