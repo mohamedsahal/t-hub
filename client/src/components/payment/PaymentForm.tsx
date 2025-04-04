@@ -568,8 +568,8 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                     <AlertDescription className="flex items-start">
                       <Smartphone className="h-4 w-4 mr-2 mt-0.5 text-primary" />
                       <div>
-                        Please enter your full phone number including country code and provider prefix.
-                        <span className="block mt-1 font-medium">Example: +25261xxxxxxx for EVCPlus, +25263xxxxxxx for ZAAD, or +25290xxxxxxx for SAHAL</span>
+                        After submitting the form, you will receive a prompt to enter your PIN number on your mobile phone to confirm the payment.
+                        <span className="block mt-1 font-medium">Make sure your phone is accessible to enter the PIN when requested by your mobile wallet service.</span>
                       </div>
                     </AlertDescription>
                   </Alert>
