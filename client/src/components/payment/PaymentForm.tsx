@@ -105,24 +105,39 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
   const form = useForm<z.infer<typeof paymentSchema>>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
-      cardNumber: "",
-      cardName: "",
-      expiryDate: "",
-      cvv: "",
       paymentType: "one_time",
-      paymentMethod: "mobile_wallet",
+      paymentMethod: "mobile_wallet" as const,
       walletType: "EVCPlus",
       phone: user?.phone || "+25261",
-    },
+    } as z.infer<typeof mobileWalletSchema>,
   });
 
   const watchPaymentType = form.watch("paymentType");
   const watchPaymentMethod = form.watch("paymentMethod");
 
-  // When tab changes, update the payment method in the form
+  // When tab changes, update the payment method in the form and update form values
   const handleTabChange = (value: string) => {
     setActiveTab(value);
-    form.setValue("paymentMethod", value as PaymentMethod);
+    
+    // Reset form values based on the new payment method
+    if (value === PaymentMethod.CARD) {
+      form.reset({
+        paymentType: form.getValues("paymentType"),
+        paymentMethod: PaymentMethod.CARD,
+        cardNumber: "",
+        cardName: "",
+        expiryDate: "",
+        cvv: "",
+        phone: form.getValues("phone") || "+252",
+      } as z.infer<typeof cardPaymentSchema>);
+    } else {
+      form.reset({
+        paymentType: form.getValues("paymentType"),
+        paymentMethod: PaymentMethod.MOBILE_WALLET,
+        walletType: form.getValues("walletType") || "EVCPlus",
+        phone: form.getValues("phone") || ("+252" + getProviderPrefix(form.getValues("walletType"))),
+      } as z.infer<typeof mobileWalletSchema>);
+    }
   };
 
   const { mutate, isPending, isError, error, data } = useMutation({
@@ -216,39 +231,44 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
     // Clean the number first
     const cleaned = value.replace(/[^0-9+]/g, "");
     
-    // If already has + sign, but not the correct prefix, replace it
-    if (cleaned.startsWith("+") && walletType) {
-      const prefix = getCountryCodePrefix(walletType);
-      // Check if it has the wrong prefix
-      if (!cleaned.startsWith(prefix)) {
-        // Remove the + and any digits up to the country code length, then add the correct prefix
-        return prefix + cleaned.substring(cleaned.indexOf('+') + 4); // +252 is 4 chars
-      }
-      return cleaned;
+    // Get provider prefix
+    const providerPrefix = getProviderPrefix(walletType);
+    
+    // Standard country code
+    const countryCode = "+252";
+    
+    // If doesn't start with +, add the country code
+    if (!cleaned.startsWith("+")) {
+      return countryCode + providerPrefix + cleaned.replace(/^0+/, "");
     }
     
-    // If no + sign, add the appropriate prefix based on wallet type
-    if (!cleaned.startsWith("+")) {
-      const prefix = getCountryCodePrefix(walletType);
-      return prefix + cleaned;
+    // If already has +252 but not the correct provider prefix, handle it
+    if (cleaned.startsWith(countryCode) && providerPrefix) {
+      // Check if the number already has the provider prefix after the country code
+      const afterCountryCode = cleaned.substring(4); // +252 is 4 chars
+      
+      if (!afterCountryCode.startsWith(providerPrefix)) {
+        // Add the provider prefix after the country code
+        return countryCode + providerPrefix + afterCountryCode;
+      }
     }
     
     return cleaned;
   };
   
-  // Get country code prefix based on wallet type
-  const getCountryCodePrefix = (walletType?: string): string => {
-    if (!walletType) return "+252"; // Default Somalia code
+  // Get provider prefix based on wallet type
+  const getProviderPrefix = (walletType?: string): string => {
+    if (!walletType) return ""; // Default empty prefix
     
     switch (walletType) {
       case "EVCPlus": // Hormuud
-        return "+25261";
+        return "61";
       case "ZAAD": // Telesom
-        return "+25263";
+        return "63";
       case "SAHAL": // Golis
-        return "+25290";
+        return "90";
       default:
-        return "+252";
+        return "";
     }
   };
 
@@ -471,22 +491,10 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="EVCPlus" className="flex items-center">
-                              <div className="mr-2 h-4 w-4 rounded-full bg-green-500"></div>
-                              <span>EVCPlus (Hormuud)</span>
-                            </SelectItem>
-                            <SelectItem value="ZAAD" className="flex items-center">
-                              <div className="mr-2 h-4 w-4 rounded-full bg-blue-500"></div>
-                              <span>ZAAD Service (Telesom)</span>
-                            </SelectItem>
-                            <SelectItem value="SAHAL" className="flex items-center">
-                              <div className="mr-2 h-4 w-4 rounded-full bg-orange-500"></div>
-                              <span>SAHAL Service (Golis)</span>
-                            </SelectItem>
-                            <SelectItem value="WAAFI" className="flex items-center">
-                              <div className="mr-2 h-4 w-4 rounded-full bg-purple-500"></div>
-                              <span>WAAFI</span>
-                            </SelectItem>
+                            <SelectItem value="EVCPlus">EVCPlus (Hormuud)</SelectItem>
+                            <SelectItem value="ZAAD">ZAAD Service (Telesom)</SelectItem>
+                            <SelectItem value="SAHAL">SAHAL Service (Golis)</SelectItem>
+                            <SelectItem value="WAAFI">WAAFI</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>
@@ -502,7 +510,9 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                     name="phone"
                     render={({ field }) => {
                       const walletType = form.getValues("walletType");
-                      const prefix = getCountryCodePrefix(walletType);
+                      const providerPrefix = getProviderPrefix(walletType);
+                      const countryCode = "+252";
+                      const prefix = countryCode + providerPrefix;
                       const placeholderExample = walletType === "EVCPlus" 
                         ? "+25261xxxxxxx" 
                         : walletType === "ZAAD" 
