@@ -13,7 +13,10 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
-  Loader2
+  Loader2,
+  ArrowUpDown,
+  SortAsc,
+  SortDesc
 } from "lucide-react";
 import { formatRelative, format } from "date-fns";
 import { apiRequest } from "@/lib/queryClient";
@@ -44,6 +47,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -132,6 +145,8 @@ const CohortManagement = () => {
   const [isEditingCohort, setIsEditingCohort] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [sortBy, setSortBy] = useState<"startDate" | "name" | "academicYear">("startDate");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   
   const queryClient = useQueryClient();
 
@@ -262,18 +277,49 @@ const CohortManagement = () => {
   // Filter cohorts based on search, course, and status
   const filteredCohorts = (cohorts as Cohort[])
     .filter((cohort) => {
-      return (
-        (searchQuery === "" ||
-          cohort.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          cohort.description?.toLowerCase().includes(searchQuery.toLowerCase())) &&
-        (courseFilter === "all" || cohort.courseId === parseInt(courseFilter)) &&
-        (statusFilter === "all" || cohort.status === statusFilter) &&
-        (activeTab === "all" || cohort.status === activeTab)
-      );
+      // Search by name, description, or academic year
+      const matchesSearch = searchQuery === "" || 
+        cohort.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        (cohort.description?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        cohort.academicYear.toLowerCase().includes(searchQuery.toLowerCase());
+        
+      // Filter by course
+      const matchesCourse = courseFilter === "all" || cohort.courseId === parseInt(courseFilter);
+      
+      // Filter by status
+      const matchesStatus = statusFilter === "all" || cohort.status === statusFilter;
+      
+      // Filter by active tab
+      const matchesTab = activeTab === "all" || cohort.status === activeTab;
+      
+      return matchesSearch && matchesCourse && matchesStatus && matchesTab;
     })
     .sort((a: Cohort, b: Cohort) => {
-      // Sort by start date, most recent first
-      return new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+      // Apply different sorts based on selected sort field
+      if (sortBy === "name") {
+        // Sort alphabetically by name
+        return sortOrder === "asc" 
+          ? a.name.localeCompare(b.name) 
+          : b.name.localeCompare(a.name);
+      } else if (sortBy === "academicYear") {
+        // Sort by academic year
+        const yearCompare = sortOrder === "asc"
+          ? a.academicYear.localeCompare(b.academicYear)
+          : b.academicYear.localeCompare(a.academicYear);
+        
+        // If years are the same, sort by start date
+        if (yearCompare === 0) {
+          return sortOrder === "asc"
+            ? new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+            : new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+        }
+        return yearCompare;
+      } else {
+        // Default: sort by start date
+        return sortOrder === "asc"
+          ? new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+          : new Date(b.startDate).getTime() - new Date(a.startDate).getTime();
+      }
     });
 
   // Setup form for editing
@@ -404,6 +450,37 @@ const CohortManagement = () => {
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      </div>
+      
+      {/* Sort Controls */}
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Sort by:</span>
+          <Select value={sortBy} onValueChange={(value) => setSortBy(value as "startDate" | "name" | "academicYear")}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="startDate">Start Date</SelectItem>
+              <SelectItem value="name">Cohort Name</SelectItem>
+              <SelectItem value="academicYear">Academic Year</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+            className="ml-2"
+          >
+            {sortOrder === "asc" ? (
+              <SortAsc className="h-4 w-4 mr-1" />
+            ) : (
+              <SortDesc className="h-4 w-4 mr-1" />
+            )}
+            {sortOrder === "asc" ? "Ascending" : "Descending"}
+          </Button>
         </div>
       </div>
 
@@ -791,6 +868,38 @@ const CohortManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedCohort && (
+                <>
+                  This will permanently delete the cohort <strong>{selectedCohort.name}</strong> and 
+                  remove all related records. This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedCohort && deleteCohortMutation.mutate(selectedCohort.id)}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {deleteCohortMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Deleting...
+                </>
+              ) : (
+                "Delete Cohort"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
