@@ -225,55 +225,33 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
     return v;
   };
 
-  // Format phone number to ensure it starts with country code and correct provider prefix
+  // Format phone number to ensure it starts with just the country code
   const formatPhoneNumber = (value: string, walletType?: string) => {
     // Clean the number first
     const cleaned = value.replace(/[^0-9+]/g, "");
     
-    // Get provider prefix
-    const providerPrefix = getProviderPrefix(walletType);
-    
     // Standard country code
     const countryCode = "+252";
     
-    // Extract any digits after the country code and potential provider prefix
+    // Extract any digits after the country code
     let userDigits = "";
     
     if (cleaned.startsWith(countryCode)) {
       // Remove country code and extract user digits
-      const afterCountryCode = cleaned.substring(4);
-      
-      // If there's already a 2-digit provider prefix
-      if (afterCountryCode.length >= 2) {
-        // Skip the first 2 digits (assumed provider prefix) and keep the rest
-        userDigits = afterCountryCode.substring(2);
-      } else {
-        // If no provider prefix yet, use all the digits
-        userDigits = afterCountryCode;
-      }
+      userDigits = cleaned.substring(4);
     } else {
       // Not starting with country code, just remove any non-digits
       userDigits = cleaned.replace(/\D/g, "").replace(/^0+/, "");
     }
     
-    // Create the new phone number with correct prefix
-    return countryCode + providerPrefix + userDigits;
+    // Create the new phone number with just the country code
+    return countryCode + userDigits;
   };
   
   // Get provider prefix based on wallet type
+  // Provider prefixes have been removed as requested
   const getProviderPrefix = (walletType?: string): string => {
-    if (!walletType) return ""; // Default empty prefix
-    
-    switch (walletType) {
-      case "EVCPlus": // Hormuud
-        return "61";
-      case "ZAAD": // Telesom
-        return "63";
-      case "SAHAL": // Golis
-        return "90";
-      default:
-        return "";
-    }
+    return ""; // Empty prefix as requested
   };
 
   return (
@@ -506,8 +484,8 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                               userDigits = currentPhone.replace(/\D/g, "");
                             }
                             
-                            // Create new phone number with correct prefix
-                            const newPhone = countryCode + newProviderPrefix + userDigits;
+                            // Create new phone number with just country code
+                            const newPhone = countryCode + userDigits;
                             form.setValue("phone", newPhone);
                           }} 
                           defaultValue={field.value}
@@ -539,13 +517,8 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                       const providerPrefix = getProviderPrefix(walletType);
                       const countryCode = "+252";
                       const prefix = countryCode + providerPrefix;
-                      const placeholderExample = walletType === "EVCPlus" 
-                        ? "+25261xxxxxxx" 
-                        : walletType === "ZAAD" 
-                          ? "+25263xxxxxxx" 
-                          : walletType === "SAHAL" 
-                            ? "+25290xxxxxxx" 
-                            : "+252xxxxxxxx";
+                      // Use a standard placeholder without provider prefixes
+                      const placeholderExample = "+252xxxxxxxxx";
                       
                       return (
                         <FormItem>
@@ -553,9 +526,9 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                           <FormControl>
                             <div className="relative">
                               <Input 
-                                placeholder={`${providerPrefix}xxxxxxx`}
+                                placeholder="xxxxxxxxx"
                                 {...field} 
-                                className="pl-20" // Padding for country code and provider prefix
+                                className="pl-14" // Padding for just country code
                                 onChange={(e) => {
                                   // Only format the user input part (after the fixed prefix)
                                   let value = e.target.value;
@@ -576,14 +549,13 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                                   
                                   // Always ensure we're using the current wallet's prefix
                                   const userPart = value.replace(/^\+252\d{0,2}/, "").replace(/\D/g, "");
-                                  const formattedValue = "+252" + providerPrefix + userPart;
+                                  const formattedValue = "+252" + userPart;
                                   
                                   field.onChange(formattedValue);
                                 }}
                               />
                               <div className="absolute left-0 top-0 flex h-full items-center px-3 font-medium text-sm text-muted-foreground border-r">
                                 <span>+252</span>
-                                <span className="text-primary font-bold ml-0.5">{providerPrefix}</span>
                               </div>
                             </div>
                           </FormControl>
