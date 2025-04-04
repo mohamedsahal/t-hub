@@ -150,14 +150,19 @@ const CohortManagement = () => {
     mutationFn: async (data: CohortFormValues) => {
       // Ensure data is properly formatted, especially the name field
       const formattedData = {
-        ...data,
         name: data.name?.trim() || "", // Make sure name is not undefined and is trimmed
+        description: data.description,
         courseId: Number(data.courseId), // Ensure courseId is a number
+        startDate: data.startDate,
+        endDate: data.endDate,
+        status: data.status,
         maxStudents: data.maxStudents ? Number(data.maxStudents) : null,
+        academicYear: data.academicYear,
       };
       
       console.log("Submitting cohort data:", formattedData);
-      return await apiRequest("/api/admin/cohorts", { method: "POST", data: formattedData });
+      // Use direct POST method to avoid nesting under 'data' property
+      return await apiRequest("POST", "/api/admin/cohorts", formattedData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cohorts"] });
@@ -184,14 +189,19 @@ const CohortManagement = () => {
     mutationFn: async ({ id, data }: { id: number; data: CohortFormValues }) => {
       // Apply the same data formatting as in create mutation
       const formattedData = {
-        ...data,
         name: data.name?.trim() || "", // Make sure name is not undefined and is trimmed
+        description: data.description,
         courseId: Number(data.courseId), // Ensure courseId is a number
+        startDate: data.startDate,
+        endDate: data.endDate,
+        status: data.status,
         maxStudents: data.maxStudents ? Number(data.maxStudents) : null,
+        academicYear: data.academicYear,
       };
       
       console.log("Updating cohort data:", formattedData);
-      return await apiRequest(`/api/admin/cohorts/${id}`, { method: "PATCH", data: formattedData });
+      // Use direct PATCH method to avoid nesting under 'data' property
+      return await apiRequest("PATCH", `/api/admin/cohorts/${id}`, formattedData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cohorts"] });
@@ -216,7 +226,7 @@ const CohortManagement = () => {
   // Delete cohort mutation
   const deleteCohortMutation = useMutation({
     mutationFn: async (id: number) => {
-      return await apiRequest(`/api/admin/cohorts/${id}`, { method: "DELETE" });
+      return await apiRequest("DELETE", `/api/admin/cohorts/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/cohorts"] });
