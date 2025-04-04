@@ -380,7 +380,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                           />
                         </FormControl>
                         <FormDescription>
-                          For testing, use: 4111 1111 1111 1111
+                          Enter your card number
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -441,7 +441,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                             />
                           </FormControl>
                           <FormDescription>
-                            For testing, use: 000
+                            3-digit security code
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -551,7 +551,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                               <Input 
                                 placeholder="xxxxxxx"
                                 {...field} 
-                                className="pl-20" // Padding for country code + provider prefix
+                                className="pl-14" // Padding for country code
                                 onChange={(e) => {
                                   // Only format the user input part (after the fixed prefix)
                                   let value = e.target.value;
@@ -580,20 +580,12 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                                 }}
                               />
                               <div className="absolute left-0 top-0 flex h-full items-center px-3 font-medium text-sm text-muted-foreground border-r">
-                                <span>+252{providerPrefix}</span>
+                                <span>+252</span>
                               </div>
                             </div>
                           </FormControl>
                           <FormDescription>
-                            {watchPaymentMethod === "mobile_wallet" 
-                              ? walletType === "EVCPlus" 
-                                ? "For testing, use: +252611111111 (PIN: 1212)"
-                                : walletType === "ZAAD"
-                                  ? "For testing, use: +252631111111 (PIN: 1212)"
-                                  : walletType === "SAHAL"
-                                    ? "For testing, use: +252911111111 (PIN: 1212)"
-                                    : "For testing, use mobile number with PIN: 1212"
-                              : "Required for payment confirmation"}
+                            Required for payment confirmation
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -606,7 +598,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                       <Smartphone className="h-4 w-4 mr-2 mt-0.5 text-primary" />
                       <div>
                         You will receive a prompt on your mobile device to confirm the payment.
-                        <span className="block mt-1 font-medium">For test accounts, use PIN: 1212</span>
+                        <span className="block mt-1 font-medium">Enter your PIN when prompted</span>
                       </div>
                     </AlertDescription>
                   </Alert>
