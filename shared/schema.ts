@@ -11,8 +11,9 @@ export const courseCategoryEnum = pgEnum('course_category', ['multimedia', 'acco
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'completed', 'failed']);
 export const paymentTypeEnum = pgEnum('payment_type', ['one_time', 'installment', 'subscription']);
 export const enrollmentStatusEnum = pgEnum('enrollment_status', ['active', 'completed', 'dropped']);
-export const examTypeEnum = pgEnum('exam_type', ['quiz', 'midterm', 'final', 're_exam']);
+export const examTypeEnum = pgEnum('exam_type', ['quiz', 'midterm', 'final', 're_exam', 'assignment', 'project', 'practical']);
 export const examStatusEnum = pgEnum('exam_status', ['pending', 'completed', 'failed', 'passed']);
+export const gradeEnum = pgEnum('grade', ['A', 'B', 'C', 'D', 'F', 'incomplete', 'not_graded']);
 export const sectionTypeEnum = pgEnum('section_type', ['lesson', 'quiz', 'exam']);
 export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['text', 'video']);
 export const questionTypeEnum = pgEnum('question_type', ['multiple_choice', 'true_false', 'short_answer', 'essay']);
@@ -118,6 +119,11 @@ export const exams = pgTable("exams", {
   passingPoints: integer("passing_points").notNull(),
   duration: integer("duration").notNull(), // in minutes
   isActive: boolean("is_active").default(true).notNull(),
+  // Grading scale thresholds (percentage required for each grade)
+  gradeAThreshold: integer("grade_a_threshold").default(90),
+  gradeBThreshold: integer("grade_b_threshold").default(80),
+  gradeCThreshold: integer("grade_c_threshold").default(70),
+  gradeDThreshold: integer("grade_d_threshold").default(60),
   availableFrom: timestamp("available_from"),
   availableTo: timestamp("available_to"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -143,6 +149,8 @@ export const examResults = pgTable("exam_results", {
   userId: integer("user_id").references(() => users.id).notNull(),
   score: integer("score").notNull(),
   status: examStatusEnum("status").notNull(),
+  grade: gradeEnum("grade").default('not_graded'), // A, B, C, D, F grading
+  remarks: text("remarks"), // Additional comments by the grader
   submittedAt: timestamp("submitted_at").defaultNow().notNull(),
   attemptNumber: integer("attempt_number").default(1).notNull(),
   answers: text("answers").array(), // Student's answers
@@ -281,14 +289,32 @@ export const insertCourseSectionSchema = createInsertSchema(courseSections)
     duration: z.number().optional().nullable(),
     unlockDate: z.string().optional().nullable()
   });
-export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true });
+export const insertExamSchema = createInsertSchema(exams)
+  .omit({ id: true, createdAt: true })
+  .extend({
+    description: z.string().optional().nullable(),
+    sectionId: z.number().optional().nullable(),
+    semesterId: z.number().optional().nullable(),
+    availableFrom: z.string().optional().nullable(),
+    availableTo: z.string().optional().nullable(),
+    gradeAThreshold: z.number().optional().default(90),
+    gradeBThreshold: z.number().optional().default(80),
+    gradeCThreshold: z.number().optional().default(70),
+    gradeDThreshold: z.number().optional().default(60),
+  });
 export const insertExamQuestionSchema = createInsertSchema(examQuestions)
   .omit({ id: true })
   .extend({
     explanation: z.string().optional().nullable(),
     options: z.array(z.string()).optional().nullable(),
   });
-export const insertExamResultSchema = createInsertSchema(examResults).omit({ id: true, submittedAt: true, gradedAt: true });
+export const insertExamResultSchema = createInsertSchema(examResults)
+  .omit({ id: true, submittedAt: true, gradedAt: true })
+  .extend({
+    grade: z.enum(['A', 'B', 'C', 'D', 'F', 'incomplete', 'not_graded']).optional().default('not_graded'),
+    remarks: z.string().optional().nullable(),
+    feedback: z.string().optional().nullable(),
+  });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, paymentDate: true });
 export const insertInstallmentSchema = createInsertSchema(installments).omit({ id: true, paymentDate: true });
 export const insertEnrollmentSchema = createInsertSchema(enrollments).omit({ id: true, enrollmentDate: true, completionDate: true });

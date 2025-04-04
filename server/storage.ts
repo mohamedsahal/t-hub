@@ -14,7 +14,8 @@ import {
   landingContent, type LandingContent, type InsertLandingContent,
   exams, type Exam, type InsertExam,
   examQuestions, type ExamQuestion, type InsertExamQuestion,
-  examResults, type ExamResult, type InsertExamResult
+  examResults, type ExamResult, type InsertExamResult,
+  semesters, type Semester, type InsertSemester
 } from "@shared/schema";
 import session from "express-session";
 
@@ -111,6 +112,13 @@ export interface IStorage {
   createEvent(event: InsertEvent): Promise<Event>;
   updateEvent(id: number, event: Partial<Event>): Promise<Event | undefined>;
   
+  // Semester operations
+  getSemester(id: number): Promise<Semester | undefined>;
+  getSemestersByCourse(courseId: number): Promise<Semester[]>;
+  getAllSemesters(): Promise<Semester[]>;
+  createSemester(semester: InsertSemester): Promise<Semester>;
+  updateSemester(id: number, semester: Partial<Semester>): Promise<Semester | undefined>;
+  
   // Landing Content operations
   getLandingContent(id: number): Promise<LandingContent | undefined>;
   getLandingContentByType(type: string): Promise<LandingContent[]>;
@@ -121,8 +129,11 @@ export interface IStorage {
   
   // Exam operations
   getExam(id: number): Promise<Exam | undefined>;
+  getAllExams(): Promise<Exam[]>;
   getExamsByCourse(courseId: number): Promise<Exam[]>;
+  getExamsBySemester(semesterId: number): Promise<Exam[]>;
   getExamsBySection(sectionId: number): Promise<Exam[]>;
+  getExamsByType(type: string): Promise<Exam[]>; // Get exams by type (quiz, midterm, etc.)
   createExam(exam: InsertExam): Promise<Exam>;
   updateExam(id: number, exam: Partial<Exam>): Promise<Exam | undefined>;
   deleteExam(id: number): Promise<boolean>;
@@ -138,8 +149,11 @@ export interface IStorage {
   getExamResult(id: number): Promise<ExamResult | undefined>;
   getExamResultsByExam(examId: number): Promise<ExamResult[]>;
   getExamResultsByUser(userId: number): Promise<ExamResult[]>;
+  getExamResultsByCourse(courseId: number): Promise<ExamResult[]>; // Get results for all exams in a course
+  getExamResultsByExamAndUser(examId: number, userId: number): Promise<ExamResult | undefined>; // Get a specific user's result for an exam
   createExamResult(result: InsertExamResult): Promise<ExamResult>;
   updateExamResult(id: number, result: Partial<ExamResult>): Promise<ExamResult | undefined>;
+  gradeExamResult(id: number, score: number, grade: string, remarks?: string): Promise<ExamResult | undefined>; // Update an exam with grading info
   deleteExamResult(id: number): Promise<boolean>;
 }
 
@@ -160,6 +174,7 @@ export class MemStorage implements IStorage {
   private exams: Map<number, Exam>;
   private examQuestions: Map<number, ExamQuestion>;
   private examResults: Map<number, ExamResult>;
+  private semesters: Map<number, Semester>;
   
   private userIdCounter: number;
   private courseIdCounter: number;
@@ -177,6 +192,7 @@ export class MemStorage implements IStorage {
   private examIdCounter: number;
   private examQuestionIdCounter: number;
   private examResultIdCounter: number;
+  private semesterIdCounter: number;
   
   public sessionStore: session.Store;
 
@@ -197,6 +213,7 @@ export class MemStorage implements IStorage {
     this.exams = new Map();
     this.examQuestions = new Map();
     this.examResults = new Map();
+    this.semesters = new Map();
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
@@ -214,6 +231,7 @@ export class MemStorage implements IStorage {
     this.examIdCounter = 1;
     this.examQuestionIdCounter = 1;
     this.examResultIdCounter = 1;
+    this.semesterIdCounter = 1;
     
     // Create the memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -1055,6 +1073,16 @@ export class MemStorage implements IStorage {
     });
     return exams;
   }
+  
+  async getExamsByType(type: string): Promise<Exam[]> {
+    const exams: Exam[] = [];
+    this.exams.forEach(exam => {
+      if (exam.type === type) {
+        exams.push(exam);
+      }
+    });
+    return exams;
+  }
 
   async createExam(exam: InsertExam): Promise<Exam> {
     const id = this.examIdCounter++;
@@ -1070,8 +1098,12 @@ export class MemStorage implements IStorage {
       totalPoints: exam.totalPoints || 100,
       passingPoints: exam.passingPoints || 60,
       isActive: exam.isActive !== undefined ? exam.isActive : true,
-      availableFrom: exam.availableFrom || null,
-      availableTo: exam.availableTo || null,
+      availableFrom: exam.availableFrom ? new Date(exam.availableFrom) : null,
+      availableTo: exam.availableTo ? new Date(exam.availableTo) : null,
+      gradeAThreshold: exam.gradeAThreshold || 90,
+      gradeBThreshold: exam.gradeBThreshold || 80,
+      gradeCThreshold: exam.gradeCThreshold || 70,
+      gradeDThreshold: exam.gradeDThreshold || 60,
       createdAt: new Date()
     };
     this.exams.set(id, newExam);
@@ -1177,6 +1209,31 @@ export class MemStorage implements IStorage {
     });
     return results;
   }
+  
+  async getExamResultsByCourse(courseId: number): Promise<ExamResult[]> {
+    const results: ExamResult[] = [];
+    // First get all exams for the course
+    const exams = await this.getExamsByCourse(courseId);
+    const examIds = exams.map(exam => exam.id);
+    
+    // Then get all results for those exams
+    this.examResults.forEach(result => {
+      if (examIds.includes(result.examId)) {
+        results.push(result);
+      }
+    });
+    return results;
+  }
+  
+  async getExamResultsByExamAndUser(examId: number, userId: number): Promise<ExamResult | undefined> {
+    let foundResult: ExamResult | undefined = undefined;
+    this.examResults.forEach(result => {
+      if (result.examId === examId && result.userId === userId) {
+        foundResult = result;
+      }
+    });
+    return foundResult;
+  }
 
   async createExamResult(result: InsertExamResult): Promise<ExamResult> {
     const id = this.examResultIdCounter++;
@@ -1191,7 +1248,9 @@ export class MemStorage implements IStorage {
       gradedBy: null,
       attemptNumber: result.attemptNumber || 1,
       answers: result.answers || [],
-      feedback: null
+      feedback: result.feedback || null,
+      grade: result.grade || 'not_graded',
+      remarks: result.remarks || null
     };
     this.examResults.set(id, newResult);
     return newResult;
@@ -1206,6 +1265,23 @@ export class MemStorage implements IStorage {
     return updatedResult;
   }
 
+  async gradeExamResult(id: number, score: number, grade: string, remarks?: string): Promise<ExamResult | undefined> {
+    const result = this.examResults.get(id);
+    if (!result) return undefined;
+    
+    const updatedResult: ExamResult = {
+      ...result,
+      score,
+      grade: grade as any, // Type cast to satisfy TypeScript
+      status: 'completed',
+      gradedAt: new Date(),
+      remarks: remarks || null
+    };
+    
+    this.examResults.set(id, updatedResult);
+    return updatedResult;
+  }
+  
   async deleteExamResult(id: number): Promise<boolean> {
     if (!this.examResults.has(id)) return false;
     return this.examResults.delete(id);

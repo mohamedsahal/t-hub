@@ -2220,21 +2220,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exams", isAuthenticated, async (req, res) => {
     try {
       const courseId = req.query.courseId ? parseInt(req.query.courseId as string) : undefined;
+      const examType = req.query.type as string | undefined;
       const user = req.user as any;
       
-      if (!courseId) {
-        return res.status(400).json({ message: "Course ID is required" });
+      if (!courseId && !examType) {
+        return res.status(400).json({ message: "Either Course ID or exam type is required" });
       }
       
-      // Verify the user is enrolled in the course
-      const enrollments = await storage.getEnrollmentsByUser(user.id);
-      const isEnrolled = enrollments.some(enrollment => enrollment.courseId === courseId);
+      let exams: any[] = [];
       
-      if (!isEnrolled && user.role === "student") {
-        return res.status(403).json({ message: "Not enrolled in this course" });
+      if (examType && (user.role === "admin" || user.role === "teacher")) {
+        // If exam type filter is specified and user is admin/teacher
+        exams = await storage.getExamsByType(examType);
+      } else if (courseId) {
+        // If filtering by course ID
+        
+        // Verify the user is enrolled in the course if they're a student
+        if (user.role === "student") {
+          const enrollments = await storage.getEnrollmentsByUser(user.id);
+          const isEnrolled = enrollments.some(enrollment => enrollment.courseId === courseId);
+          
+          if (!isEnrolled) {
+            return res.status(403).json({ message: "Not enrolled in this course" });
+          }
+        }
+        
+        exams = await storage.getExamsByCourse(courseId);
       }
       
-      const exams = await storage.getExamsByCourse(courseId);
+      // Filter the exams if a type was specified after getting by course
+      if (examType && courseId) {
+        exams = exams.filter(exam => exam.type === examType);
+      }
       
       // Filter out inactive exams and include only available ones for students
       const filteredExams = user.role === "student" 
@@ -2248,6 +2265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
       res.json(filteredExams);
     } catch (error) {
+      console.error("Error fetching exams:", error);
       res.status(500).json({ message: "Error fetching exams" });
     }
   });
@@ -2375,12 +2393,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine exam status
       let status: 'pending' | 'completed' | 'failed' | 'passed' = 'pending';
       
+      // Helper function to determine the grade
+      const determineGrade = (
+        percentScore: number, 
+        aThreshold = 90, 
+        bThreshold = 80, 
+        cThreshold = 70, 
+        dThreshold = 60
+      ): string => {
+        if (percentScore >= aThreshold) return 'A';
+        if (percentScore >= bThreshold) return 'B';
+        if (percentScore >= cThreshold) return 'C';
+        if (percentScore >= dThreshold) return 'D';
+        return 'F';
+      };
+      
+      // Calculate percentage score
+      const percentScore = totalPoints > 0 ? (score / totalPoints) * 100 : 0;
+      
+      // Default grade
+      let grade: 'A' | 'B' | 'C' | 'D' | 'F' | 'incomplete' | 'not_graded' = 'not_graded';
+      
       // If there are only multiple choice/true-false questions, we can automatically grade
       if (questions.length === automaticQuestions.length) {
         status = score >= exam.passingPoints ? 'passed' : 'failed';
+        
+        // Calculate grade for auto-gradable exams
+        grade = determineGrade(
+          percentScore,
+          exam.gradeAThreshold === null ? 90 : exam.gradeAThreshold,
+          exam.gradeBThreshold === null ? 80 : exam.gradeBThreshold,
+          exam.gradeCThreshold === null ? 70 : exam.gradeCThreshold,
+          exam.gradeDThreshold === null ? 60 : exam.gradeDThreshold
+        ) as 'A' | 'B' | 'C' | 'D' | 'F';
       } else {
         // If there are essay/short answer questions, mark as pending for manual grading
         status = 'pending';
+        grade = 'not_graded';
       }
       
       // Save the exam result
@@ -2389,6 +2438,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: user.id,
         score,
         status,
+        grade,
+        remarks: null,
         attemptNumber: 1, // Would need to check previous attempts in production
         answers: answers.map((a: any) => JSON.stringify(a)),
       });
@@ -2425,6 +2476,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get exam results for a course (for teachers and admins)
+  app.get("/api/admin/exam-results/course/:courseId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const user = req.user as any;
+      
+      // Verify teacher is authorized for this course
+      if (user.role === "teacher") {
+        const course = await storage.getCourse(courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to view results for this course" });
+        }
+      }
+      
+      const results = await storage.getExamResultsByCourse(courseId);
+      
+      // Enrich with exam and user data
+      const enrichedResults = [];
+      for (const result of results) {
+        const exam = await storage.getExam(result.examId);
+        const student = await storage.getUser(result.userId);
+        
+        if (exam && student) {
+          enrichedResults.push({
+            ...result,
+            examTitle: exam.title,
+            examType: exam.type,
+            studentName: student.name,
+            studentEmail: student.email
+          });
+        }
+      }
+      
+      res.json(enrichedResults);
+    } catch (error) {
+      console.error("Error fetching course exam results:", error);
+      res.status(500).json({ message: "Error fetching exam results" });
+    }
+  });
+  
+  // Get exam results by semester (class) for a course
+  app.get("/api/admin/exam-results/semester/:semesterId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const semesterId = parseInt(req.params.semesterId);
+      const user = req.user as any;
+      
+      // Get the semester
+      const semester = await storage.getSemester(semesterId);
+      if (!semester) {
+        return res.status(404).json({ message: "Semester not found" });
+      }
+      
+      // Get course to check authorization
+      const course = await storage.getCourse(semester.courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Verify teacher is authorized for this course
+      if (user.role === "teacher" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to view results for this semester" });
+      }
+      
+      // Get all exams for this semester
+      const exams = await storage.getExamsBySemester(semesterId);
+      if (exams.length === 0) {
+        return res.json([]);
+      }
+      
+      // Get all results for these exams
+      const allResults = [];
+      for (const exam of exams) {
+        const examResults = await storage.getExamResultsByExam(exam.id);
+        
+        // Enrich with student and exam data
+        for (const result of examResults) {
+          const student = await storage.getUser(result.userId);
+          if (student) {
+            allResults.push({
+              ...result,
+              examId: exam.id,
+              examTitle: exam.title,
+              examType: exam.type,
+              totalPoints: exam.totalPoints,
+              studentId: student.id,
+              studentName: student.name,
+              studentEmail: student.email
+            });
+          }
+        }
+      }
+      
+      res.json(allResults);
+    } catch (error) {
+      console.error("Error fetching semester exam results:", error);
+      res.status(500).json({ message: "Error fetching exam results" });
+    }
+  });
+  
   // Grade an exam (for teachers and admins)
   app.patch("/api/admin/exam-results/:id/grade", checkRole(["admin", "teacher"]), async (req, res) => {
     try {
@@ -2457,14 +2607,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine status based on score
       const status = req.body.score >= exam.passingPoints ? 'passed' : 'failed';
       
+      // Calculate grade based on percentage score and thresholds
+      const percentScore = (req.body.score / exam.totalPoints) * 100;
+      
+      // Helper function to determine the grade
+      const determineGrade = (
+        score: number, 
+        aThreshold = 90, 
+        bThreshold = 80, 
+        cThreshold = 70, 
+        dThreshold = 60
+      ): string => {
+        if (score >= aThreshold) return 'A';
+        if (score >= bThreshold) return 'B';
+        if (score >= cThreshold) return 'C';
+        if (score >= dThreshold) return 'D';
+        return 'F';
+      };
+      
+      // Get grade using helper function with null-safe values
+      const grade = determineGrade(
+        percentScore,
+        exam.gradeAThreshold === null ? 90 : exam.gradeAThreshold,
+        exam.gradeBThreshold === null ? 80 : exam.gradeBThreshold,
+        exam.gradeCThreshold === null ? 70 : exam.gradeCThreshold,
+        exam.gradeDThreshold === null ? 60 : exam.gradeDThreshold
+      );
+      
       // Update the exam result
-      const updatedResult = await storage.updateExamResult(resultId, {
-        score: req.body.score,
-        status,
-        gradedBy: user.id,
-        gradedAt: new Date(),
-        feedback: req.body.feedback
-      });
+      const updatedResult = await storage.gradeExamResult(
+        resultId, 
+        req.body.score, 
+        grade, 
+        req.body.remarks
+      );
       
       res.json(updatedResult);
     } catch (error) {

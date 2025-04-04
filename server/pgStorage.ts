@@ -1,5 +1,5 @@
 import { db } from './db';
-import { eq, and, desc, asc, gte } from 'drizzle-orm';
+import { eq, and, desc, asc, gte, inArray } from 'drizzle-orm';
 import { 
   User, InsertUser, Course, InsertCourse, CourseSection, InsertCourseSection,
   CourseModule, InsertCourseModule, Payment, InsertPayment, Installment, InsertInstallment, 
@@ -645,6 +645,10 @@ export class PgStorage implements IStorage {
   async getExamsBySection(sectionId: number): Promise<Exam[]> {
     return await db.select().from(exams).where(eq(exams.sectionId, sectionId));
   }
+  
+  async getExamsByType(type: string): Promise<Exam[]> {
+    return await db.select().from(exams).where(eq(exams.type as any, type));
+  }
 
   async createExam(exam: InsertExam): Promise<Exam> {
     const result = await db.insert(exams).values({
@@ -652,6 +656,10 @@ export class PgStorage implements IStorage {
       isActive: exam.isActive === undefined ? true : exam.isActive,
       availableFrom: exam.availableFrom ? new Date(exam.availableFrom) : null,
       availableTo: exam.availableTo ? new Date(exam.availableTo) : null,
+      gradeAThreshold: exam.gradeAThreshold || 90,
+      gradeBThreshold: exam.gradeBThreshold || 80,
+      gradeCThreshold: exam.gradeCThreshold || 70,
+      gradeDThreshold: exam.gradeDThreshold || 60,
       createdAt: new Date()
     }).returning();
     return result[0];
@@ -738,6 +746,31 @@ export class PgStorage implements IStorage {
   async getExamResultsByUser(userId: number): Promise<ExamResult[]> {
     return await db.select().from(examResults).where(eq(examResults.userId, userId));
   }
+  
+  async getExamResultsByCourse(courseId: number): Promise<ExamResult[]> {
+    // First get all exams for this course
+    const examsInCourse = await this.getExamsByCourse(courseId);
+    const examIds = examsInCourse.map(exam => exam.id);
+    
+    if (examIds.length === 0) {
+      return [];
+    }
+    
+    // Then get results for those exams
+    return await db.select()
+      .from(examResults)
+      .where(inArray(examResults.examId, examIds));
+  }
+  
+  async getExamResultsByExamAndUser(examId: number, userId: number): Promise<ExamResult | undefined> {
+    const result = await db.select()
+      .from(examResults)
+      .where(and(
+        eq(examResults.examId, examId),
+        eq(examResults.userId, userId)
+      ));
+    return result[0];
+  }
 
   async createExamResult(result: InsertExamResult): Promise<ExamResult> {
     const examResult = await db.insert(examResults).values({
@@ -761,6 +794,26 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async gradeExamResult(id: number, score: number, grade: string, remarks?: string): Promise<ExamResult | undefined> {
+    try {
+      const result = await db.update(examResults)
+        .set({
+          score,
+          grade: grade as any, // Type cast to satisfy TypeScript
+          status: 'completed',
+          gradedAt: new Date(),
+          remarks: remarks || null
+        })
+        .where(eq(examResults.id, id))
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error grading exam result:', error);
+      return undefined;
+    }
+  }
+  
   async deleteExamResult(id: number): Promise<boolean> {
     try {
       const result = await db.delete(examResults)
