@@ -33,6 +33,7 @@ import CohortPage from "@/pages/admin/Cohorts";
 import ProductsAdminPage from "@/pages/admin/Products";
 import ProfilePage from "@/pages/admin/Profile";
 import QuizManagementPage from "@/pages/admin/QuizManagementPage";
+import CertificatesManagement from "@/pages/admin/Certificates";
 
 import { ProtectedRoute } from "./lib/protected-route";
 import { AdminProtectedRoute } from "./lib/admin-protected-route";
@@ -78,7 +79,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/payments" component={() => <PaymentsAdminPage />} />
       <AdminProtectedRoute path="/admin/cohorts" component={() => <CohortPage />} />
       <AdminProtectedRoute path="/admin/enrollments" component={() => <EnrollmentsAdminPage />} />
-      <AdminProtectedRoute path="/admin/certificates" component={() => <div>Certificates Admin Page</div>} />
+      <AdminProtectedRoute path="/admin/certificates" component={() => <CertificatesManagement />} />
       <AdminProtectedRoute path="/admin/testimonials" component={() => <div>Testimonials Admin Page</div>} />
       <AdminProtectedRoute path="/admin/quizzes" component={() => <QuizManagementPage />} />
       <AdminProtectedRoute path="/admin/products" component={() => <ProductsAdminPage />} />

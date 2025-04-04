@@ -81,7 +81,7 @@ const CertificatesManagement = () => {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedCertificate, setSelectedCertificate] = useState<any>(null);
+  const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   
@@ -97,31 +97,55 @@ const CertificatesManagement = () => {
     },
   });
 
+  // Define types for the API responses
+  interface Certificate {
+    id: number;
+    userId: number;
+    courseId: number;
+    certificateId: string;
+    issueDate: string;
+    expiryDate: string | null;
+  }
+
+  interface User {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+  }
+
+  interface Course {
+    id: number;
+    title: string;
+    description: string;
+    type: string;
+  }
+
   // Query for certificates
   const {
-    data: certificates = [],
+    data: certificates = [] as Certificate[],
     isLoading: isLoadingCertificates,
     isError: isErrorCertificates,
     refetch: refetchCertificates,
-  } = useQuery({
+  } = useQuery<Certificate[]>({
     queryKey: ["/api/certificates"],
     retry: 1,
   });
   
   // Query for users (for dropdown)
   const {
-    data: users = [],
+    data: users = [] as User[],
     isLoading: isLoadingUsers,
-  } = useQuery({
+  } = useQuery<User[]>({
     queryKey: ["/api/users"],
     retry: 1,
   });
   
   // Query for courses (for dropdown)
   const {
-    data: courses = [],
+    data: courses = [] as Course[],
     isLoading: isLoadingCourses,
-  } = useQuery({
+  } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
     retry: 1,
   });
@@ -221,7 +245,7 @@ const CertificatesManagement = () => {
   };
 
   // Open edit dialog and populate form
-  const handleEdit = (certificate: any) => {
+  const handleEdit = (certificate: Certificate) => {
     setSelectedCertificate(certificate);
     
     // Format dates for the form
@@ -245,17 +269,17 @@ const CertificatesManagement = () => {
   };
 
   // Open delete confirmation dialog
-  const handleDeleteClick = (certificate: any) => {
+  const handleDeleteClick = (certificate: Certificate) => {
     setSelectedCertificate(certificate);
     setDeleteConfirmOpen(true);
   };
 
   // Filter certificates based on search
-  const filteredCertificates = certificates.filter((certificate: any) => {
+  const filteredCertificates = certificates.filter((certificate: Certificate) => {
     if (!searchQuery) return true;
     
-    const user = users.find((u: any) => u.id === certificate.userId);
-    const course = courses.find((c: any) => c.id === certificate.courseId);
+    const user = users.find((u: User) => u.id === certificate.userId);
+    const course = courses.find((c: Course) => c.id === certificate.courseId);
     
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -277,13 +301,13 @@ const CertificatesManagement = () => {
 
   // Find user name by ID
   const getUserName = (userId: number) => {
-    const user = users.find((u: any) => u.id === userId);
+    const user = users.find((u: User) => u.id === userId);
     return user ? user.name : "Unknown user";
   };
 
   // Find course title by ID
   const getCourseName = (courseId: number) => {
-    const course = courses.find((c: any) => c.id === courseId);
+    const course = courses.find((c: Course) => c.id === courseId);
     return course ? course.title : "Unknown course";
   };
 
@@ -328,7 +352,7 @@ const CertificatesManagement = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {users.map((user: any) => (
+                            {users.map((user: User) => (
                               <SelectItem key={user.id} value={user.id.toString()}>
                                 {user.name}
                               </SelectItem>
@@ -356,7 +380,7 @@ const CertificatesManagement = () => {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {courses.map((course: any) => (
+                            {courses.map((course: Course) => (
                               <SelectItem key={course.id} value={course.id.toString()}>
                                 {course.title}
                               </SelectItem>
@@ -519,7 +543,7 @@ const CertificatesManagement = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredCertificates.map((certificate: any) => (
+                    {filteredCertificates.map((certificate: Certificate) => (
                       <TableRow key={certificate.id}>
                         <TableCell className="font-medium">
                           {certificate.certificateId}
@@ -588,7 +612,7 @@ const CertificatesManagement = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users.map((user: any) => (
+                        {users.map((user: User) => (
                           <SelectItem key={user.id} value={user.id.toString()}>
                             {user.name}
                           </SelectItem>
@@ -616,7 +640,7 @@ const CertificatesManagement = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {courses.map((course: any) => (
+                        {courses.map((course: Course) => (
                           <SelectItem key={course.id} value={course.id.toString()}>
                             {course.title}
                           </SelectItem>
