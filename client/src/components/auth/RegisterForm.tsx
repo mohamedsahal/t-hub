@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,6 +35,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 const RegisterForm = () => {
   const { registerMutation } = useAuth();
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -60,11 +61,20 @@ const RegisterForm = () => {
         role: userRoleEnum.enumValues[2], // student role
       });
       
-      // Redirect based on user role - for registration, this will typically be student
-      if (user.role === 'admin') {
-        setLocation("/admin");
+      // Check if there's a redirect parameter
+      const params = new URLSearchParams(search);
+      const redirectTo = params.get("redirect");
+      
+      if (redirectTo) {
+        // Redirect to the specified URL
+        setLocation(redirectTo);
       } else {
-        setLocation("/dashboard");
+        // Redirect based on user role - for registration, this will typically be student
+        if (user.role === 'admin') {
+          setLocation("/admin");
+        } else {
+          setLocation("/dashboard");
+        }
       }
     } catch (error) {
       console.error("Registration failed:", error);

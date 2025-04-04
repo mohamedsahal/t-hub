@@ -21,16 +21,26 @@ const AuthPage = () => {
     }
   }, [search]);
 
-  // Redirect to proper dashboard if already logged in
+  // Redirect to proper location if already logged in
   useEffect(() => {
     if (user && !isLoading) {
-      if (user.role === 'admin') {
-        setLocation("/admin");
+      // Check if there's a redirect parameter
+      const params = new URLSearchParams(search);
+      const redirectTo = params.get("redirect");
+      
+      if (redirectTo) {
+        // Redirect to the specified URL
+        setLocation(redirectTo);
       } else {
-        setLocation("/dashboard");
+        // Redirect to dashboard based on role
+        if (user.role === 'admin') {
+          setLocation("/admin");
+        } else {
+          setLocation("/dashboard");
+        }
       }
     }
-  }, [user, isLoading, setLocation]);
+  }, [user, isLoading, setLocation, search]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;

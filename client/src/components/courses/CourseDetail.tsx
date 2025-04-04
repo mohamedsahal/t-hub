@@ -172,7 +172,7 @@ const CourseDetail = ({ courseId }: CourseDetailProps) => {
               </div>
 
               <div className="space-y-4">
-                <Link href={isAuthenticated ? `/payment/${course.id}` : "/login"}>
+                <Link href={isAuthenticated ? `/payment/${course.id}` : `/auth?redirect=${encodeURIComponent(`/payment/${course.id}`)}`}>
                   <Button size="lg" className="w-full">
                     {isAuthenticated ? "Enroll Now" : "Login to Enroll"}
                   </Button>

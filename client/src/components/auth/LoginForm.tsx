@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   Form,
   FormControl,
@@ -28,6 +28,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 const LoginForm = () => {
   const { loginMutation } = useAuth();
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginFormValues>({
@@ -47,11 +48,20 @@ const LoginForm = () => {
         rememberMe: data.rememberMe
       });
       
-      // Redirect based on user role
-      if (user.role === 'admin') {
-        setLocation("/admin");
+      // Check if there's a redirect parameter
+      const params = new URLSearchParams(search);
+      const redirectTo = params.get("redirect");
+      
+      if (redirectTo) {
+        // Redirect to the specified URL
+        setLocation(redirectTo);
       } else {
-        setLocation("/dashboard");
+        // Redirect based on user role
+        if (user.role === 'admin') {
+          setLocation("/admin");
+        } else {
+          setLocation("/dashboard");
+        }
       }
     } catch (error) {
       console.error("Login failed:", error);
