@@ -31,13 +31,15 @@ export async function comparePasswords(supplied: string, stored: string) {
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "thub-innovation-secret",
-    resave: false,
-    saveUninitialized: false,
+    resave: true,
+    saveUninitialized: true,
     store: storage.sessionStore,
     cookie: {
-      // Default to session cookie (no maxAge)
-      secure: process.env.NODE_ENV === "production",
+      // Set a default maxAge of 1 hour to prevent immediate session expiration
+      maxAge: 60 * 60 * 1000, // 1 hour
+      secure: false, // Set to false for development
       httpOnly: true,
+      sameSite: 'lax'
     }
   };
 
@@ -80,11 +82,24 @@ export function setupAuth(app: Express) {
 
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(201).json({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role
+        
+        // Set default session to last 7 days for registrations
+        if (req.session.cookie) {
+          req.session.cookie.maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+        }
+        
+        // Explicitly save the session
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+          
+          res.status(201).json({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+          });
         });
       });
     } catch (error) {
@@ -103,11 +118,18 @@ export function setupAuth(app: Express) {
       }
     }
     
-    res.status(200).json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role
+    // Explicitly save the session to ensure changes are persisted
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+      }
+      
+      res.status(200).json({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      });
     });
   });
 
