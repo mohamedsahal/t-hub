@@ -1,7 +1,13 @@
+import { useEffect } from 'react';
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { setupLazyLoading, prefetchResources } from '@/lib/performance';
 
+// SEO Component
+import SEO from "@/components/layout/SEO";
+
+// Import page components
 import HomePage from "@/pages/Home";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
@@ -31,6 +37,13 @@ import { AuthProvider } from "@/hooks/use-auth";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
 
+// Loading component for future use with code splitting
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center w-full h-full min-h-[50vh]">
+    <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
+
 function Router() {
   return (
     <Switch>
@@ -46,28 +59,28 @@ function Router() {
       <ProtectedRoute path="/payment/:courseId" component={Payment} />
       
       {/* Admin Routes */}
-      <AdminProtectedRoute path="/admin" component={AdminPage} />
-      <AdminProtectedRoute path="/admin/users" component={UsersAdminPage} />
+      <AdminProtectedRoute path="/admin" component={() => <AdminPage />} />
+      <AdminProtectedRoute path="/admin/users" component={() => <UsersAdminPage />} />
       
       {/* Course Management Routes */}
-      <AdminProtectedRoute path="/admin/courses" component={CoursesAdminPage} />
-      <AdminProtectedRoute path="/admin/courses/short" component={ShortCoursesPage} />
-      <AdminProtectedRoute path="/admin/courses/specialist" component={SpecialistProgramsPage} />
-      <AdminProtectedRoute path="/admin/courses/bootcamp" component={BootcampsPage} />
-      <AdminProtectedRoute path="/admin/courses/diploma" component={DiplomaPage} />
-      <AdminProtectedRoute path="/admin/course-builder/:courseId" component={CourseBuilderPage} />
+      <AdminProtectedRoute path="/admin/courses" component={() => <CoursesAdminPage />} />
+      <AdminProtectedRoute path="/admin/courses/short" component={() => <ShortCoursesPage />} />
+      <AdminProtectedRoute path="/admin/courses/specialist" component={() => <SpecialistProgramsPage />} />
+      <AdminProtectedRoute path="/admin/courses/bootcamp" component={() => <BootcampsPage />} />
+      <AdminProtectedRoute path="/admin/courses/diploma" component={() => <DiplomaPage />} />
+      <AdminProtectedRoute path="/admin/course-builder/:courseId" component={() => <CourseBuilderPage />} />
       
       {/* Other Admin Routes */}
-      <AdminProtectedRoute path="/admin/payments" component={PaymentsAdminPage} />
-      <AdminProtectedRoute path="/admin/enrollments" component={EnrollmentsAdminPage} />
+      <AdminProtectedRoute path="/admin/payments" component={() => <PaymentsAdminPage />} />
+      <AdminProtectedRoute path="/admin/enrollments" component={() => <EnrollmentsAdminPage />} />
       <AdminProtectedRoute path="/admin/certificates" component={() => <div>Certificates Admin Page</div>} />
       <AdminProtectedRoute path="/admin/testimonials" component={() => <div>Testimonials Admin Page</div>} />
-      <AdminProtectedRoute path="/admin/products" component={ProductsAdminPage} />
+      <AdminProtectedRoute path="/admin/products" component={() => <ProductsAdminPage />} />
       <AdminProtectedRoute path="/admin/partners" component={() => <div>Partners Admin Page</div>} />
       <AdminProtectedRoute path="/admin/content" component={() => <div>Content Admin Page</div>} />
       <AdminProtectedRoute path="/admin/events" component={() => <div>Events Admin Page</div>} />
       <AdminProtectedRoute path="/admin/settings" component={() => <div>Settings Admin Page</div>} />
-      <AdminProtectedRoute path="/admin/profile" component={ProfilePage} />
+      <AdminProtectedRoute path="/admin/profile" component={() => <ProfilePage />} />
 
       {/* 404 Route */}
       <Route component={NotFound} />
@@ -80,9 +93,51 @@ function App() {
   const [location] = useLocation();
   const isAdminPage = location.startsWith('/admin');
   
+  // Setup performance optimizations
+  useEffect(() => {
+    // Set up lazy loading for images
+    setupLazyLoading();
+    
+    // Prefetch critical resources
+    prefetchResources([
+      '/api/user',
+      '/api/courses',
+    ]);
+    
+    // Add event listener for page visibility changes to optimize background tab behavior
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // When page is not visible, we can reduce polling and updates
+        queryClient.setDefaultOptions({
+          queries: {
+            refetchOnWindowFocus: false,
+            refetchInterval: false,
+          },
+        });
+      } else {
+        // When page becomes visible again, restore normal behavior
+        queryClient.setDefaultOptions({
+          queries: {
+            refetchOnWindowFocus: false,
+            refetchInterval: false,
+          },
+        });
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        {/* Default SEO settings that can be overridden by individual pages */}
+        <SEO />
+        
         <div className="flex flex-col min-h-screen">
           {/* Render header and footer only for non-admin pages */}
           {!isAdminPage && <Header />}

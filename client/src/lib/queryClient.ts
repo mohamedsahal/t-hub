@@ -1,5 +1,10 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+/**
+ * Utility function to handle non-OK responses by throwing an error
+ * @param res Response object from fetch
+ * @throws Error with response status and text
+ */
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -7,11 +12,18 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
+/**
+ * Enhanced API request function with better type safety and performance
+ * @param methodOrUrl HTTP method or URL for GET requests
+ * @param urlOrOptions URL string or options object
+ * @param data Request payload data
+ * @returns Promise with response data
+ */
+export async function apiRequest<T = any>(
   methodOrUrl: string,
   urlOrOptions?: string | object,
   data?: unknown | undefined,
-): Promise<any> {
+): Promise<T> {
   // Handle both signatures:
   // 1. apiRequest(url) - GET request
   // 2. apiRequest(method, url, data) - Other requests
@@ -51,46 +63,82 @@ export async function apiRequest(
     throw new Error(`'${method}' is not a valid HTTP method.`);
   }
   
-  const res = await fetch(url, {
-    method: method.toUpperCase(),
-    headers: options ? { "Content-Type": "application/json" } : {},
-    body: options ? JSON.stringify(options) : undefined,
-    credentials: "include",
-  });
+  // Use AbortController for request timeouts
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+  
+  try {
+    const res = await fetch(url, {
+      method: method.toUpperCase(),
+      headers: options ? { 
+        "Content-Type": "application/json",
+        "Cache-Control": method.toUpperCase() === 'GET' ? 'max-age=3600' : 'no-cache' 
+      } : {
+        "Cache-Control": method.toUpperCase() === 'GET' ? 'max-age=3600' : 'no-cache'
+      },
+      body: options ? JSON.stringify(options) : undefined,
+      credentials: "include",
+      signal: controller.signal
+    });
 
-  await throwIfResNotOk(res);
-  return res.json();
+    await throwIfResNotOk(res);
+    return await res.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
+/**
+ * Query function factory for React Query with improved caching
+ */
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
-    });
+    // Use AbortController for request timeouts
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30-second timeout
+    
+    try {
+      const res = await fetch(queryKey[0] as string, {
+        credentials: "include",
+        headers: {
+          "Cache-Control": "max-age=3600" // Enable HTTP caching for GET requests
+        },
+        signal: controller.signal
+      });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
+      }
+
+      await throwIfResNotOk(res);
+      return await res.json();
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
+/**
+ * Optimized query client with improved caching and performance settings
+ */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes (more reasonable than Infinity)
+      gcTime: 10 * 60 * 1000, // 10 minutes (previously cacheTime in v4)
+      retry: 1, // Allow one retry for network issues
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     },
     mutations: {
-      retry: false,
+      retry: 1, // Allow one retry for network issues
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
     },
   },
 });
