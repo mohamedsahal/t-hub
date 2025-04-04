@@ -7,8 +7,10 @@ import {
   Testimonial, InsertTestimonial, Product, InsertProduct,
   Partner, InsertPartner, Event, InsertEvent, LandingContent, InsertLandingContent,
   Exam, InsertExam, ExamQuestion, InsertExamQuestion, ExamResult, InsertExamResult,
+  Semester, InsertSemester, Cohort, InsertCohort, CohortEnrollment, InsertCohortEnrollment,
   users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
-  products, partners, events, landingContent, exams, examQuestions, examResults
+  products, partners, events, landingContent, exams, examQuestions, examResults,
+  semesters, cohorts, cohortEnrollments
 } from '@shared/schema';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -823,6 +825,177 @@ export class PgStorage implements IStorage {
       return result.length > 0;
     } catch (error) {
       console.error('Error deleting exam result:', error);
+      return false;
+    }
+  }
+  
+  // Exam operations that were missing
+  async getAllExams(): Promise<Exam[]> {
+    return await db.select().from(exams);
+  }
+  
+  async getExamsBySemester(semesterId: number): Promise<Exam[]> {
+    return await db.select()
+      .from(exams)
+      .where(eq(exams.semesterId, semesterId));
+  }
+  
+  // Semester operations
+  async getSemester(id: number): Promise<Semester | undefined> {
+    const result = await db.select().from(semesters).where(eq(semesters.id, id));
+    return result[0];
+  }
+
+  async getSemestersByCourse(courseId: number): Promise<Semester[]> {
+    return await db.select()
+      .from(semesters)
+      .where(eq(semesters.courseId, courseId))
+      .orderBy(asc(semesters.order));
+  }
+
+  async getAllSemesters(): Promise<Semester[]> {
+    return await db.select().from(semesters);
+  }
+
+  async createSemester(semester: InsertSemester): Promise<Semester> {
+    const result = await db.insert(semesters).values({
+      ...semester,
+      startDate: new Date(semester.startDate),
+      endDate: new Date(semester.endDate),
+      isActive: semester.isActive !== undefined ? semester.isActive : true,
+      order: semester.order || 1
+    }).returning();
+    return result[0];
+  }
+
+  async updateSemester(id: number, semesterData: Partial<Semester>): Promise<Semester | undefined> {
+    try {
+      const result = await db.update(semesters)
+        .set(semesterData)
+        .where(eq(semesters.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error updating semester:', error);
+      return undefined;
+    }
+  }
+  
+  // Cohort operations
+  async getCohort(id: number): Promise<Cohort | undefined> {
+    const result = await db.select().from(cohorts).where(eq(cohorts.id, id));
+    return result[0];
+  }
+
+  async getCohortsByCourse(courseId: number): Promise<Cohort[]> {
+    return await db.select()
+      .from(cohorts)
+      .where(eq(cohorts.courseId, courseId));
+  }
+
+  async getAllCohorts(): Promise<Cohort[]> {
+    return await db.select().from(cohorts);
+  }
+
+  async getActiveCohorts(): Promise<Cohort[]> {
+    return await db.select()
+      .from(cohorts)
+      .where(eq(cohorts.status, 'active'));
+  }
+
+  async createCohort(cohort: InsertCohort): Promise<Cohort> {
+    const result = await db.insert(cohorts).values({
+      ...cohort,
+      startDate: new Date(cohort.startDate),
+      endDate: new Date(cohort.endDate),
+      status: cohort.status || 'upcoming',
+      maxStudents: cohort.maxStudents || null,
+      createdAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateCohort(id: number, cohortData: Partial<Cohort>): Promise<Cohort | undefined> {
+    try {
+      const result = await db.update(cohorts)
+        .set(cohortData)
+        .where(eq(cohorts.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error updating cohort:', error);
+      return undefined;
+    }
+  }
+
+  async deleteCohort(id: number): Promise<boolean> {
+    try {
+      // First delete all enrollments for this cohort
+      await db.delete(cohortEnrollments)
+        .where(eq(cohortEnrollments.cohortId, id));
+      
+      // Then delete the cohort
+      const result = await db.delete(cohorts)
+        .where(eq(cohorts.id, id))
+        .returning({ id: cohorts.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting cohort:', error);
+      return false;
+    }
+  }
+  
+  // Cohort Enrollment operations
+  async getCohortEnrollment(id: number): Promise<CohortEnrollment | undefined> {
+    const result = await db.select().from(cohortEnrollments).where(eq(cohortEnrollments.id, id));
+    return result[0];
+  }
+
+  async getCohortEnrollmentsByCohort(cohortId: number): Promise<CohortEnrollment[]> {
+    return await db.select()
+      .from(cohortEnrollments)
+      .where(eq(cohortEnrollments.cohortId, cohortId));
+  }
+
+  async getCohortEnrollmentsByUser(userId: number): Promise<CohortEnrollment[]> {
+    return await db.select()
+      .from(cohortEnrollments)
+      .where(eq(cohortEnrollments.userId, userId));
+  }
+
+  async createCohortEnrollment(enrollment: InsertCohortEnrollment): Promise<CohortEnrollment> {
+    const result = await db.insert(cohortEnrollments).values({
+      ...enrollment,
+      enrollmentDate: new Date(),
+      status: enrollment.status || 'active',
+      studentId: enrollment.studentId || null
+    }).returning();
+    return result[0];
+  }
+
+  async updateCohortEnrollment(id: number, enrollmentData: Partial<CohortEnrollment>): Promise<CohortEnrollment | undefined> {
+    try {
+      const result = await db.update(cohortEnrollments)
+        .set(enrollmentData)
+        .where(eq(cohortEnrollments.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error updating cohort enrollment:', error);
+      return undefined;
+    }
+  }
+
+  async deleteCohortEnrollment(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(cohortEnrollments)
+        .where(eq(cohortEnrollments.id, id))
+        .returning({ id: cohortEnrollments.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting cohort enrollment:', error);
       return false;
     }
   }

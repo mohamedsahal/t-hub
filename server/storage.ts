@@ -15,7 +15,9 @@ import {
   exams, type Exam, type InsertExam,
   examQuestions, type ExamQuestion, type InsertExamQuestion,
   examResults, type ExamResult, type InsertExamResult,
-  semesters, type Semester, type InsertSemester
+  semesters, type Semester, type InsertSemester,
+  cohorts, type Cohort, type InsertCohort,
+  cohortEnrollments, type CohortEnrollment, type InsertCohortEnrollment
 } from "@shared/schema";
 import session from "express-session";
 
@@ -155,6 +157,23 @@ export interface IStorage {
   updateExamResult(id: number, result: Partial<ExamResult>): Promise<ExamResult | undefined>;
   gradeExamResult(id: number, score: number, grade: string, remarks?: string): Promise<ExamResult | undefined>; // Update an exam with grading info
   deleteExamResult(id: number): Promise<boolean>;
+  
+  // Cohort operations
+  getCohort(id: number): Promise<Cohort | undefined>;
+  getCohortsByCourse(courseId: number): Promise<Cohort[]>;
+  getAllCohorts(): Promise<Cohort[]>;
+  getActiveCohorts(): Promise<Cohort[]>;
+  createCohort(cohort: InsertCohort): Promise<Cohort>;
+  updateCohort(id: number, cohort: Partial<Cohort>): Promise<Cohort | undefined>;
+  deleteCohort(id: number): Promise<boolean>;
+  
+  // Cohort Enrollment operations
+  getCohortEnrollment(id: number): Promise<CohortEnrollment | undefined>;
+  getCohortEnrollmentsByCohort(cohortId: number): Promise<CohortEnrollment[]>;
+  getCohortEnrollmentsByUser(userId: number): Promise<CohortEnrollment[]>;
+  createCohortEnrollment(enrollment: InsertCohortEnrollment): Promise<CohortEnrollment>;
+  updateCohortEnrollment(id: number, enrollment: Partial<CohortEnrollment>): Promise<CohortEnrollment | undefined>;
+  deleteCohortEnrollment(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -162,6 +181,9 @@ export class MemStorage implements IStorage {
   private courses: Map<number, Course>;
   private courseModules: Map<number, CourseModule>;
   private courseSections: Map<number, CourseSection>;
+  private exams: Map<number, Exam>;
+  private examQuestions: Map<number, ExamQuestion>;
+  private examResults: Map<number, ExamResult>;
   private payments: Map<number, Payment>;
   private installments: Map<number, Installment>;
   private enrollments: Map<number, Enrollment>;
@@ -169,17 +191,19 @@ export class MemStorage implements IStorage {
   private testimonials: Map<number, Testimonial>;
   private products: Map<number, Product>;
   private partners: Map<number, Partner>;
-  private events: Map<number, Event>;
   private landingContents: Map<number, LandingContent>;
-  private exams: Map<number, Exam>;
-  private examQuestions: Map<number, ExamQuestion>;
-  private examResults: Map<number, ExamResult>;
+  private events: Map<number, Event>;
   private semesters: Map<number, Semester>;
+  private cohorts: Map<number, Cohort>;
+  private cohortEnrollments: Map<number, CohortEnrollment>;
   
   private userIdCounter: number;
   private courseIdCounter: number;
   private courseModuleIdCounter: number;
   private courseSectionIdCounter: number;
+  private examIdCounter: number;
+  private examQuestionIdCounter: number;
+  private examResultIdCounter: number;
   private paymentIdCounter: number;
   private installmentIdCounter: number;
   private enrollmentIdCounter: number;
@@ -187,12 +211,11 @@ export class MemStorage implements IStorage {
   private testimonialIdCounter: number;
   private productIdCounter: number;
   private partnerIdCounter: number;
-  private eventIdCounter: number;
   private landingContentIdCounter: number;
-  private examIdCounter: number;
-  private examQuestionIdCounter: number;
-  private examResultIdCounter: number;
+  private eventIdCounter: number;
   private semesterIdCounter: number;
+  private cohortIdCounter: number;
+  private cohortEnrollmentIdCounter: number;
   
   public sessionStore: session.Store;
 
@@ -214,6 +237,8 @@ export class MemStorage implements IStorage {
     this.examQuestions = new Map();
     this.examResults = new Map();
     this.semesters = new Map();
+    this.cohorts = new Map();
+    this.cohortEnrollments = new Map();
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
@@ -232,6 +257,8 @@ export class MemStorage implements IStorage {
     this.examQuestionIdCounter = 1;
     this.examResultIdCounter = 1;
     this.semesterIdCounter = 1;
+    this.cohortIdCounter = 1;
+    this.cohortEnrollmentIdCounter = 1;
     
     // Create the memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -1063,6 +1090,20 @@ export class MemStorage implements IStorage {
     });
     return exams;
   }
+  
+  async getAllExams(): Promise<Exam[]> {
+    return Array.from(this.exams.values());
+  }
+
+  async getExamsBySemester(semesterId: number): Promise<Exam[]> {
+    const exams: Exam[] = [];
+    this.exams.forEach(exam => {
+      if (exam.semesterId === semesterId) {
+        exams.push(exam);
+      }
+    });
+    return exams;
+  }
 
   async getExamsBySection(sectionId: number): Promise<Exam[]> {
     const exams: Exam[] = [];
@@ -1285,6 +1326,167 @@ export class MemStorage implements IStorage {
   async deleteExamResult(id: number): Promise<boolean> {
     if (!this.examResults.has(id)) return false;
     return this.examResults.delete(id);
+  }
+  
+  // Semester operations
+  async getSemester(id: number): Promise<Semester | undefined> {
+    return this.semesters.get(id);
+  }
+
+  async getSemestersByCourse(courseId: number): Promise<Semester[]> {
+    const semesters: Semester[] = [];
+    this.semesters.forEach(semester => {
+      if (semester.courseId === courseId) {
+        semesters.push(semester);
+      }
+    });
+    return semesters.sort((a, b) => a.order - b.order);
+  }
+
+  async getAllSemesters(): Promise<Semester[]> {
+    return Array.from(this.semesters.values());
+  }
+
+  async createSemester(semester: InsertSemester): Promise<Semester> {
+    const id = this.semesterIdCounter++;
+    const newSemester: Semester = {
+      id,
+      courseId: semester.courseId,
+      name: semester.name,
+      description: semester.description || null,
+      startDate: new Date(semester.startDate),
+      endDate: new Date(semester.endDate),
+      price: semester.price,
+      isActive: semester.isActive !== undefined ? semester.isActive : true,
+      order: semester.order || 1
+    };
+    this.semesters.set(id, newSemester);
+    return newSemester;
+  }
+
+  async updateSemester(id: number, semesterData: Partial<Semester>): Promise<Semester | undefined> {
+    const semester = this.semesters.get(id);
+    if (!semester) return undefined;
+    
+    const updatedSemester = { ...semester, ...semesterData };
+    this.semesters.set(id, updatedSemester);
+    return updatedSemester;
+  }
+  
+  // Cohort operations
+  async getCohort(id: number): Promise<Cohort | undefined> {
+    return this.cohorts.get(id);
+  }
+
+  async getCohortsByCourse(courseId: number): Promise<Cohort[]> {
+    const cohorts: Cohort[] = [];
+    this.cohorts.forEach(cohort => {
+      if (cohort.courseId === courseId) {
+        cohorts.push(cohort);
+      }
+    });
+    return cohorts;
+  }
+
+  async getAllCohorts(): Promise<Cohort[]> {
+    return Array.from(this.cohorts.values());
+  }
+
+  async getActiveCohorts(): Promise<Cohort[]> {
+    return Array.from(this.cohorts.values()).filter(cohort => cohort.status === 'active');
+  }
+
+  async createCohort(cohort: InsertCohort): Promise<Cohort> {
+    const id = this.cohortIdCounter++;
+    const newCohort: Cohort = {
+      id,
+      name: cohort.name,
+      description: cohort.description || null,
+      courseId: cohort.courseId,
+      startDate: new Date(cohort.startDate),
+      endDate: new Date(cohort.endDate),
+      status: cohort.status || 'upcoming',
+      maxStudents: cohort.maxStudents || null,
+      academicYear: cohort.academicYear,
+      createdAt: new Date()
+    };
+    this.cohorts.set(id, newCohort);
+    return newCohort;
+  }
+
+  async updateCohort(id: number, cohortData: Partial<Cohort>): Promise<Cohort | undefined> {
+    const cohort = this.cohorts.get(id);
+    if (!cohort) return undefined;
+    
+    const updatedCohort = { ...cohort, ...cohortData };
+    this.cohorts.set(id, updatedCohort);
+    return updatedCohort;
+  }
+
+  async deleteCohort(id: number): Promise<boolean> {
+    if (!this.cohorts.has(id)) return false;
+    
+    // Also delete associated enrollments
+    this.cohortEnrollments.forEach((enrollment, enrollmentId) => {
+      if (enrollment.cohortId === id) {
+        this.cohortEnrollments.delete(enrollmentId);
+      }
+    });
+    
+    return this.cohorts.delete(id);
+  }
+  
+  // Cohort Enrollment operations
+  async getCohortEnrollment(id: number): Promise<CohortEnrollment | undefined> {
+    return this.cohortEnrollments.get(id);
+  }
+
+  async getCohortEnrollmentsByCohort(cohortId: number): Promise<CohortEnrollment[]> {
+    const enrollments: CohortEnrollment[] = [];
+    this.cohortEnrollments.forEach(enrollment => {
+      if (enrollment.cohortId === cohortId) {
+        enrollments.push(enrollment);
+      }
+    });
+    return enrollments;
+  }
+
+  async getCohortEnrollmentsByUser(userId: number): Promise<CohortEnrollment[]> {
+    const enrollments: CohortEnrollment[] = [];
+    this.cohortEnrollments.forEach(enrollment => {
+      if (enrollment.userId === userId) {
+        enrollments.push(enrollment);
+      }
+    });
+    return enrollments;
+  }
+
+  async createCohortEnrollment(enrollment: InsertCohortEnrollment): Promise<CohortEnrollment> {
+    const id = this.cohortEnrollmentIdCounter++;
+    const newEnrollment: CohortEnrollment = {
+      id,
+      cohortId: enrollment.cohortId,
+      userId: enrollment.userId,
+      enrollmentDate: new Date(),
+      status: enrollment.status || 'active',
+      studentId: enrollment.studentId || null
+    };
+    this.cohortEnrollments.set(id, newEnrollment);
+    return newEnrollment;
+  }
+
+  async updateCohortEnrollment(id: number, enrollmentData: Partial<CohortEnrollment>): Promise<CohortEnrollment | undefined> {
+    const enrollment = this.cohortEnrollments.get(id);
+    if (!enrollment) return undefined;
+    
+    const updatedEnrollment = { ...enrollment, ...enrollmentData };
+    this.cohortEnrollments.set(id, updatedEnrollment);
+    return updatedEnrollment;
+  }
+
+  async deleteCohortEnrollment(id: number): Promise<boolean> {
+    if (!this.cohortEnrollments.has(id)) return false;
+    return this.cohortEnrollments.delete(id);
   }
 }
 

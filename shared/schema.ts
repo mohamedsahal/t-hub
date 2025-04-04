@@ -23,6 +23,7 @@ export const productTypeEnum = pgEnum('product_type', [
   'realestate', 'travel', 'shop', 'custom'
 ]);
 export const contentTypeEnum = pgEnum('content_type', ['hero', 'about', 'feature', 'testimonial', 'event', 'partner', 'contact']);
+export const cohortStatusEnum = pgEnum('cohort_status', ['active', 'completed', 'upcoming']);
 
 // Users table
 export const users = pgTable("users", {
@@ -273,6 +274,30 @@ export const events = pgTable("events", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Cohorts/Batches table
+export const cohorts = pgTable("cohorts", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(), // e.g., "Batch 2025", "Cohort 12"
+  description: text("description"),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  status: cohortStatusEnum("status").default('upcoming').notNull(),
+  maxStudents: integer("max_students"),
+  academicYear: text("academic_year").notNull(), // e.g., "2025-2026"
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Cohort Enrollments table
+export const cohortEnrollments = pgTable("cohort_enrollments", {
+  id: serial("id").primaryKey(),
+  cohortId: integer("cohort_id").references(() => cohorts.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  enrollmentDate: timestamp("enrollment_date").defaultNow().notNull(),
+  status: enrollmentStatusEnum("status").default('active').notNull(),
+  studentId: text("student_id"), // Custom student ID in the format PREFIX-YEAR-NUMBER
+});
+
 // Define insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
@@ -324,6 +349,8 @@ export const insertProductSchema = createInsertSchema(products).omit({ id: true,
 export const insertPartnerSchema = createInsertSchema(partners).omit({ id: true, createdAt: true });
 export const insertLandingContentSchema = createInsertSchema(landingContent).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEventSchema = createInsertSchema(events).omit({ id: true, createdAt: true });
+export const insertCohortSchema = createInsertSchema(cohorts).omit({ id: true, createdAt: true });
+export const insertCohortEnrollmentSchema = createInsertSchema(cohortEnrollments).omit({ id: true, enrollmentDate: true });
 
 // Define types
 export type User = typeof users.$inferSelect;
@@ -376,6 +403,12 @@ export type InsertLandingContent = z.infer<typeof insertLandingContentSchema>;
 
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
+
+export type Cohort = typeof cohorts.$inferSelect;
+export type InsertCohort = z.infer<typeof insertCohortSchema>;
+
+export type CohortEnrollment = typeof cohortEnrollments.$inferSelect;
+export type InsertCohortEnrollment = z.infer<typeof insertCohortEnrollmentSchema>;
 
 // Define relationships between tables
 export const usersRelations = relations(users, ({ many }) => ({
@@ -523,6 +556,26 @@ export const examResultsRelations = relations(examResults, ({ one }) => ({
   }),
   gradedByUser: one(users, {
     fields: [examResults.gradedBy],
+    references: [users.id]
+  })
+}));
+
+// Cohort relations
+export const cohortsRelations = relations(cohorts, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [cohorts.courseId],
+    references: [courses.id]
+  }),
+  enrollments: many(cohortEnrollments)
+}));
+
+export const cohortEnrollmentsRelations = relations(cohortEnrollments, ({ one }) => ({
+  cohort: one(cohorts, {
+    fields: [cohortEnrollments.cohortId],
+    references: [cohorts.id]
+  }),
+  user: one(users, {
+    fields: [cohortEnrollments.userId],
     references: [users.id]
   })
 }));
