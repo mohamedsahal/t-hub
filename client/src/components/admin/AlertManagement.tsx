@@ -55,27 +55,37 @@ import { Badge } from '@/components/ui/badge';
 
 interface Alert {
   id: number;
+  title: string;
+  content: string;
   type: 'discount' | 'registration' | 'celebration' | 'announcement' | 'info';
-  message: string;
   isActive: boolean;
   startDate: string | null;
   endDate: string | null;
   buttonText: string | null;
-  buttonUrl: string | null;
+  buttonLink: string | null; // Note: the schema uses buttonLink, not buttonUrl
   priority: number;
+  bgColor?: string;
+  textColor?: string;
+  iconName?: string;
+  dismissable?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 const alertFormSchema = z.object({
+  title: z.string().min(1, { message: "Title is required" }),
+  content: z.string().min(1, { message: "Content is required" }),
   type: z.enum(['discount', 'registration', 'celebration', 'announcement', 'info']),
-  message: z.string().min(1, { message: "Message is required" }),
   isActive: z.boolean().default(true),
   priority: z.number().min(1).max(10).default(1),
   startDate: z.string().nullable().optional(),
   endDate: z.string().nullable().optional(),
   buttonText: z.string().nullable().optional(),
-  buttonUrl: z.string().nullable().optional(),
+  buttonLink: z.string().nullable().optional(), // Changed from buttonUrl to buttonLink to match schema
+  bgColor: z.string().optional(),
+  textColor: z.string().optional(),
+  iconName: z.string().optional(),
+  dismissable: z.boolean().default(true).optional(),
 });
 
 type AlertFormValues = z.infer<typeof alertFormSchema>;
@@ -97,14 +107,19 @@ const AlertManagement: React.FC = () => {
   const form = useForm<AlertFormValues>({
     resolver: zodResolver(alertFormSchema),
     defaultValues: {
+      title: '',
+      content: '',
       type: 'info',
-      message: '',
       isActive: true,
       priority: 1,
       startDate: null,
       endDate: null,
       buttonText: null,
-      buttonUrl: null,
+      buttonLink: null,
+      bgColor: '#3cb878',
+      textColor: '#ffffff',
+      iconName: 'megaphone',
+      dismissable: true,
     },
   });
 
@@ -204,14 +219,19 @@ const AlertManagement: React.FC = () => {
     
     // Set form values based on the alert being edited
     form.reset({
+      title: alert.title,
+      content: alert.content,
       type: alert.type,
-      message: alert.message,
       isActive: alert.isActive,
       priority: alert.priority,
       startDate: alert.startDate ? new Date(alert.startDate).toISOString().split('T')[0] : null,
       endDate: alert.endDate ? new Date(alert.endDate).toISOString().split('T')[0] : null,
       buttonText: alert.buttonText,
-      buttonUrl: alert.buttonUrl,
+      buttonLink: alert.buttonLink,
+      bgColor: alert.bgColor || '#3cb878',
+      textColor: alert.textColor || '#ffffff',
+      iconName: alert.iconName || 'megaphone',
+      dismissable: alert.dismissable !== undefined ? alert.dismissable : true,
     });
     
     setIsOpen(true);
@@ -271,7 +291,7 @@ const AlertManagement: React.FC = () => {
               Add Alert
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="w-[95vw] max-w-[500px] overflow-y-auto max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>
                 {editingAlert ? 'Edit Alert' : 'Create New Alert'}
@@ -313,13 +333,13 @@ const AlertManagement: React.FC = () => {
                 
                 <FormField
                   control={form.control}
-                  name="message"
+                  name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Message</FormLabel>
+                      <FormLabel>Title</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Enter alert message" 
+                        <Input 
+                          placeholder="Enter alert title" 
                           {...field} 
                         />
                       </FormControl>
@@ -328,7 +348,24 @@ const AlertManagement: React.FC = () => {
                   )}
                 />
                 
-                <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="content"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Content</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Enter alert content" 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="priority"
@@ -374,7 +411,7 @@ const AlertManagement: React.FC = () => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="startDate"
@@ -441,10 +478,10 @@ const AlertManagement: React.FC = () => {
                 
                 <FormField
                   control={form.control}
-                  name="buttonUrl"
+                  name="buttonLink"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Button URL (Optional)</FormLabel>
+                      <FormLabel>Button Link (Optional)</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="https://example.com" 
@@ -516,8 +553,9 @@ const AlertManagement: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="whitespace-pre-line">{alert.message}</p>
-                {alert.buttonText && alert.buttonUrl && (
+                <h4 className="text-md font-medium mb-1">{alert.title}</h4>
+                <p className="whitespace-pre-line text-sm">{alert.content}</p>
+                {alert.buttonText && alert.buttonLink && (
                   <div className="mt-2">
                     <Badge variant="outline" className="bg-gray-100">
                       Button: {alert.buttonText}
