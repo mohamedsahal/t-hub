@@ -141,13 +141,23 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
 
   const { mutate, isPending, isError, error, data } = useMutation({
     mutationFn: async (formData: z.infer<typeof paymentSchema>) => {
+      // Add the provider prefix to phone number for mobile wallets
+      let phone = formData.phone;
+      if (formData.paymentMethod === PaymentMethod.MOBILE_WALLET && 'walletType' in formData) {
+        const providerPrefix = getProviderPrefix(formData.walletType);
+        // Extract just the part after the country code
+        const userPart = phone.replace(/^\+252/, "");
+        // Format with correct prefix
+        phone = `+252${providerPrefix}${userPart}`;
+      }
+      
       const paymentData = {
         amount: price,
         courseId,
         paymentType: formData.paymentType,
         paymentMethod: formData.paymentMethod,
         walletType: formData.paymentMethod === PaymentMethod.MOBILE_WALLET ? formData.walletType : undefined,
-        phone: formData.phone,
+        phone: phone,
         installments: installmentPlan?.amounts.map((amount, index) => ({
           amount,
           dueDate: new Date(Date.now() + (index * 30 * 24 * 60 * 60 * 1000)), // 30 days apart
@@ -483,32 +493,35 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                         <Select 
                           onValueChange={(value) => {
                             field.onChange(value);
-                            // Get the new provider prefix
-                            const newProviderPrefix = getProviderPrefix(value);
-                            const countryCode = "+252";
                             
-                            // Replace the phone number entirely to ensure correct prefix
+                            // When wallet changes, we want to keep the existing phone number digits
+                            // but remove any provider prefix that might be at the beginning
+                            const countryCode = "+252";
                             const currentPhone = form.getValues("phone") || "";
                             
-                            // Extract any digits after the provider prefix (if any)
+                            // Extract only the user's part of the number (without country code or provider prefix)
                             let userDigits = "";
+                            
                             if (currentPhone.startsWith(countryCode)) {
-                              // Remove country code and check if there's a provider prefix
+                              // Remove country code
                               const afterCountryCode = currentPhone.substring(4);
-                              // Try to find any user-entered digits after potential provider prefix
-                              const match = afterCountryCode.match(/^\d{2}(\d+)$/);
-                              if (match && match[1]) {
-                                userDigits = match[1]; // These are the digits after the provider prefix
+                              
+                              // If there's a provider prefix (2 digits), remove it too
+                              if (afterCountryCode.length >= 2) {
+                                // Skip first 2 digits (potential provider prefix)
+                                userDigits = afterCountryCode.substring(2);
                               } else {
-                                userDigits = afterCountryCode; // No provider prefix, use all digits
+                                // No provider prefix yet, keep all digits
+                                userDigits = afterCountryCode;
                               }
                             } else {
-                              // Just remove any non-digits
+                              // No country code, just clean the input
                               userDigits = currentPhone.replace(/\D/g, "");
                             }
                             
-                            // Create new phone number with correct provider prefix
-                            const newPhone = countryCode + newProviderPrefix + userDigits;
+                            // Create new phone number with ONLY country code (no provider prefix)
+                            // The provider prefix will be added during form submission
+                            const newPhone = countryCode + userDigits;
                             form.setValue("phone", newPhone);
                           }} 
                           defaultValue={field.value}
@@ -537,11 +550,21 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                     name="phone"
                     render={({ field }) => {
                       const walletType = form.getValues("walletType");
-                      const providerPrefix = getProviderPrefix(walletType);
                       const countryCode = "+252";
-                      const prefix = countryCode + providerPrefix;
-                      // Use a standard placeholder without provider prefixes
-                      const placeholderExample = "+252xxxxxxxxx";
+                      
+                      // Get a hint based on selected wallet type
+                      const getPlaceholderByWallet = (walletType: string): string => {
+                        switch (walletType) {
+                          case "EVCPlus": // Hormuud
+                            return "61xxxxxx";
+                          case "ZAAD": // Telesom
+                            return "63xxxxxx";
+                          case "SAHAL": // Golis
+                            return "90xxxxxx";
+                          default:
+                            return "xxxxxxx";
+                        }
+                      };
                       
                       return (
                         <FormItem>
@@ -549,7 +572,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                           <FormControl>
                             <div className="relative">
                               <Input 
-                                placeholder="xxxxxxx"
+                                placeholder={getPlaceholderByWallet(walletType)}
                                 {...field} 
                                 className="pl-14" // Padding for country code
                                 onChange={(e) => {
@@ -570,11 +593,11 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                                     value = "+252" + value.substring(4).replace(/^[6|9|8][0|1|3|0]/, "");
                                   }
                                   
-                                  // Get only user digits
+                                  // Get only user digits - don't include provider prefix in field value
                                   const userPart = value.replace(/^\+252\d{0,2}/, "").replace(/\D/g, "");
                                   
-                                  // Format with the current wallet's provider prefix
-                                  const formattedValue = countryCode + providerPrefix + userPart;
+                                  // Store without provider prefix - will be added during submission
+                                  const formattedValue = countryCode + userPart;
                                   
                                   field.onChange(formattedValue);
                                 }}
@@ -584,8 +607,14 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                               </div>
                             </div>
                           </FormControl>
-                          <FormDescription>
-                            Required for payment confirmation
+                          <FormDescription className="flex items-center">
+                            <LockKeyhole className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+                            <span>
+                              {walletType === "EVCPlus" ? "Hormuud" : 
+                               walletType === "ZAAD" ? "Telesom" : 
+                               walletType === "SAHAL" ? "Golis" : ""} 
+                              prefix will be added automatically
+                            </span>
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
