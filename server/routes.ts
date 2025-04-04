@@ -273,7 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Certificate routes
-  app.get("/api/certificates", isAuthenticated, async (req, res) => {
+  app.get("/api/user/certificates", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
       const certificates = await storage.getCertificatesByUser(user.id);
@@ -282,16 +282,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error fetching certificates" });
     }
   });
-
-  app.post("/api/certificates", checkRole(["admin", "teacher"]), async (req, res) => {
+  
+  // Get all users for certificate management, etc.
+  app.get("/api/users", isAuthenticated, async (req, res) => {
     try {
-      const certificateData = insertCertificateSchema.parse(req.body);
-      const certificate = await storage.createCertificate(certificateData);
-      res.status(201).json(certificate);
+      const users = await storage.getAllUsers();
+      // Don't send password hashes
+      const usersWithoutPasswords = users.map(user => {
+        const { password, ...userWithoutPassword } = user;
+        return userWithoutPassword;
+      });
+      res.json(usersWithoutPasswords);
     } catch (error) {
-      handleZodError(error, res);
+      console.error("Failed to fetch users:", error);
+      res.status(500).json({ message: "Error fetching users" });
     }
   });
+
+
 
   app.get("/api/certificates/verify/:id", async (req, res) => {
     try {
@@ -3308,6 +3316,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(enrichedEnrollments);
     } catch (error) {
       res.status(500).json({ message: "Error fetching cohort enrollments" });
+    }
+  });
+  
+  // Get all cohort enrollments (primarily for certificate searches by student ID)
+  app.get("/api/cohort-enrollments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const cohorts = await storage.getAllCohorts();
+      let allEnrollments = [];
+      
+      for (const cohort of cohorts) {
+        const enrollments = await storage.getCohortEnrollmentsByCohort(cohort.id);
+        allEnrollments = [...allEnrollments, ...enrollments];
+      }
+      
+      res.json(allEnrollments);
+    } catch (error) {
+      console.error("Error fetching all cohort enrollments:", error);
+      res.status(500).json({ message: "Error fetching all cohort enrollments" });
     }
   });
 

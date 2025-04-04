@@ -274,6 +274,25 @@ const CertificatesManagement = () => {
     setDeleteConfirmOpen(true);
   };
 
+  // Add interface for cohort enrollments
+  interface CohortEnrollment {
+    id: number;
+    cohortId: number;
+    userId: number;
+    studentId: string;
+    status: string;
+    enrollmentDate: string;
+  }
+  
+  // Query for cohort enrollments to search by student ID
+  const {
+    data: cohortEnrollments = [] as CohortEnrollment[],
+    isLoading: isLoadingCohortEnrollments,
+  } = useQuery<CohortEnrollment[]>({
+    queryKey: ["/api/cohort-enrollments"],
+    retry: 1,
+  });
+  
   // Filter certificates based on search
   const filteredCertificates = certificates.filter((certificate: Certificate) => {
     if (!searchQuery) return true;
@@ -281,11 +300,22 @@ const CertificatesManagement = () => {
     const user = users.find((u: User) => u.id === certificate.userId);
     const course = courses.find((c: Course) => c.id === certificate.courseId);
     
+    // Find any enrollment with this user ID that has a matching student ID
+    const userEnrollments = cohortEnrollments.filter(
+      (enrollment) => enrollment.userId === certificate.userId
+    );
+    
+    const hasMatchingStudentId = userEnrollments.some(
+      (enrollment) => enrollment.studentId && 
+      enrollment.studentId.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
     const searchLower = searchQuery.toLowerCase();
     return (
       certificate.certificateId.toLowerCase().includes(searchLower) ||
       (user && user.name.toLowerCase().includes(searchLower)) ||
-      (course && course.title.toLowerCase().includes(searchLower))
+      (course && course.title.toLowerCase().includes(searchLower)) ||
+      hasMatchingStudentId
     );
   });
 
@@ -468,7 +498,7 @@ const CertificatesManagement = () => {
               <div className="relative w-64">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                 <Input
-                  placeholder="Search certificates..."
+                  placeholder="Search by name, ID, or student ID..."
                   className="pl-8"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
