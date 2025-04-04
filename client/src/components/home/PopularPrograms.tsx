@@ -130,13 +130,15 @@ const ProgramCategories = () => {
         </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-5 max-w-3xl mx-auto mb-8">
-            <TabsTrigger value="all">All Programs</TabsTrigger>
-            <TabsTrigger value="short">Short Courses</TabsTrigger>
-            <TabsTrigger value="specialist">Specialist</TabsTrigger>
-            <TabsTrigger value="bootcamp">Bootcamp</TabsTrigger>
-            <TabsTrigger value="diploma">Diploma</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2 mb-2">
+            <TabsList className="inline-flex min-w-max sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 max-w-3xl mx-auto mb-3">
+              <TabsTrigger value="all" className="px-3 py-1.5 text-sm sm:text-base">All Programs</TabsTrigger>
+              <TabsTrigger value="short" className="px-3 py-1.5 text-sm sm:text-base">Short Courses</TabsTrigger>
+              <TabsTrigger value="specialist" className="px-3 py-1.5 text-sm sm:text-base">Specialist</TabsTrigger>
+              <TabsTrigger value="bootcamp" className="px-3 py-1.5 text-sm sm:text-base">Bootcamp</TabsTrigger>
+              <TabsTrigger value="diploma" className="px-3 py-1.5 text-sm sm:text-base">Diploma</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* All Programs */}
           <TabsContent value="all">
