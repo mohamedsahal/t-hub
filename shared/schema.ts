@@ -172,6 +172,15 @@ export const payments = pgTable("payments", {
   paymentDate: timestamp("payment_date").defaultNow().notNull(),
   numberOfInstallments: integer("number_of_installments").default(1),
   dueDate: timestamp("due_date"),
+  // WaafiPay specific fields
+  paymentGateway: text("payment_gateway").default('waafipay'),
+  paymentMethod: text("payment_method"), // 'card', 'mobile_wallet', etc.
+  walletType: text("wallet_type"), // 'WAAFI', 'ZAAD', 'EVCPlus', 'SAHAL', etc.
+  customerPhone: text("customer_phone"), // Required for mobile wallet payments
+  gatewayResponse: text("gateway_response"), // Raw response from WaafiPay
+  refundStatus: text("refund_status"),
+  redirectUrl: text("redirect_url"), // For HPP integration
+  callbackUrl: text("callback_url"), // For webhook callbacks
 });
 
 // Enum for installment status

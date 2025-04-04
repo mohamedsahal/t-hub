@@ -15,6 +15,7 @@ import Dashboard from "@/pages/Dashboard";
 import CourseDetail from "@/pages/CourseDetail";
 import Courses from "@/pages/Courses";
 import Payment from "@/pages/Payment";
+import PaymentResult from "@/pages/PaymentResult";
 import VerifyCertificate from "@/pages/VerifyCertificate";
 
 // Admin Pages
@@ -66,6 +67,7 @@ function Router() {
       {/* Protected User Routes */}
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/payment/:courseId" component={Payment} />
+      <ProtectedRoute path="/payment-result/:referenceId" component={PaymentResult} />
       
       {/* Admin Routes */}
       <AdminProtectedRoute path="/admin" component={() => <AdminPage />} />

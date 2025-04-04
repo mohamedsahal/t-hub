@@ -726,7 +726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Payment webhook received:", JSON.stringify(webhookData));
       
       // Validate the webhook data
-      if (!webhookData || !webhookData.transactionId) {
+      if (!webhookData || !webhookData.transactionId || !webhookData.referenceId) {
         return res.status(400).json({ success: false, message: "Invalid webhook data" });
       }
       
@@ -734,44 +734,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const success = await waafiPayService.handlePaymentWebhook(webhookData);
       
       if (success) {
-        // Update payment status in database
-        // This would be based on the reference ID or transaction ID
-        if (webhookData.referenceId) {
-          const payments = await storage.getAllPayments();
-          const payment = payments.find(p => p.transactionId === webhookData.referenceId);
+        // Find the payment by reference ID (which we set as the transactionId in our DB)
+        const payments = await storage.getAllPayments();
+        const payment = payments.find(p => p.transactionId === webhookData.referenceId);
+        
+        if (payment) {
+          // Map WaafiPay status to our payment status
+          const paymentStatus = webhookData.status === "COMPLETED" ? "completed" : 
+                               webhookData.status === "FAILED" ? "failed" : "pending";
           
-          if (payment) {
-            await storage.updatePayment(payment.id, {
-              status: webhookData.status === "COMPLETED" ? "completed" : 
-                     webhookData.status === "FAILED" ? "failed" : "pending"
-            });
+          // Update payment record
+          await storage.updatePayment(payment.id, {
+            status: paymentStatus,
+            gatewayResponse: JSON.stringify(webhookData)
+          });
+          
+          // If payment is completed, also create an enrollment and process installments
+          if (paymentStatus === "completed") {
+            // Check if enrollment already exists
+            const existingEnrollments = await storage.getEnrollmentsByUser(payment.userId);
+            const alreadyEnrolled = existingEnrollments.some(e => 
+              e.courseId === payment.courseId && e.status === "active"
+            );
+            
+            if (!alreadyEnrolled) {
+              // Create enrollment record
+              await storage.createEnrollment({
+                userId: payment.userId,
+                courseId: payment.courseId,
+                status: "active"
+              });
+              
+              // Send enrollment confirmation email
+              try {
+                await notificationService.sendEnrollmentConfirmation(payment.userId, payment.courseId);
+              } catch (emailError) {
+                console.error("Failed to send enrollment confirmation email:", emailError);
+              }
+            }
+            
+            // If it's an installment payment, update the first installment as paid
+            if (payment.type === "installment") {
+              const installments = await storage.getInstallmentsByPayment(payment.id);
+              if (installments.length > 0) {
+                // Update the first installment to paid
+                const firstInstallment = installments.find(i => i.installmentNumber === 1);
+                if (firstInstallment) {
+                  await storage.updateInstallment(firstInstallment.id, {
+                    isPaid: true,
+                    status: "completed",
+                    paymentDate: new Date(),
+                    transactionId: webhookData.transactionId
+                  });
+                }
+              }
+            }
           }
+          
+          console.log(`Payment ${payment.id} updated to status: ${paymentStatus}`);
+        } else {
+          console.log(`No payment found for reference ID: ${webhookData.referenceId}`);
         }
         
+        // Always return 200 to WaafiPay to acknowledge receipt
         res.status(200).json({ success: true });
       } else {
-        res.status(400).json({ success: false, message: "Failed to process webhook" });
+        // Still return 200 to acknowledge receipt, but log the failure
+        console.error("Failed to process webhook data");
+        res.status(200).json({ success: false, message: "Webhook received but failed to process" });
       }
     } catch (error) {
       console.error("Error processing webhook:", error);
-      res.status(500).json({ success: false, message: "Internal server error" });
+      // Still return 200 to acknowledge receipt, even on error
+      res.status(200).json({ success: false, message: "Error during webhook processing" });
     }
   });
   
   // Verify payment status endpoint
-  app.get("/api/payment/verify/:transactionId", isAuthenticated, async (req, res) => {
+  app.get("/api/payment/verify/:referenceId", isAuthenticated, async (req, res) => {
     try {
-      const { transactionId } = req.params;
+      const { referenceId } = req.params;
       
-      if (!transactionId) {
-        return res.status(400).json({ success: false, message: "Transaction ID is required" });
+      if (!referenceId) {
+        return res.status(400).json({ success: false, message: "Reference ID is required" });
       }
       
       // First check our local database
       const payments = await storage.getAllPayments();
-      const payment = payments.find(p => p.transactionId === transactionId);
+      const payment = payments.find(p => p.transactionId === referenceId);
       
       if (payment) {
+        // Check if user is authorized to view this payment
+        const user = req.user as any;
+        if (user.role !== 'admin' && payment.userId !== user.id) {
+          return res.status(403).json({ success: false, message: "Unauthorized to view this payment" });
+        }
+        
+        // Get course details
+        const course = await storage.getCourse(payment.courseId);
+        
+        // Check if there's an enrollment
+        const enrollments = await storage.getEnrollmentsByUser(payment.userId);
+        const enrollment = enrollments.find(e => e.courseId === payment.courseId);
+        
+        // Get installments if applicable
+        let installments = [];
+        if (payment.type === 'installment') {
+          installments = await storage.getInstallmentsByPayment(payment.id);
+        }
+        
         return res.status(200).json({
           success: true,
           payment: {
@@ -779,7 +850,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: payment.status,
             amount: payment.amount,
             type: payment.type,
-            paymentDate: payment.paymentDate
+            paymentMethod: payment.paymentMethod,
+            walletType: payment.walletType,
+            paymentDate: payment.paymentDate,
+            courseName: course?.title || 'Unknown Course',
+            enrollmentStatus: enrollment?.status || 'not_enrolled',
+            installments: installments.map(i => ({
+              id: i.id,
+              amount: i.amount,
+              dueDate: i.dueDate,
+              isPaid: i.isPaid,
+              status: i.status
+            }))
           }
         });
       }
@@ -791,17 +873,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await waafiPayService.askForWaafiPayCredentials();
         }
         
-        const verificationResult = await waafiPayService.verifyPayment(transactionId);
+        // In a real integration, this would verify with the WaafiPay API using the reference ID
+        // For now, we'll assume it's not found if it's not in our database
         
-        return res.status(200).json({
-          success: true,
-          externalStatus: verificationResult.status,
-          paymentDetails: verificationResult
+        return res.status(404).json({
+          success: false,
+          message: "Payment not found. It may still be processing."
         });
       } catch (verifyError) {
         return res.status(404).json({
           success: false,
-          message: "Payment not found",
+          message: "Payment not found or payment verification failed",
           error: String(verifyError)
         });
       }
@@ -818,7 +900,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Process payment endpoint
   app.post("/api/payment/process", isAuthenticated, async (req, res) => {
     try {
-      const { amount, courseId, paymentType, installments } = req.body;
+      const { 
+        amount, 
+        courseId, 
+        paymentType, 
+        installments, 
+        paymentMethod, 
+        walletType, 
+        phone 
+      } = req.body;
       
       // Validate payment data
       if (!amount || !courseId || !paymentType) {
@@ -833,63 +923,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Course not found" });
       }
       
-      // Create a reference ID for this transaction
-      const referenceId = `THUB-${Date.now()}-${user.id}`;
-      
       try {
-        // Initialize WaafiPay if needed and process payment
+        // Initialize WaafiPay if needed
         if (!waafiPayService.validateWaafiPayCredentials()) {
           await waafiPayService.askForWaafiPayCredentials();
         }
         
-        const paymentResponse = await waafiPayService.processPayment({
-          amount,
-          description: `Payment for ${course.title}`,
-          customerName: user.name,
-          customerEmail: user.email,
-          customerPhone: user.phone || '',
-          referenceId
+        // Format payment request data
+        const paymentRequestData = waafiPayService.formatPaymentRequest({
+          amount: parseFloat(amount),
+          courseId: parseInt(courseId),
+          userId: user.id,
+          userName: user.name,
+          userEmail: user.email,
+          userPhone: phone || user.phone || '',
+          paymentMethod,
+          walletType
         });
         
-        // Here you would typically redirect the user to the WaafiPay payment page
-        // For this example, we'll create a successful payment record
+        // Process the payment (defaults to using Hosted Payment Page)
+        const useHostedPage = true; // Set to false for direct API integration
+        const paymentResponse = await waafiPayService.processPayment(paymentRequestData, useHostedPage);
         
-        // Create the payment record
+        // Create the payment record in pending status
         const payment = await storage.createPayment({
           userId: user.id,
           courseId: parseInt(courseId),
           amount: parseFloat(amount),
           type: paymentType,
-          status: "completed",
-          transactionId: referenceId
+          status: "pending", // Will be updated when webhook is received
+          transactionId: paymentResponse.referenceId || paymentRequestData.referenceId,
+          paymentMethod: paymentMethod || 'card',
+          walletType: walletType || null,
+          customerPhone: phone || user.phone || '',
+          redirectUrl: paymentResponse.redirectUrl
         });
         
         // If installment payment, create installment records
         if (paymentType === "installment" && installments && installments.length > 0) {
-          for (const installment of installments) {
+          for (let i = 0; i < installments.length; i++) {
+            const installment = installments[i];
             await storage.createInstallment({
               paymentId: payment.id,
               amount: parseFloat(installment.amount),
               dueDate: new Date(installment.dueDate),
-              isPaid: installment.isPaid || false
+              isPaid: i === 0 && installment.isPaid, // Only first installment might be paid now
+              installmentNumber: i + 1,
+              status: i === 0 ? 'pending' : 'pending' // Will be updated after payment
             });
           }
         }
         
-        // Create enrollment record
-        await storage.createEnrollment({
-          userId: user.id,
-          courseId: parseInt(courseId),
-          status: "active"
-        });
-        
-        // Send enrollment confirmation email
-        await notificationService.sendEnrollmentConfirmation(user.id, parseInt(courseId));
-        
+        // Return the payment information with redirect URL for the frontend
         res.status(200).json({
           success: true,
           paymentId: payment.id,
-          message: "Payment processed successfully"
+          redirectUrl: paymentResponse.redirectUrl,
+          referenceId: paymentResponse.referenceId || paymentRequestData.referenceId,
+          message: "Payment initiated successfully"
         });
       } catch (paymentError) {
         console.error("Payment processing error:", paymentError);
