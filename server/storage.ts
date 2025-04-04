@@ -1,6 +1,7 @@
 import {
   users, type User, type InsertUser,
   courses, type Course, type InsertCourse,
+  courseModules, type CourseModule, type InsertCourseModule,
   courseSections, type CourseSection, type InsertCourseSection,
   payments, type Payment, type InsertPayment,
   installments, type Installment, type InsertInstallment,
@@ -33,6 +34,13 @@ export interface IStorage {
   createCourse(course: InsertCourse): Promise<Course>;
   updateCourse(id: number, course: Partial<Course>): Promise<Course | undefined>;
   deleteCourse(id: number): Promise<boolean>;
+  
+  // Course Modules operations
+  getCourseModules(courseId: number): Promise<CourseModule[]>;
+  getCourseModule(id: number): Promise<CourseModule | undefined>;
+  createCourseModule(module: InsertCourseModule): Promise<CourseModule>;
+  updateCourseModule(id: number, module: Partial<CourseModule>): Promise<CourseModule | undefined>;
+  deleteCourseModule(id: number): Promise<boolean>;
   
   // Course Sections operations
   getCourseSections(courseId: number): Promise<CourseSection[]>;
@@ -112,6 +120,7 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private courses: Map<number, Course>;
+  private courseModules: Map<number, CourseModule>;
   private courseSections: Map<number, CourseSection>;
   private payments: Map<number, Payment>;
   private installments: Map<number, Installment>;
@@ -125,6 +134,7 @@ export class MemStorage implements IStorage {
   
   private userIdCounter: number;
   private courseIdCounter: number;
+  private courseModuleIdCounter: number;
   private courseSectionIdCounter: number;
   private paymentIdCounter: number;
   private installmentIdCounter: number;
@@ -141,6 +151,7 @@ export class MemStorage implements IStorage {
   constructor() {
     this.users = new Map();
     this.courses = new Map();
+    this.courseModules = new Map();
     this.courseSections = new Map();
     this.payments = new Map();
     this.installments = new Map();
@@ -154,6 +165,7 @@ export class MemStorage implements IStorage {
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
+    this.courseModuleIdCounter = 1;
     this.courseSectionIdCounter = 1;
     this.paymentIdCounter = 1;
     this.installmentIdCounter = 1;
@@ -207,7 +219,7 @@ export class MemStorage implements IStorage {
     this.createCourse({
       title: "Photoshop for Graphic Designers",
       description: "Learn professional graphic design skills with Adobe Photoshop. Master selection tools, layer management, filters, and design principles.",
-      type: "short_course",
+      type: "short",
       category: "multimedia",
       shortName: "PS",
       duration: 8,
@@ -223,7 +235,7 @@ export class MemStorage implements IStorage {
     this.createCourse({
       title: "QuickBooks Accounting",
       description: "Master QuickBooks for small business accounting. Set up company files, manage customers and vendors, reconcile accounts, and generate reports.",
-      type: "short_course",
+      type: "short",
       category: "accounting",
       shortName: "QB",
       duration: 6,
@@ -474,7 +486,84 @@ export class MemStorage implements IStorage {
   
   async deleteCourse(id: number): Promise<boolean> {
     if (!this.courses.has(id)) return false;
+    
+    // Also delete associated modules
+    this.courseModules.forEach((module, moduleId) => {
+      if (module.courseId === id) {
+        this.courseModules.delete(moduleId);
+      }
+    });
+    
+    // Also delete associated sections
+    this.courseSections.forEach((section, sectionId) => {
+      if (section.courseId === id) {
+        this.courseSections.delete(sectionId);
+      }
+    });
+    
     return this.courses.delete(id);
+  }
+  
+  // Course Modules operations
+  async getCourseModules(courseId: number): Promise<CourseModule[]> {
+    const modules: CourseModule[] = [];
+    this.courseModules.forEach(module => {
+      if (module.courseId === courseId) {
+        modules.push(module);
+      }
+    });
+    return modules.sort((a, b) => a.order - b.order);
+  }
+  
+  async getCourseModule(id: number): Promise<CourseModule | undefined> {
+    return this.courseModules.get(id);
+  }
+  
+  async createCourseModule(module: InsertCourseModule): Promise<CourseModule> {
+    // Find the maximum order value for the course
+    const existingModules = await this.getCourseModules(module.courseId);
+    const maxOrder = existingModules.length > 0 
+      ? Math.max(...existingModules.map(m => m.order)) 
+      : 0;
+    
+    const id = this.courseModuleIdCounter++;
+    const newModule: CourseModule = {
+      id,
+      title: module.title,
+      description: module.description || null,
+      courseId: module.courseId,
+      semesterId: module.semesterId || null,
+      order: module.order || maxOrder + 1,
+      isPublished: module.isPublished !== undefined ? module.isPublished : false,
+      unlockDate: module.unlockDate || null,
+      duration: module.duration || null
+    };
+    
+    this.courseModules.set(id, newModule);
+    return newModule;
+  }
+  
+  async updateCourseModule(id: number, moduleData: Partial<CourseModule>): Promise<CourseModule | undefined> {
+    const module = this.courseModules.get(id);
+    if (!module) return undefined;
+    
+    const updatedModule = { ...module, ...moduleData };
+    this.courseModules.set(id, updatedModule);
+    return updatedModule;
+  }
+  
+  async deleteCourseModule(id: number): Promise<boolean> {
+    if (!this.courseModules.has(id)) return false;
+    
+    // Also delete associated sections
+    const moduleId = id;
+    this.courseSections.forEach((section, sectionId) => {
+      if (section.moduleId === moduleId) {
+        this.courseSections.delete(sectionId);
+      }
+    });
+    
+    return this.courseModules.delete(id);
   }
   
   // Course Sections operations
@@ -506,13 +595,15 @@ export class MemStorage implements IStorage {
       title: section.title,
       description: section.description || null,
       courseId: section.courseId,
+      moduleId: section.moduleId || null,
       semesterId: section.semesterId || null,
       duration: section.duration || null,
       unlockDate: section.unlockDate || null,
       order: section.order || maxOrder + 1,
       videoUrl: section.videoUrl || null,
       contentUrl: section.contentUrl || null,
-      isPublished: section.isPublished !== undefined ? section.isPublished : true
+      isPublished: section.isPublished !== undefined ? section.isPublished : true,
+      type: section.type || 'lesson'
     };
     
     this.courseSections.set(id, newSection);

@@ -71,10 +71,24 @@ export const semesters = pgTable("semesters", {
   order: integer("order").default(1).notNull(), // Sequence within the course
 });
 
-// Course Sections (parts of a course, chapters)
+// Course Modules (groups of sections)
+export const courseModules = pgTable("course_modules", {
+  id: serial("id").primaryKey(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  semesterId: integer("semester_id").references(() => semesters.id), // Optional, for diploma courses
+  title: varchar("title").notNull(),
+  description: text("description"),
+  order: integer("sort_order").default(1).notNull(),
+  duration: integer("duration"), // Duration in hours
+  unlockDate: timestamp("unlock_date"), // For dripping content
+  isPublished: boolean("is_published").default(true),
+});
+
+// Course Sections (parts of a module, can be lessons, quizzes, or exams)
 export const courseSections = pgTable("course_sections", {
   id: serial("id").primaryKey(),
   courseId: integer("course_id").references(() => courses.id).notNull(),
+  moduleId: integer("module_id").references(() => courseModules.id), // Reference to parent module
   semesterId: integer("semester_id").references(() => semesters.id), // Optional, for diploma courses
   title: varchar("title").notNull(),
   description: text("description"),
@@ -249,6 +263,7 @@ export const events = pgTable("events", {
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
 export const insertSemesterSchema = createInsertSchema(semesters).omit({ id: true });
+export const insertCourseModuleSchema = createInsertSchema(courseModules).omit({ id: true });
 export const insertCourseSectionSchema = createInsertSchema(courseSections).omit({ id: true });
 export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true });
 export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({ id: true });
@@ -272,6 +287,9 @@ export type InsertCourse = z.infer<typeof insertCourseSchema>;
 
 export type Semester = typeof semesters.$inferSelect;
 export type InsertSemester = z.infer<typeof insertSemesterSchema>;
+
+export type CourseModule = typeof courseModules.$inferSelect;
+export type InsertCourseModule = z.infer<typeof insertCourseModuleSchema>;
 
 export type CourseSection = typeof courseSections.$inferSelect;
 export type InsertCourseSection = z.infer<typeof insertCourseSectionSchema>;
@@ -332,6 +350,7 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
   certificates: many(certificates),
   testimonials: many(testimonials),
   semesters: many(semesters),
+  modules: many(courseModules),
   sections: many(courseSections),
   exams: many(exams),
 }));
@@ -398,10 +417,22 @@ export const semestersRelations = relations(semesters, ({ one, many }) => ({
   exams: many(exams)
 }));
 
+export const courseModulesRelations = relations(courseModules, ({ one, many }) => ({
+  course: one(courses, {
+    fields: [courseModules.courseId],
+    references: [courses.id]
+  }),
+  sections: many(courseSections),
+}));
+
 export const courseSectionsRelations = relations(courseSections, ({ one, many }) => ({
   course: one(courses, {
     fields: [courseSections.courseId],
     references: [courses.id]
+  }),
+  module: one(courseModules, {
+    fields: [courseSections.moduleId],
+    references: [courseModules.id]
   }),
   semester: one(semesters, {
     fields: [courseSections.semesterId],

@@ -2,11 +2,11 @@ import { db } from './db';
 import { eq, and, desc, asc, gte } from 'drizzle-orm';
 import { 
   User, InsertUser, Course, InsertCourse, CourseSection, InsertCourseSection,
-  Payment, InsertPayment, Installment, InsertInstallment, 
+  CourseModule, InsertCourseModule, Payment, InsertPayment, Installment, InsertInstallment, 
   Enrollment, InsertEnrollment, Certificate, InsertCertificate, 
   Testimonial, InsertTestimonial, Product, InsertProduct,
   Partner, InsertPartner, Event, InsertEvent, LandingContent, InsertLandingContent,
-  users, courses, courseSections, payments, installments, enrollments, certificates, testimonials,
+  users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
   products, partners, events, landingContent
 } from '@shared/schema';
 import { IStorage } from './storage';
@@ -521,12 +521,91 @@ export class PgStorage implements IStorage {
     }
   }
 
+  async getCourseModules(courseId: number): Promise<CourseModule[]> {
+    try {
+      return await db.select().from(courseModules)
+        .where(eq(courseModules.courseId, courseId))
+        .orderBy(courseModules.order);
+    } catch (error) {
+      console.error("Error fetching course modules:", error);
+      return [];
+    }
+  }
+
+  async getCourseModule(id: number): Promise<CourseModule | undefined> {
+    try {
+      const result = await db.select().from(courseModules)
+        .where(eq(courseModules.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error fetching course module:", error);
+      return undefined;
+    }
+  }
+
+  async createCourseModule(module: InsertCourseModule): Promise<CourseModule> {
+    try {
+      // Find the maximum order value for the course
+      const existingModules = await this.getCourseModules(module.courseId);
+      const maxOrder = existingModules.length > 0 
+        ? Math.max(...existingModules.map(m => m.order)) 
+        : 0;
+      
+      // Set the order to be one more than the current maximum
+      const moduleToCreate = {
+        ...module,
+        order: module.order || maxOrder + 1,
+      };
+      
+      const result = await db.insert(courseModules).values(moduleToCreate).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating course module:", error);
+      throw error;
+    }
+  }
+
+  async updateCourseModule(id: number, moduleData: Partial<CourseModule>): Promise<CourseModule | undefined> {
+    try {
+      const result = await db.update(courseModules)
+        .set(moduleData)
+        .where(eq(courseModules.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error updating course module:", error);
+      return undefined;
+    }
+  }
+
+  async deleteCourseModule(id: number): Promise<boolean> {
+    try {
+      // First, delete all sections associated with this module
+      await db.delete(courseSections)
+        .where(eq(courseSections.moduleId, id));
+      
+      // Then delete the module itself
+      const result = await db.delete(courseModules)
+        .where(eq(courseModules.id, id))
+        .returning({ id: courseModules.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting course module:", error);
+      return false;
+    }
+  }
+
   // Implement deleteCourse that was used in routes but not defined
   async deleteCourse(id: number): Promise<boolean> {
     try {
       // First, delete all sections associated with this course
       await db.delete(courseSections)
         .where(eq(courseSections.courseId, id));
+      
+      // Delete all modules associated with this course
+      await db.delete(courseModules)
+        .where(eq(courseModules.courseId, id));
       
       // Then delete the course itself
       const result = await db.delete(courses)

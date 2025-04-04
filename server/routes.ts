@@ -5,7 +5,8 @@ import {
   insertUserSchema, insertCourseSchema, insertPaymentSchema, 
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
   insertTestimonialSchema, insertProductSchema, insertPartnerSchema,
-  insertEventSchema, insertLandingContentSchema, insertCourseSectionSchema
+  insertEventSchema, insertLandingContentSchema, insertCourseSectionSchema,
+  insertCourseModuleSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -838,7 +839,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userSchema = insertUserSchema.extend({
         password: z.string().min(6, "Password must be at least 6 characters"),
-        preferredCourse: z.enum(["short_course", "group_course", "bootcamp", "diploma"]).optional()
+        preferredCourse: z.enum(["short", "specialist", "bootcamp", "diploma"]).optional()
       });
       
       const result = userSchema.safeParse(req.body);
@@ -885,7 +886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: z.string().optional(),
         email: z.string().email().optional(),
         role: z.enum(["admin", "teacher", "student"]).optional(),
-        preferredCourse: z.enum(["short_course", "group_course", "bootcamp", "diploma"]).optional(),
+        preferredCourse: z.enum(["short", "specialist", "bootcamp", "diploma"]).optional(),
         password: z.string().min(6).optional(),
         phone: z.string().optional(),
       });
@@ -1578,6 +1579,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       res.status(500).json({ message: "Error fetching dashboard data" });
+    }
+  });
+
+  // Course module routes for the course builder
+  app.get("/api/admin/courses/:courseId/modules", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const course = await storage.getCourse(courseId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if user is authorized to view this course's modules
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to view this course's modules" });
+      }
+      
+      // Get modules for the course
+      const modules = await storage.getCourseModules(courseId);
+      res.json(modules);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching course modules" });
+    }
+  });
+
+  app.post("/api/admin/courses/:courseId/modules", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const course = await storage.getCourse(courseId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if user is authorized to add modules to this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to add modules to this course" });
+      }
+      
+      // Create the module data with course ID
+      const moduleData = insertCourseModuleSchema.parse({
+        ...req.body,
+        courseId
+      });
+      
+      // Create the module
+      const module = await storage.createCourseModule(moduleData);
+      res.status(201).json(module);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/courses/:courseId/modules/:moduleId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const moduleId = parseInt(req.params.moduleId);
+      
+      // Get the course and module
+      const course = await storage.getCourse(courseId);
+      const module = await storage.getCourseModule(moduleId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      if (!module || module.courseId !== courseId) {
+        return res.status(404).json({ message: "Module not found in this course" });
+      }
+      
+      // Check if user is authorized to update modules in this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to update modules in this course" });
+      }
+      
+      // Update the module
+      const updatedModule = await storage.updateCourseModule(moduleId, req.body);
+      if (!updatedModule) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+      
+      res.json(updatedModule);
+    } catch (error) {
+      res.status(500).json({ message: "Error updating course module" });
+    }
+  });
+
+  app.delete("/api/admin/courses/:courseId/modules/:moduleId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const moduleId = parseInt(req.params.moduleId);
+      
+      // Get the course and module
+      const course = await storage.getCourse(courseId);
+      const module = await storage.getCourseModule(moduleId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      if (!module || module.courseId !== courseId) {
+        return res.status(404).json({ message: "Module not found in this course" });
+      }
+      
+      // Check if user is authorized to delete modules in this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to delete modules in this course" });
+      }
+      
+      // Delete the module (which will also delete all associated sections)
+      const success = await storage.deleteCourseModule(moduleId);
+      if (!success) {
+        return res.status(404).json({ message: "Module not found" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting course module" });
+    }
+  });
+
+  // Reorder modules
+  app.patch("/api/admin/courses/:courseId/modules/reorder", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = parseInt(req.params.courseId);
+      const course = await storage.getCourse(courseId);
+      
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if user is authorized to reorder modules in this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to reorder modules in this course" });
+      }
+      
+      // Validate the request body
+      if (!req.body.modules || !Array.isArray(req.body.modules)) {
+        return res.status(400).json({ message: "Invalid request body - modules array required" });
+      }
+      
+      // Update each module's order
+      const modules = req.body.modules;
+      for (const module of modules) {
+        await storage.updateCourseModule(module.id, { order: module.order });
+      }
+      
+      // Return the updated modules
+      const updatedModules = await storage.getCourseModules(courseId);
+      res.json(updatedModules);
+    } catch (error) {
+      res.status(500).json({ message: "Error reordering course modules" });
     }
   });
 
