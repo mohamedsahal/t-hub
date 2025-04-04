@@ -267,6 +267,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 href="/admin/testimonials" 
                 isActive={location === "/admin/testimonials"} 
               />
+              <SidebarItem 
+                icon={<FileText size={18} />} 
+                label="Quiz Management" 
+                href="/admin/quizzes" 
+                isActive={location === "/admin/quizzes"} 
+              />
             </SidebarCategory>
             
             <SidebarCategory label="PRODUCTS">

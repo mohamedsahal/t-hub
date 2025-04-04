@@ -31,6 +31,7 @@ import EnrollmentsAdminPage from "@/pages/admin/Enrollments";
 import PaymentsAdminPage from "@/pages/admin/Payments";
 import ProductsAdminPage from "@/pages/admin/Products";
 import ProfilePage from "@/pages/admin/Profile";
+import QuizManagementPage from "@/pages/admin/QuizManagementPage";
 
 import { ProtectedRoute } from "./lib/protected-route";
 import { AdminProtectedRoute } from "./lib/admin-protected-route";
@@ -77,6 +78,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/enrollments" component={() => <EnrollmentsAdminPage />} />
       <AdminProtectedRoute path="/admin/certificates" component={() => <div>Certificates Admin Page</div>} />
       <AdminProtectedRoute path="/admin/testimonials" component={() => <div>Testimonials Admin Page</div>} />
+      <AdminProtectedRoute path="/admin/quizzes" component={() => <QuizManagementPage />} />
       <AdminProtectedRoute path="/admin/products" component={() => <ProductsAdminPage />} />
       <AdminProtectedRoute path="/admin/partners" component={() => <div>Partners Admin Page</div>} />
       <AdminProtectedRoute path="/admin/content" component={() => <div>Content Admin Page</div>} />
