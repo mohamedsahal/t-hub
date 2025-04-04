@@ -246,13 +246,14 @@ export function QuizManagement() {
     defaultValues: {
       title: '',
       description: '',
-      courseId: undefined, // Changed from 0 to undefined to require selection
+      courseId: courses && courses.length > 0 ? courses[0].id : undefined,
       type: 'quiz' as const,
       duration: 30,
       totalPoints: 100,
       passingPoints: 60,
       isActive: true
-    }
+    },
+    mode: 'onChange' // Add immediate validation
   });
 
   // Form for questions
@@ -269,7 +270,7 @@ export function QuizManagement() {
     }
   });
 
-  // Reset and set form values when selectedExam changes
+  // Reset and set form values when selectedExam changes or courses load
   useEffect(() => {
     if (selectedExam) {
       examForm.reset({
@@ -286,7 +287,7 @@ export function QuizManagement() {
       examForm.reset({
         title: '',
         description: '',
-        courseId: undefined, // Changed from 0 to undefined to require selection
+        courseId: courses && courses.length > 0 ? courses[0].id : undefined,
         type: activeTab === 'quizzes' ? 'quiz' : 'midterm',
         duration: 30,
         totalPoints: 100,
@@ -294,7 +295,7 @@ export function QuizManagement() {
         isActive: true
       });
     }
-  }, [selectedExam, activeTab]);
+  }, [selectedExam, activeTab, courses]);
 
   // Reset and set form values when selectedQuestion changes
   useEffect(() => {
@@ -791,8 +792,12 @@ export function QuizManagement() {
                   <FormItem>
                     <FormLabel>Course <span className="text-red-500">*</span></FormLabel>
                     <Select 
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      value={field.value?.toString()}
+                      onValueChange={(value) => {
+                        console.log('Selected course value:', value);
+                        field.onChange(parseInt(value));
+                      }}
+                      value={field.value ? field.value.toString() : undefined}
+                      defaultValue={field.value ? field.value.toString() : undefined}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -803,14 +808,19 @@ export function QuizManagement() {
                         {courses.length === 0 ? (
                           <SelectItem value="" disabled>No courses available</SelectItem>
                         ) : (
-                          courses.map((course: Course) => (
-                            <SelectItem key={course.id} value={course.id.toString()}>
-                              {course.title}
-                            </SelectItem>
-                          ))
+                          <>
+                            {courses.map((course: Course) => (
+                              <SelectItem key={course.id} value={course.id.toString()}>
+                                {course.title}
+                              </SelectItem>
+                            ))}
+                          </>
                         )}
                       </SelectContent>
                     </Select>
+                    <FormDescription>
+                      You must select a course for this exam
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
