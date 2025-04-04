@@ -1,147 +1,355 @@
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, BookOpen, Calendar, Clock, BarChart3, Award } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const PopularPrograms = () => {
-  const multimediaFeatures = [
-    "Master graphic design with Adobe Photoshop and Illustrator",
-    "Create and edit professional videos with Premiere Pro",
-    "Professional photo retouching and enhancement techniques",
-    "Mobile video editing with Capcut for social media content",
-  ];
+// Interface for course type
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  category: string;
+  price: number;
+  duration: number;
+  imageUrl?: string;
+}
 
-  const diplomaFeatures = [
-    "Strong foundation in programming and computer science theory",
-    "Database management and system analysis",
-    "Web and mobile application development",
-    "Recognized qualification for university admission",
-  ];
+// Course card component
+const CourseCard = ({ course }: { course: Course }) => {
+  // Determine badge text and color based on course type
+  let badgeText = "";
+  let badgeClass = "bg-green-100 text-green-800";
+
+  switch (course.type) {
+    case "short":
+      badgeText = "Short Course";
+      badgeClass = "bg-blue-100 text-blue-800";
+      break;
+    case "specialist":
+      badgeText = "Specialist";
+      badgeClass = "bg-purple-100 text-purple-800";
+      break;
+    case "bootcamp":
+      badgeText = "Bootcamp";
+      badgeClass = "bg-amber-100 text-amber-800";
+      break;
+    case "diploma":
+      badgeText = "Diploma";
+      badgeClass = "bg-green-100 text-green-800";
+      break;
+  }
+
+  // Determine icon based on course type
+  const CourseIcon = () => {
+    switch (course.type) {
+      case "short":
+        return <Clock className="h-5 w-5 mr-2" />;
+      case "specialist":
+        return <BarChart3 className="h-5 w-5 mr-2" />;
+      case "bootcamp":
+        return <BookOpen className="h-5 w-5 mr-2" />;
+      case "diploma":
+        return <Award className="h-5 w-5 mr-2" />;
+      default:
+        return <BookOpen className="h-5 w-5 mr-2" />;
+    }
+  };
+
+  return (
+    <Card className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div className="relative h-48 bg-gray-200">
+        {course.imageUrl ? (
+          <img
+            src={course.imageUrl}
+            alt={course.title}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CourseIcon />
+            <span className="text-lg font-medium text-gray-600">{course.category}</span>
+          </div>
+        )}
+        <div className="absolute top-3 right-3">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${badgeClass}`}>
+            {badgeText}
+          </span>
+        </div>
+      </div>
+      <CardContent className="p-6">
+        <h3 className="text-xl font-bold mb-2 text-gray-900">{course.title}</h3>
+        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{course.description || "Learn skills that are in high demand in the industry."}</p>
+        
+        <div className="flex items-center text-gray-500 text-sm mb-4">
+          <Calendar className="h-4 w-4 mr-1" />
+          <span>{course.duration} weeks</span>
+          <span className="mx-2">•</span>
+          <span className="font-semibold text-primary">{formatCurrency(course.price)}</span>
+        </div>
+        
+        <Link href={`/courses/${course.id}`}>
+          <Button className="w-full bg-gradient-to-r from-[#3cb878] to-[#0080c9] hover:from-[#2da768] hover:to-[#0070b9]">
+            View Details
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
+};
+
+const ProgramCategories = () => {
+  const [activeTab, setActiveTab] = useState("all");
+  
+  // Fetch courses data
+  const { data: courses = [], isLoading } = useQuery<Course[]>({
+    queryKey: ["/api/courses"],
+  });
+
+  // Organize courses by type
+  const shortCourses = courses.filter((course) => course.type === "short");
+  const specialistCourses = courses.filter((course) => course.type === "specialist");
+  const bootcampCourses = courses.filter((course) => course.type === "bootcamp");
+  const diplomaCourses = courses.filter((course) => course.type === "diploma");
 
   return (
     <section className="py-16 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold font-inter text-gray-900">
-            Our Popular Programs
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Explore Our Programs
           </h2>
           <p className="mt-4 text-lg text-gray-600 max-w-3xl mx-auto">
-            Explore our most demanded courses and diploma programs designed to
-            meet industry needs.
+            Choose from a variety of educational pathways designed to meet your career goals and learning needs
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Multimedia Group Course */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-            <div className="p-8">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-2xl font-bold text-gray-900 font-inter">
-                  Multimedia Group Course
-                </h3>
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-200 text-black">
-                  Best Value
-                </span>
-              </div>
-              <p className="text-gray-600 mb-6">
-                Complete package including Adobe Photoshop, Illustrator,
-                Premiere Pro, Capcut, and Photoshop Retouching at a discounted
-                price.
-              </p>
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-5 max-w-3xl mx-auto mb-8">
+            <TabsTrigger value="all">All Programs</TabsTrigger>
+            <TabsTrigger value="short">Short Courses</TabsTrigger>
+            <TabsTrigger value="specialist">Specialist</TabsTrigger>
+            <TabsTrigger value="bootcamp">Bootcamp</TabsTrigger>
+            <TabsTrigger value="diploma">Diploma</TabsTrigger>
+          </TabsList>
 
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                  What you'll learn:
-                </h4>
-                <ul className="space-y-2">
-                  {multimediaFeatures.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <CheckCircle className="text-success mt-1 mr-2 h-5 w-5" />
-                      <span>{feature}</span>
-                    </li>
+          {/* All Programs */}
+          <TabsContent value="all">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(6)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <CardContent className="p-6">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-full mb-4" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
+                      <Skeleton className="h-10 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {courses.slice(0, 6).map((course) => (
+                    <CourseCard key={course.id} course={course} />
                   ))}
-                </ul>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-gray-200 pt-6">
-                <div>
-                  <p className="text-gray-500 text-sm line-through">
-                    $500 separately
-                  </p>
-                  <div className="flex items-center">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {formatCurrency(380)}
-                    </span>
-                    <span className="ml-2 text-sm text-success font-medium">
-                      Save 24%
-                    </span>
-                  </div>
                 </div>
-                <Link href="/courses?type=multimedia">
-                  <a className="inline-flex items-center px-5 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-[#3cb878] to-[#0080c9] hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent">
-                    Enroll Now
-                  </a>
-                </Link>
-              </div>
-            </div>
-          </div>
+                
+                {courses.length > 6 && (
+                  <div className="text-center mt-10">
+                    <Link href="/courses">
+                      <Button variant="outline" size="lg">
+                        View All Programs
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
 
-          {/* Diploma in Computer Science */}
-          <div className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-            <div className="p-8">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="text-2xl font-bold text-gray-900 font-inter">
-                  Diploma in Computer Science
-                </h3>
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-200 text-black">
-                  University Pathway
-                </span>
+          {/* Short Courses */}
+          <TabsContent value="short">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <CardContent className="p-6">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-full mb-4" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
+                      <Skeleton className="h-10 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              <p className="text-gray-600 mb-6">
-                Comprehensive diploma program that provides a pathway to
-                bachelor's degrees at partner universities including Bosaso,
-                East Africa, and Frontier University.
-              </p>
-
-              <div className="mb-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                  Program highlights:
-                </h4>
-                <ul className="space-y-2">
-                  {diplomaFeatures.map((feature, index) => (
-                    <li key={index} className="flex items-start">
-                      <CheckCircle className="text-success mt-1 mr-2 h-5 w-5" />
-                      <span>{feature}</span>
-                    </li>
+            ) : shortCourses.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {shortCourses.map((course) => (
+                    <CourseCard key={course.id} course={course} />
                   ))}
-                </ul>
-              </div>
-
-              <div className="flex items-center justify-between border-t border-gray-200 pt-6">
-                <div>
-                  <div className="flex items-center">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {formatCurrency(1800)}
-                    </span>
-                    <span className="ml-2 text-sm text-gray-500 font-medium">
-                      / 18 months
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    Installment plans available
-                  </p>
                 </div>
-                <Link href="/courses?type=diploma">
-                  <a className="inline-flex items-center px-5 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-[#3cb878] to-[#0080c9] hover:bg-amber-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent">
-                    Learn More
-                  </a>
-                </Link>
+                
+                {shortCourses.length > 3 && (
+                  <div className="text-center mt-10">
+                    <Link href="/courses?type=short">
+                      <Button variant="outline" size="lg">
+                        View All Short Courses
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <Clock className="h-12 w-12 text-gray-400 mx-auto" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No Short Courses Available</h3>
+                <p className="mt-2 text-gray-500">Check back soon for new short courses.</p>
               </div>
-            </div>
-          </div>
-        </div>
+            )}
+          </TabsContent>
+
+          {/* Specialist Programs */}
+          <TabsContent value="specialist">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <CardContent className="p-6">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-full mb-4" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
+                      <Skeleton className="h-10 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : specialistCourses.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {specialistCourses.map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+                
+                {specialistCourses.length > 3 && (
+                  <div className="text-center mt-10">
+                    <Link href="/courses?type=specialist">
+                      <Button variant="outline" size="lg">
+                        View All Specialist Programs
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <BarChart3 className="h-12 w-12 text-gray-400 mx-auto" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No Specialist Programs Available</h3>
+                <p className="mt-2 text-gray-500">Check back soon for new specialist programs.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Bootcamp Programs */}
+          <TabsContent value="bootcamp">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <CardContent className="p-6">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-full mb-4" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
+                      <Skeleton className="h-10 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : bootcampCourses.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {bootcampCourses.map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+                
+                {bootcampCourses.length > 3 && (
+                  <div className="text-center mt-10">
+                    <Link href="/courses?type=bootcamp">
+                      <Button variant="outline" size="lg">
+                        View All Bootcamp Programs
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <BookOpen className="h-12 w-12 text-gray-400 mx-auto" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No Bootcamp Programs Available</h3>
+                <p className="mt-2 text-gray-500">Check back soon for new bootcamp programs.</p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Diploma Programs */}
+          <TabsContent value="diploma">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {[...Array(3)].map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <Skeleton className="h-48 w-full" />
+                    <CardContent className="p-6">
+                      <Skeleton className="h-6 w-3/4 mb-2" />
+                      <Skeleton className="h-4 w-full mb-4" />
+                      <Skeleton className="h-4 w-1/2 mb-4" />
+                      <Skeleton className="h-10 w-full" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : diplomaCourses.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {diplomaCourses.map((course) => (
+                    <CourseCard key={course.id} course={course} />
+                  ))}
+                </div>
+                
+                {diplomaCourses.length > 3 && (
+                  <div className="text-center mt-10">
+                    <Link href="/courses?type=diploma">
+                      <Button variant="outline" size="lg">
+                        View All Diploma Programs
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <Award className="h-12 w-12 text-gray-400 mx-auto" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900">No Diploma Programs Available</h3>
+                <p className="mt-2 text-gray-500">Check back soon for new diploma programs.</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </section>
   );
 };
 
-export default PopularPrograms;
+export default ProgramCategories;
