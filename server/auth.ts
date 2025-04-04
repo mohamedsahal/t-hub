@@ -34,6 +34,11 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    cookie: {
+      // Default to session cookie (no maxAge)
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+    }
   };
 
   app.set("trust proxy", 1);
@@ -89,6 +94,15 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
     const user = req.user as SelectUser;
+    
+    // If rememberMe is true, set a longer session
+    if (req.body.rememberMe) {
+      // Set cookie to expire in 30 days
+      if (req.session.cookie) {
+        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+      }
+    }
+    
     res.status(200).json({
       id: user.id,
       name: user.name,

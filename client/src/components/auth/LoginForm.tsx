@@ -43,7 +43,8 @@ const LoginForm = () => {
     try {
       const user = await loginMutation.mutateAsync({
         email: data.email,
-        password: data.password
+        password: data.password,
+        rememberMe: data.rememberMe
       });
       
       // Redirect based on user role

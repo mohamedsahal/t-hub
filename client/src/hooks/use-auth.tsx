@@ -20,6 +20,7 @@ type AuthContextType = {
 type LoginData = {
   email: string;
   password: string;
+  rememberMe?: boolean;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
