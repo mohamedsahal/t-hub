@@ -50,7 +50,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formattedError = fromZodError(err);
       return res.status(400).json({ message: formattedError.message });
     }
-    return res.status(500).json({ message: "Internal server error" });
+    console.error("Server error:", err);
+    return res.status(500).json({ message: "Internal server error", error: err instanceof Error ? err.message : String(err) });
   };
 
   // Course routes
@@ -2430,7 +2431,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.post("/api/admin/exams", checkRole(["admin", "teacher"]), async (req, res) => {
     try {
+      console.log("Received exam creation request:", JSON.stringify(req.body, null, 2));
       const examData = insertExamSchema.parse(req.body);
+      console.log("Parsed exam data:", JSON.stringify(examData, null, 2));
       
       // Verify the course exists
       const course = await storage.getCourse(examData.courseId);
@@ -2457,9 +2460,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const exam = await storage.createExam(examData);
-      res.status(201).json(exam);
+      try {
+        const exam = await storage.createExam(examData);
+        console.log("Exam created successfully:", JSON.stringify(exam, null, 2));
+        res.status(201).json(exam);
+      } catch (storageError) {
+        console.error("Error in createExam:", storageError);
+        throw storageError;
+      }
     } catch (error) {
+      console.error("Error creating exam:", error);
       handleZodError(error, res);
     }
   });
