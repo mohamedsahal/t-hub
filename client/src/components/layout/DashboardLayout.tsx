@@ -17,7 +17,8 @@ import {
   Menu,
   X,
   User,
-  LogOut
+  LogOut,
+  ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ThubLogo from "@/components/ui/ThubLogo";
@@ -278,6 +279,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 label="Quiz Management" 
                 href="/admin/quizzes" 
                 isActive={location === "/admin/quizzes"} 
+              />
+              <SidebarItem 
+                icon={<ClipboardCheck size={18} />} 
+                label="Exams" 
+                href="/admin/exams" 
+                isActive={location === "/admin/exams"} 
               />
             </SidebarCategory>
             
