@@ -157,7 +157,7 @@ const CertificatesManagement = () => {
   // Mutation for creating a certificate
   const createCertificateMutation = useMutation({
     mutationFn: (certificateData: any) => {
-      return apiRequest('/api/certificates', 'POST', certificateData);
+      return apiRequest('POST', '/api/certificates', certificateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/certificates"] });
@@ -181,7 +181,7 @@ const CertificatesManagement = () => {
   // Mutation for updating a certificate
   const updateCertificateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => {
-      return apiRequest(`/api/certificates/${id}`, 'PATCH', data);
+      return apiRequest('PATCH', `/api/certificates/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/certificates"] });
@@ -205,7 +205,7 @@ const CertificatesManagement = () => {
   // Mutation for deleting a certificate
   const deleteCertificateMutation = useMutation({
     mutationFn: (id: number) => {
-      return apiRequest(`/api/certificates/${id}`, 'DELETE');
+      return apiRequest('DELETE', `/api/certificates/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/certificates"] });
