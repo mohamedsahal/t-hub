@@ -23,8 +23,7 @@ import { Loader2, Award, CheckCircle, XCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 const certificateSchema = z.object({
-  certificateId: z.string().min(5, "Certificate ID is required")
-    .regex(/^THB-\d{4}-\d{5}$/, "Invalid certificate format (e.g., THB-2023-12345)")
+  certificateId: z.string().min(1, "Certificate ID is required")
 });
 
 const VerifyCertificate = () => {
@@ -90,7 +89,7 @@ const VerifyCertificate = () => {
                       <FormLabel>Certificate ID</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter certificate ID (e.g., THB-2023-12345)"
+                          placeholder="Enter your certificate ID"
                           {...field}
                         />
                       </FormControl>

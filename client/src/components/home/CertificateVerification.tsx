@@ -20,11 +20,7 @@ import { Loader2 } from "lucide-react";
 const certificateSchema = z.object({
   certificateId: z
     .string()
-    .min(5, "Certificate ID is required")
-    .regex(
-      /^THM-\d{4}-\d{5}$/,
-      "Invalid certificate format (e.g., THB-2023-12345)",
-    ),
+    .min(1, "Certificate ID is required")
 });
 
 const CertificateVerification = () => {
@@ -122,7 +118,7 @@ const CertificateVerification = () => {
                         </FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Enter your certificate ID (e.g., THB-2023-12345)"
+                            placeholder="Enter your certificate ID"
                             {...field}
                             className="shadow-sm focus:ring-primary focus:border-primary"
                           />
