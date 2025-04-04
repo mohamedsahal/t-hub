@@ -82,9 +82,9 @@ import {
 // Schema for validating module form inputs
 const moduleSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   duration: z.number().optional().nullable(),
-  unlockDate: z.string().optional(),
+  unlockDate: z.string().optional().nullable(),
   isPublished: z.boolean().default(true)
 });
 
@@ -525,9 +525,9 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
     resolver: zodResolver(moduleSchema),
     defaultValues: {
       title: "",
-      description: "",
-      duration: undefined,
-      unlockDate: undefined,
+      description: null,
+      duration: null,
+      unlockDate: null,
       isPublished: true
     }
   });
@@ -815,7 +815,16 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
 
   // Form submission handlers
   const onAddModuleSubmit = (data: ModuleFormValues) => {
-    addModuleMutation.mutate(data);
+    // Clean up the module data - only send title and defaults for best practice
+    const moduleData = {
+      title: data.title,
+      description: null,
+      duration: null,
+      unlockDate: null,
+      isPublished: true
+    };
+    
+    addModuleMutation.mutate(moduleData);
   };
 
   const onEditModuleSubmit = (data: ModuleFormValues) => {
@@ -1063,7 +1072,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
           <DialogHeader>
             <DialogTitle>Add New Module</DialogTitle>
             <DialogDescription>
-              Add a new module to your course. Modules help organize your content into logical groups.
+              Add a new module to your course. Other details can be added after creation.
             </DialogDescription>
           </DialogHeader>
           <Form {...addModuleForm}>
@@ -1073,91 +1082,14 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Title</FormLabel>
+                    <FormLabel>Module Name</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Enter module title" />
+                      <Input {...field} placeholder="Enter module name" autoFocus />
                     </FormControl>
+                    <FormDescription>
+                      Enter a descriptive name for this module. Other details can be added later.
+                    </FormDescription>
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={addModuleForm.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        {...field} 
-                        placeholder="Enter module description (optional)" 
-                        rows={3}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={addModuleForm.control}
-                  name="duration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duration (hours)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          placeholder="e.g. 2" 
-                          min="0"
-                          step="0.5"
-                          onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
-                          value={field.value === undefined ? "" : field.value}
-                          name={field.name}
-                          onBlur={field.onBlur}
-                          ref={field.ref}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={addModuleForm.control}
-                  name="unlockDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unlock Date</FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field}
-                          type="date" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <FormField
-                control={addModuleForm.control}
-                name="isPublished"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Publish Module
-                      </FormLabel>
-                      <FormDescription>
-                        When checked, this module will be visible to students.
-                      </FormDescription>
-                    </div>
                   </FormItem>
                 )}
               />
