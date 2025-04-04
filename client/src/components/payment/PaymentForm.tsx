@@ -553,16 +553,37 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                           <FormControl>
                             <div className="relative">
                               <Input 
-                                placeholder={placeholderExample}
+                                placeholder={`${providerPrefix}xxxxxxx`}
                                 {...field} 
-                                className="pl-20" // Extra padding for the prefix
+                                className="pl-20" // Padding for country code and provider prefix
                                 onChange={(e) => {
-                                  const formattedValue = formatPhoneNumber(e.target.value, walletType);
+                                  // Only format the user input part (after the fixed prefix)
+                                  let value = e.target.value;
+                                  
+                                  // If user is trying to edit the prefix part, prevent it
+                                  if (!value.startsWith("+252")) {
+                                    // Remove any + or country code attempts
+                                    value = value.replace(/^\+?\d{0,3}/, "");
+                                    
+                                    // Remove any existing provider prefix if changing
+                                    if (value.match(/^[6|9|8][0|1|3|0]/)) {
+                                      value = value.substring(2);
+                                    }
+                                  } else {
+                                    // User kept the +252, but remove any provider prefix
+                                    value = "+252" + value.substring(4).replace(/^[6|9|8][0|1|3|0]/, "");
+                                  }
+                                  
+                                  // Always ensure we're using the current wallet's prefix
+                                  const userPart = value.replace(/^\+252\d{0,2}/, "").replace(/\D/g, "");
+                                  const formattedValue = "+252" + providerPrefix + userPart;
+                                  
                                   field.onChange(formattedValue);
                                 }}
                               />
                               <div className="absolute left-0 top-0 flex h-full items-center px-3 font-medium text-sm text-muted-foreground border-r">
-                                {prefix}
+                                <span>+252</span>
+                                <span className="text-primary font-bold ml-0.5">{providerPrefix}</span>
                               </div>
                             </div>
                           </FormControl>
