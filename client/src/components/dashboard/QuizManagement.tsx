@@ -52,7 +52,7 @@ interface Course {
 const examFormSchema = z.object({
   title: z.string().min(1, { message: 'Title is required' }),
   description: z.string().optional().nullable(),
-  courseId: z.coerce.number().min(1, { message: 'Course is required' }),
+  courseId: z.coerce.number().min(1, { message: 'Please select a course' }),
   type: z.enum(['quiz', 'midterm', 'final', 're_exam']),
   duration: z.coerce.number().min(1, { message: 'Duration is required' }),
   totalPoints: z.coerce.number().min(1, { message: 'Total points is required' }),
@@ -129,13 +129,26 @@ export function QuizManagement() {
         description: `The exam was ${selectedExam ? 'updated' : 'created'} successfully.`,
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error saving exam:', error);
-      toast({
-        title: 'Error',
-        description: `Failed to ${selectedExam ? 'update' : 'create'} exam. Please try again.`,
-        variant: 'destructive',
-      });
+      
+      // Check if there are validation errors
+      if (error.response?.data?.message) {
+        toast({
+          title: 'Validation Error',
+          description: error.response.data.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: `Failed to ${selectedExam ? 'update' : 'create'} exam. Please make sure all required fields are filled.`,
+          variant: 'destructive',
+        });
+      }
+      
+      // Log form errors for debugging
+      console.log('Form state:', examForm.formState);
     }
   });
 
@@ -232,7 +245,7 @@ export function QuizManagement() {
     defaultValues: {
       title: '',
       description: '',
-      courseId: 0,
+      courseId: undefined, // Changed from 0 to undefined to require selection
       type: 'quiz' as const,
       duration: 30,
       totalPoints: 100,
@@ -272,7 +285,7 @@ export function QuizManagement() {
       examForm.reset({
         title: '',
         description: '',
-        courseId: 0,
+        courseId: undefined, // Changed from 0 to undefined to require selection
         type: activeTab === 'quizzes' ? 'quiz' : 'midterm',
         duration: 30,
         totalPoints: 100,
@@ -319,6 +332,7 @@ export function QuizManagement() {
 
   // Handle exam form submission
   const onExamSubmit = (values: z.infer<typeof examFormSchema>) => {
+    console.log('Submitting form with values:', values);
     examMutation.mutate(values);
   };
 
@@ -757,10 +771,10 @@ export function QuizManagement() {
                 name="courseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Course</FormLabel>
+                    <FormLabel>Course <span className="text-red-500">*</span></FormLabel>
                     <Select 
                       onValueChange={(value) => field.onChange(parseInt(value))}
-                      defaultValue={field.value ? field.value.toString() : undefined}
+                      value={field.value?.toString()}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -768,11 +782,15 @@ export function QuizManagement() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {courses.map((course: Course) => (
-                          <SelectItem key={course.id} value={course.id.toString()}>
-                            {course.title}
-                          </SelectItem>
-                        ))}
+                        {courses.length === 0 ? (
+                          <SelectItem value="" disabled>No courses available</SelectItem>
+                        ) : (
+                          courses.map((course: Course) => (
+                            <SelectItem key={course.id} value={course.id.toString()}>
+                              {course.title}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
