@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
@@ -7,7 +7,8 @@ import TeacherDashboard from "@/components/dashboard/TeacherDashboard";
 import StudentDashboard from "@/components/dashboard/StudentDashboard";
 
 const Dashboard = () => {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const isAuthenticated = !!user;
   const [, setLocation] = useLocation();
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { useLocation, useSearch } from "wouter";
 import PaymentForm from "@/components/payment/PaymentForm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,12 +9,25 @@ import { AlertCircle, Check, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
+// Define the Course type to avoid 'Property does not exist on type {}' errors
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  duration: number;
+  type: string;
+  imageUrl?: string;
+  [key: string]: any; // Allow for additional properties
+}
+
 interface PaymentProps {
   params: { courseId: string };
 }
 
 const Payment = ({ params }: PaymentProps) => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
+  const isAuthenticated = !!user;
   const [location, setLocation] = useLocation();
   const search = useSearch();
   const searchParams = new URLSearchParams(search);
@@ -28,8 +41,10 @@ const Payment = ({ params }: PaymentProps) => {
   const courseId = parseInt(params.courseId);
 
   // Query to get course details
-  const { data: course, isLoading: courseLoading } = useQuery({
+  const { data: course, isLoading: courseLoading, isError } = useQuery<Course>({
     queryKey: [`/api/courses/${courseId}`],
+    retry: 2,
+    staleTime: 60000, // 1 minute
   });
 
   // Query to verify payment if returning from WaafiPay

@@ -4,18 +4,34 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@/hooks/use-auth";
 import { formatCurrency, formatDuration, getCourseTypeLabel, getCourseTypeColor } from "@/lib/utils";
 import { CheckCircle, Clock, Users, BookOpen, Award } from "lucide-react";
+
+// Define the Course type
+interface Course {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  duration: number;
+  type: string;
+  teacherId?: number;
+  imageUrl?: string;
+  [key: string]: any; // Allow for additional properties
+}
 
 interface CourseDetailProps {
   courseId: string;
 }
 
 const CourseDetail = ({ courseId }: CourseDetailProps) => {
-  const { isAuthenticated } = useAuth();
-  const { data: course, isLoading } = useQuery({
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
+  const { data: course, isLoading } = useQuery<Course>({
     queryKey: [`/api/courses/${courseId}`],
+    retry: 2,
+    staleTime: 60000, // 1 minute
   });
 
   if (isLoading) {
