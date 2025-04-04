@@ -15,10 +15,11 @@ import AlertBanner from "@/components/ui/AlertBanner";
 // Alert type for TypeScript
 interface Alert {
   id: number;
-  message: string;
+  title: string;
+  content: string;
   type: string;
-  buttonText?: string;
-  buttonUrl?: string;
+  buttonText?: string | null;
+  buttonLink?: string | null;
 }
 
 const Home = () => {
@@ -39,11 +40,6 @@ const Home = () => {
 
   return (
     <>
-      {hasAlerts && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-          <AlertBanner />
-        </div>
-      )}
       <HeroSection hasAlert={hasAlerts} />
       <CourseCategories />
       <FeatureHighlights />

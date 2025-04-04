@@ -3,6 +3,7 @@ import { ArrowRight, GraduationCap, BookOpen, Layers, Database, Server } from "l
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import AlertBanner from "@/components/ui/AlertBanner";
 
 // App logos for animation - Design & Multimedia tools + MERN stack
 const appLogos = [
@@ -80,11 +81,12 @@ const techStacks = [
 const HeroSection = ({ hasAlert = false }: { hasAlert?: boolean }) => {
 
   return (
-    <section className={`relative ${hasAlert ? 'pt-10' : 'pt-8'} pb-16 md:pb-20 overflow-hidden`}>
+    <section className="relative pt-8 pb-16 md:pb-20 overflow-hidden">
       {/* Gradient background using THub colors (blue #0080c9 and green #3cb878) */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0080c9]/10 via-white to-[#3cb878]/10 z-0"></div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        {hasAlert && <div className="mb-6"><AlertBanner /></div>}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left side - Text content */}
           <div>

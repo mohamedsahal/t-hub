@@ -3599,6 +3599,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/alerts/active", async (req, res) => {
+    try {
+      const activeAlerts = await storage.getActiveAlerts();
+      res.json(activeAlerts);
+    } catch (error) {
+      console.error('Error fetching active alerts:', error);
+      res.status(500).json({ message: "Failed to fetch active alerts" });
+    }
+  });
+
   app.get("/api/alerts/:id", checkRole(["admin"]), async (req, res) => {
     try {
       const alertId = parseInt(req.params.id, 10);
@@ -3620,10 +3630,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/alerts", checkRole(["admin"]), async (req, res) => {
     try {
-      console.log('Received alert data:', req.body);
+      // Extract actual data from the request - handle both { data: {...} } and direct format
+      const dataToProcess = req.body.data || req.body;
+      console.log('Received alert data:', { data: dataToProcess });
       
       // Validate request body against schema
-      const alertData = insertAlertSchema.parse(req.body);
+      const alertData = insertAlertSchema.parse(dataToProcess);
       console.log('Parsed alert data:', alertData);
       
       const newAlert = await storage.createAlert(alertData);
@@ -3646,6 +3658,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid alert ID" });
       }
       
+      // Extract actual data from the request - handle both { data: {...} } and direct format
+      const dataToProcess = req.body.data || req.body;
+      console.log('Received alert update data:', { data: dataToProcess });
+      
       // Get the existing alert to make sure it exists
       const existingAlert = await storage.getAlert(alertId);
       if (!existingAlert) {
@@ -3653,7 +3669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update the alert
-      const updatedAlert = await storage.updateAlert(alertId, req.body);
+      const updatedAlert = await storage.updateAlert(alertId, dataToProcess);
       res.json(updatedAlert);
     } catch (error) {
       console.error('Error updating alert:', error);

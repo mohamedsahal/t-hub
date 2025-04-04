@@ -127,10 +127,7 @@ const AlertManagement: React.FC = () => {
   const { mutate: createAlert, isPending: isCreating } = useMutation({
     mutationFn: (data: AlertFormValues) => {
       console.log('Sending data to API:', data);
-      return apiRequest('/api/alerts', {
-        method: 'POST',
-        data,
-      });
+      return apiRequest('POST', '/api/alerts', data);
     },
     onSuccess: (data) => {
       console.log('Alert created successfully:', data);
@@ -156,10 +153,8 @@ const AlertManagement: React.FC = () => {
   // Update alert mutation
   const { mutate: updateAlert, isPending: isUpdating } = useMutation({
     mutationFn: ({ id, data }: { id: number; data: AlertFormValues }) => {
-      return apiRequest(`/api/alerts/${id}`, {
-        method: 'PUT',
-        data,
-      });
+      console.log('Form values being submitted:', data);
+      return apiRequest('PUT', `/api/alerts/${id}`, { data });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
@@ -185,8 +180,11 @@ const AlertManagement: React.FC = () => {
   // Delete alert mutation
   const { mutate: deleteAlert, isPending: isDeleting } = useMutation({
     mutationFn: (id: number) => {
-      return apiRequest(`/api/alerts/${id}`, {
-        method: 'DELETE',
+      console.log('Attempting to delete alert with ID:', id);
+      return apiRequest('DELETE', `/api/alerts/${id}`, undefined, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     },
     onSuccess: () => {
