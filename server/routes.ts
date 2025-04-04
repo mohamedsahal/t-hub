@@ -3323,7 +3323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/cohort-enrollments", checkRole(["admin"]), async (req, res) => {
     try {
       const cohorts = await storage.getAllCohorts();
-      let allEnrollments = [];
+      let allEnrollments: any[] = [];
       
       for (const cohort of cohorts) {
         const enrollments = await storage.getCohortEnrollmentsByCohort(cohort.id);

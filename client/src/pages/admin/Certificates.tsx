@@ -85,6 +85,10 @@ const CertificatesManagement = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   
+  // State for student search
+  const [studentSearchQuery, setStudentSearchQuery] = useState("");
+  const [selectedStudent, setSelectedStudent] = useState<User | null>(null);
+  
   // Form handling for add/edit
   const form = useForm<CertificateFormValues>({
     resolver: zodResolver(certificateFormSchema),
@@ -369,26 +373,83 @@ const CertificatesManagement = () => {
                     control={form.control}
                     name="userId"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="space-y-4">
                         <FormLabel>Student</FormLabel>
-                        <Select
-                          disabled={isLoadingUsers}
-                          onValueChange={(value) => field.onChange(parseInt(value))}
-                          value={field.value.toString()}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select student" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {users.map((user: User) => (
-                              <SelectItem key={user.id} value={user.id.toString()}>
-                                {user.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        
+                        {/* Search box */}
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                            <Input
+                              placeholder="Search student by name or ID..."
+                              className="pl-8"
+                              value={studentSearchQuery}
+                              onChange={(e) => setStudentSearchQuery(e.target.value)}
+                              disabled={isLoadingUsers}
+                            />
+                          </div>
+                          
+                          {/* Display student results */}
+                          {studentSearchQuery && (
+                            <div className="border rounded-md max-h-40 overflow-y-auto">
+                              {users
+                                .filter(user => 
+                                  user.role === "student" &&
+                                  (user.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) || 
+                                   user.email.toLowerCase().includes(studentSearchQuery.toLowerCase()))
+                                )
+                                .map(user => (
+                                  <div 
+                                    key={user.id}
+                                    className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
+                                      selectedStudent?.id === user.id ? 'bg-gray-100 font-medium' : ''
+                                    }`}
+                                    onClick={() => {
+                                      setSelectedStudent(user);
+                                      field.onChange(user.id);
+                                      setStudentSearchQuery('');
+                                    }}
+                                  >
+                                    <div>{user.name}</div>
+                                    <div className="text-xs text-gray-500">{user.email}</div>
+                                  </div>
+                                ))
+                              }
+                              {users.filter(user => 
+                                user.role === "student" &&
+                                (user.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) || 
+                                 user.email.toLowerCase().includes(studentSearchQuery.toLowerCase()))
+                              ).length === 0 && (
+                                <div className="px-3 py-2 text-sm text-gray-500">
+                                  No students found
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Show selected student */}
+                        {selectedStudent && field.value > 0 && (
+                          <div className="flex items-center space-x-2 p-2 border rounded-md bg-gray-50">
+                            <div>
+                              <div className="font-medium">{selectedStudent.name}</div>
+                              <div className="text-xs text-gray-500">{selectedStudent.email}</div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="ml-auto h-6 w-6 p-0"
+                              onClick={() => {
+                                setSelectedStudent(null);
+                                field.onChange(0);
+                              }}
+                            >
+                              <XCircle className="h-4 w-4" />
+                              <span className="sr-only">Clear selection</span>
+                            </Button>
+                          </div>
+                        )}
+                        
                         <FormMessage />
                       </FormItem>
                     )}
@@ -629,26 +690,85 @@ const CertificatesManagement = () => {
                 control={form.control}
                 name="userId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="space-y-4">
                     <FormLabel>Student</FormLabel>
-                    <Select
-                      disabled={isLoadingUsers}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      value={field.value.toString()}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select student" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {users.map((user: User) => (
-                          <SelectItem key={user.id} value={user.id.toString()}>
-                            {user.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    
+                    {/* Search box */}
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                        <Input
+                          placeholder="Search student by name or ID..."
+                          className="pl-8"
+                          value={studentSearchQuery}
+                          onChange={(e) => setStudentSearchQuery(e.target.value)}
+                          disabled={isLoadingUsers}
+                        />
+                      </div>
+                      
+                      {/* Display student results */}
+                      {studentSearchQuery && (
+                        <div className="border rounded-md max-h-40 overflow-y-auto">
+                          {users
+                            .filter(user => 
+                              user.role === "student" &&
+                              (user.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) || 
+                               user.email.toLowerCase().includes(studentSearchQuery.toLowerCase()))
+                            )
+                            .map(user => (
+                              <div 
+                                key={user.id}
+                                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
+                                  selectedStudent?.id === user.id ? 'bg-gray-100 font-medium' : ''
+                                }`}
+                                onClick={() => {
+                                  setSelectedStudent(user);
+                                  field.onChange(user.id);
+                                  setStudentSearchQuery('');
+                                }}
+                              >
+                                <div>{user.name}</div>
+                                <div className="text-xs text-gray-500">{user.email}</div>
+                              </div>
+                            ))
+                          }
+                          {users.filter(user => 
+                            user.role === "student" &&
+                            (user.name.toLowerCase().includes(studentSearchQuery.toLowerCase()) || 
+                             user.email.toLowerCase().includes(studentSearchQuery.toLowerCase()))
+                          ).length === 0 && (
+                            <div className="px-3 py-2 text-sm text-gray-500">
+                              No students found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Show selected student */}
+                    {field.value > 0 && (
+                      <div className="flex items-center space-x-2 p-2 border rounded-md bg-gray-50">
+                        <div>
+                          <div className="font-medium">{getUserName(field.value)}</div>
+                          <div className="text-xs text-gray-500">
+                            {users.find(u => u.id === field.value)?.email || ''}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-auto h-6 w-6 p-0"
+                          onClick={() => {
+                            setSelectedStudent(null);
+                            field.onChange(0);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                          <span className="sr-only">Clear selection</span>
+                        </Button>
+                      </div>
+                    )}
+                    
                     <FormMessage />
                   </FormItem>
                 )}
