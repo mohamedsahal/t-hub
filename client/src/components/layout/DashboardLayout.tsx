@@ -188,12 +188,60 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </SidebarCategory>
             
             <SidebarCategory label="EDUCATION">
-              <SidebarItem 
-                icon={<BookOpen size={18} />} 
-                label="Courses" 
-                href="/admin/courses" 
-                isActive={location === "/admin/courses"} 
-              />
+              <div className="relative group">
+                <div 
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer",
+                    (location === "/admin/courses" || 
+                     location === "/admin/courses/short" || 
+                     location === "/admin/courses/specialist" || 
+                     location === "/admin/courses/bootcamp" || 
+                     location === "/admin/courses/diploma" || 
+                     location.startsWith("/admin/course-builder")) 
+                      ? "bg-gray-800 text-white" : "text-gray-300 hover:text-white"
+                  )}
+                >
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <BookOpen size={18} />
+                  </div>
+                  <span>Courses</span>
+                  <ChevronDown size={14} className="ml-auto" />
+                </div>
+                <div className="hidden group-hover:block absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-10">
+                  <div className="py-1">
+                    <Link 
+                      href="/admin/courses" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      All Courses
+                    </Link>
+                    <Link 
+                      href="/admin/courses/short" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Short Courses
+                    </Link>
+                    <Link 
+                      href="/admin/courses/specialist" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Specialist Programs
+                    </Link>
+                    <Link 
+                      href="/admin/courses/bootcamp" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Bootcamps
+                    </Link>
+                    <Link 
+                      href="/admin/courses/diploma" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Diploma Programs
+                    </Link>
+                  </div>
+                </div>
+              </div>
               <SidebarItem 
                 icon={<CreditCard size={18} />} 
                 label="Payments" 

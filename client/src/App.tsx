@@ -15,6 +15,11 @@ import VerifyCertificate from "@/pages/VerifyCertificate";
 import AdminPage from "@/pages/admin";
 import UsersAdminPage from "@/pages/admin/Users";
 import CoursesAdminPage from "@/pages/admin/Courses";
+import ShortCoursesPage from "@/pages/admin/ShortCoursesPage";
+import SpecialistProgramsPage from "@/pages/admin/SpecialistProgramsPage";
+import BootcampsPage from "@/pages/admin/BootcampsPage";
+import DiplomaPage from "@/pages/admin/DiplomaPage";
+import CourseBuilderPage from "@/pages/admin/CourseBuilderPage";
 import EnrollmentsAdminPage from "@/pages/admin/Enrollments";
 import PaymentsAdminPage from "@/pages/admin/Payments";
 import ProductsAdminPage from "@/pages/admin/Products";
@@ -43,7 +48,16 @@ function Router() {
       {/* Admin Routes */}
       <AdminProtectedRoute path="/admin" component={AdminPage} />
       <AdminProtectedRoute path="/admin/users" component={UsersAdminPage} />
+      
+      {/* Course Management Routes */}
       <AdminProtectedRoute path="/admin/courses" component={CoursesAdminPage} />
+      <AdminProtectedRoute path="/admin/courses/short" component={ShortCoursesPage} />
+      <AdminProtectedRoute path="/admin/courses/specialist" component={SpecialistProgramsPage} />
+      <AdminProtectedRoute path="/admin/courses/bootcamp" component={BootcampsPage} />
+      <AdminProtectedRoute path="/admin/courses/diploma" component={DiplomaPage} />
+      <AdminProtectedRoute path="/admin/course-builder/:courseId" component={CourseBuilderPage} />
+      
+      {/* Other Admin Routes */}
       <AdminProtectedRoute path="/admin/payments" component={PaymentsAdminPage} />
       <AdminProtectedRoute path="/admin/enrollments" component={EnrollmentsAdminPage} />
       <AdminProtectedRoute path="/admin/certificates" component={() => <div>Certificates Admin Page</div>} />

@@ -6,13 +6,14 @@ import { z } from "zod";
 // Enum definitions
 export const userRoleEnum = pgEnum('user_role', ['admin', 'teacher', 'student']);
 export const courseStatusEnum = pgEnum('course_status', ['draft', 'published', 'archived']);
-export const courseTypeEnum = pgEnum('course_type', ['short_course', 'group_course', 'bootcamp', 'diploma']);
+export const courseTypeEnum = pgEnum('course_type', ['short', 'specialist', 'bootcamp', 'diploma']);
 export const courseCategoryEnum = pgEnum('course_category', ['multimedia', 'accounting', 'marketing', 'development', 'programming', 'design', 'business', 'data_science']);
 export const paymentStatusEnum = pgEnum('payment_status', ['pending', 'completed', 'failed']);
 export const paymentTypeEnum = pgEnum('payment_type', ['one_time', 'installment', 'subscription']);
 export const enrollmentStatusEnum = pgEnum('enrollment_status', ['active', 'completed', 'dropped']);
 export const examTypeEnum = pgEnum('exam_type', ['quiz', 'midterm', 'final', 're_exam']);
 export const examStatusEnum = pgEnum('exam_status', ['pending', 'completed', 'failed', 'passed']);
+export const sectionTypeEnum = pgEnum('section_type', ['lesson', 'quiz', 'exam']);
 export const productTypeEnum = pgEnum('product_type', [
   'restaurant', 'school', 'laundry', 'inventory', 
   'task', 'hotel', 'hospital', 'dental', 
@@ -78,6 +79,7 @@ export const courseSections = pgTable("course_sections", {
   title: varchar("title").notNull(),
   description: text("description"),
   order: integer("sort_order").default(1).notNull(),
+  type: sectionTypeEnum("type").default('lesson').notNull(), // Can be lesson, quiz, or exam
   videoUrl: text("video_url"),
   contentUrl: text("content_url"),
   duration: integer("duration"), // Duration in hours
