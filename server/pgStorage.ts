@@ -1105,19 +1105,28 @@ export class PgStorage implements IStorage {
 
   async createAlert(alert: InsertAlert): Promise<Alert> {
     try {
+      // Log the alert data received
+      console.log('Creating alert with data:', alert);
+      
       const result = await db.insert(alerts).values({
-        ...alert,
+        title: alert.title,
+        content: alert.content,
         type: alert.type,
-        message: alert.message,
         priority: alert.priority || 1,
         isActive: alert.isActive !== undefined ? alert.isActive : true,
         startDate: alert.startDate ? new Date(alert.startDate) : null,
         endDate: alert.endDate ? new Date(alert.endDate) : null,
         buttonText: alert.buttonText || null,
-        buttonUrl: alert.buttonUrl || null,
+        buttonLink: alert.buttonLink || null, // Fixed: changed buttonUrl to buttonLink to match schema
+        bgColor: alert.bgColor,
+        textColor: alert.textColor,
+        iconName: alert.iconName,
+        dismissable: alert.dismissable,
         createdAt: new Date(),
         updatedAt: new Date()
       }).returning();
+      
+      console.log('Alert created successfully:', result[0]);
       return result[0];
     } catch (error) {
       console.error('Error creating alert:', error);
@@ -1127,13 +1136,31 @@ export class PgStorage implements IStorage {
 
   async updateAlert(id: number, alertData: Partial<Alert>): Promise<Alert | undefined> {
     try {
-      // Handle date conversions if strings are provided
+      console.log('Updating alert with ID:', id, 'Data:', alertData);
+      
+      // Fix field names if needed - in case message is used instead of title/content
       const processedData = { ...alertData };
-      if (alertData.startDate && typeof alertData.startDate === 'string') {
-        processedData.startDate = new Date(alertData.startDate);
+      
+      // Ensure field names match the database schema
+      if ('message' in processedData && !('content' in processedData)) {
+        const message = processedData.message as string;
+        processedData.content = message;
+        delete processedData.message;
       }
-      if (alertData.endDate && typeof alertData.endDate === 'string') {
-        processedData.endDate = new Date(alertData.endDate);
+      
+      // Handle buttonUrl vs buttonLink consistency
+      if ('buttonUrl' in processedData && !('buttonLink' in processedData)) {
+        const buttonUrl = processedData.buttonUrl as string | null;
+        processedData.buttonLink = buttonUrl;
+        delete processedData.buttonUrl;
+      }
+      
+      // Handle date conversions if strings are provided
+      if (processedData.startDate && typeof processedData.startDate === 'string') {
+        processedData.startDate = new Date(processedData.startDate);
+      }
+      if (processedData.endDate && typeof processedData.endDate === 'string') {
+        processedData.endDate = new Date(processedData.endDate);
       }
 
       // Always update the updatedAt timestamp

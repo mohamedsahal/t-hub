@@ -6,13 +6,18 @@ import { apiRequest } from '@/lib/queryClient';
 interface Alert {
   id: number;
   type: 'discount' | 'registration' | 'celebration' | 'announcement' | 'info';
-  message: string;
+  title: string;
+  content: string;
   isActive: boolean;
   startDate: string | null;
   endDate: string | null;
   buttonText: string | null;
-  buttonUrl: string | null;
+  buttonLink: string | null; // Changed from buttonUrl to match schema
   priority: number;
+  bgColor?: string;
+  textColor?: string;
+  iconName?: string;
+  dismissable?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,10 +92,10 @@ const AlertBanner: React.FC = () => {
       <div className="flex items-center space-x-3">
         {getAlertIcon(currentAlert.type)}
         <p className="text-sm font-medium">
-          {currentAlert.message}
-          {currentAlert.buttonText && currentAlert.buttonUrl && (
+          {currentAlert.content}
+          {currentAlert.buttonText && currentAlert.buttonLink && (
             <a 
-              href={currentAlert.buttonUrl}
+              href={currentAlert.buttonLink}
               className="ml-2 underline font-semibold"
               target="_blank"
               rel="noreferrer"
