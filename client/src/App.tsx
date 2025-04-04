@@ -26,6 +26,7 @@ import SpecialistProgramsPage from "@/pages/admin/SpecialistProgramsPage";
 import BootcampsPage from "@/pages/admin/BootcampsPage";
 import DiplomaPage from "@/pages/admin/DiplomaPage";
 import CourseBuilderPage from "@/pages/admin/CourseBuilderPage";
+import ShortCourseBuilderPage from "@/pages/admin/ShortCourseBuilderPage";
 import EnrollmentsAdminPage from "@/pages/admin/Enrollments";
 import PaymentsAdminPage from "@/pages/admin/Payments";
 import ProductsAdminPage from "@/pages/admin/Products";
@@ -69,6 +70,7 @@ function Router() {
       <AdminProtectedRoute path="/admin/courses/bootcamp" component={() => <BootcampsPage />} />
       <AdminProtectedRoute path="/admin/courses/diploma" component={() => <DiplomaPage />} />
       <AdminProtectedRoute path="/admin/course-builder/:courseId" component={() => <CourseBuilderPage />} />
+      <AdminProtectedRoute path="/admin/courses/short/builder/:courseId" component={() => <ShortCourseBuilderPage />} />
       
       {/* Other Admin Routes */}
       <AdminProtectedRoute path="/admin/payments" component={() => <PaymentsAdminPage />} />

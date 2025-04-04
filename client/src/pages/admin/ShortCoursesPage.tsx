@@ -88,7 +88,7 @@ export default function ShortCoursesPage() {
 
   // Navigate to course builder
   const goToCourseBuilder = (courseId: number) => {
-    setLocation(`/admin/course-builder/${courseId}`);
+    setLocation(`/admin/courses/short/builder/${courseId}`);
   };
 
   // Navigate to edit course
