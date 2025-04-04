@@ -29,6 +29,7 @@ import CourseBuilderPage from "@/pages/admin/CourseBuilderPage";
 import ShortCourseBuilderPage from "@/pages/admin/ShortCourseBuilderPage";
 import EnrollmentsAdminPage from "@/pages/admin/Enrollments";
 import PaymentsAdminPage from "@/pages/admin/Payments";
+import CohortPage from "@/pages/admin/Cohorts";
 import ProductsAdminPage from "@/pages/admin/Products";
 import ProfilePage from "@/pages/admin/Profile";
 import QuizManagementPage from "@/pages/admin/QuizManagementPage";
@@ -75,6 +76,7 @@ function Router() {
       
       {/* Other Admin Routes */}
       <AdminProtectedRoute path="/admin/payments" component={() => <PaymentsAdminPage />} />
+      <AdminProtectedRoute path="/admin/cohorts" component={() => <CohortPage />} />
       <AdminProtectedRoute path="/admin/enrollments" component={() => <EnrollmentsAdminPage />} />
       <AdminProtectedRoute path="/admin/certificates" component={() => <div>Certificates Admin Page</div>} />
       <AdminProtectedRoute path="/admin/testimonials" component={() => <div>Testimonials Admin Page</div>} />

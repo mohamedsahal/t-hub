@@ -2013,23 +2013,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/admin/cohorts", checkRole(["admin"]), async (req, res) => {
     try {
-      const cohortData = insertCohortSchema.parse(req.body);
+      console.log("Creating cohort with data:", req.body);
       
-      // Verify the course exists
-      const course = await storage.getCourse(cohortData.courseId);
-      if (!course) {
-        return res.status(404).json({ message: "Course not found" });
+      // Validate required fields manually before passing to Zod
+      const { name, courseId, startDate, endDate, academicYear, status } = req.body;
+      
+      if (!name || name.trim() === "") {
+        return res.status(400).json({ message: "Validation error: Required at \"name\"" });
+      }
+      if (!courseId) {
+        return res.status(400).json({ message: "Validation error: Required at \"courseId\"" });
+      }
+      if (!startDate) {
+        return res.status(400).json({ message: "Validation error: Required at \"startDate\"" });
+      }
+      if (!endDate) {
+        return res.status(400).json({ message: "Validation error: Required at \"endDate\"" });
+      }
+      if (!academicYear) {
+        return res.status(400).json({ message: "Validation error: Required at \"academicYear\"" });
+      }
+      if (!status) {
+        return res.status(400).json({ message: "Validation error: Required at \"status\"" });
       }
       
-      const cohort = await storage.createCohort(cohortData);
-      res.status(201).json(cohort);
+      // Ensure all data is properly formatted
+      const cohortData = {
+        ...req.body,
+        name: name.trim(),
+        courseId: typeof courseId === 'string' ? parseInt(courseId) : courseId,
+        maxStudents: req.body.maxStudents ? 
+          (typeof req.body.maxStudents === 'string' ? 
+            parseInt(req.body.maxStudents) : req.body.maxStudents) : null
+      };
+      
+      try {
+        const validatedData = insertCohortSchema.parse(cohortData);
+        
+        // Verify the course exists
+        const course = await storage.getCourse(validatedData.courseId);
+        if (!course) {
+          return res.status(404).json({ message: "Course not found" });
+        }
+        
+        console.log("Creating cohort with validated data:", validatedData);
+        const cohort = await storage.createCohort(validatedData);
+        res.status(201).json(cohort);
+      } catch (zodError) {
+        console.error("Zod validation error:", zodError);
+        handleZodError(zodError, res);
+      }
     } catch (error) {
-      handleZodError(error, res);
+      console.error("Error creating cohort:", error);
+      res.status(500).json({ message: "An unexpected error occurred" });
     }
   });
 
   app.patch("/api/admin/cohorts/:id", checkRole(["admin"]), async (req, res) => {
     try {
+      console.log("Updating cohort with data:", req.body);
+      
       const cohortId = parseInt(req.params.id);
       const cohort = await storage.getCohort(cohortId);
       
@@ -2037,7 +2080,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Cohort not found" });
       }
       
-      const updatedCohort = await storage.updateCohort(cohortId, req.body);
+      // Validate the data before updating
+      const { name, courseId, startDate, endDate, academicYear, status } = req.body;
+      
+      // Only validate fields that are provided
+      if (name !== undefined && (name === null || name.trim() === "")) {
+        return res.status(400).json({ message: "Validation error: Name cannot be empty" });
+      }
+      
+      // Ensure all data is properly formatted
+      const cohortData = {
+        ...req.body,
+        name: name?.trim(),
+        courseId: courseId !== undefined ? 
+          (typeof courseId === 'string' ? parseInt(courseId) : courseId) : 
+          undefined,
+        maxStudents: req.body.maxStudents !== undefined ? 
+          (typeof req.body.maxStudents === 'string' ? 
+            parseInt(req.body.maxStudents) : req.body.maxStudents) : 
+          undefined
+      };
+      
+      console.log("Formatted cohort update data:", cohortData);
+      const updatedCohort = await storage.updateCohort(cohortId, cohortData);
+      
+      if (!updatedCohort) {
+        return res.status(500).json({ message: "Failed to update cohort" });
+      }
+      
       res.json(updatedCohort);
     } catch (error) {
       console.error("Error updating cohort:", error);

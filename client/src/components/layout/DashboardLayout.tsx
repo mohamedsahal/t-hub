@@ -250,6 +250,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 isActive={location === "/admin/payments"} 
               />
               <SidebarItem 
+                icon={<Calendar size={18} />} 
+                label="Cohorts" 
+                href="/admin/cohorts" 
+                isActive={location === "/admin/cohorts"} 
+              />
+              <SidebarItem 
                 icon={<School size={18} />} 
                 label="Enrollments" 
                 href="/admin/enrollments" 
