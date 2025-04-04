@@ -25,12 +25,12 @@ const formSchema = z.object({
   title: z.string().min(5, { message: "Title must be at least 5 characters" }),
   description: z.string().optional(),
   type: z.string().min(1, { message: "Please select an exam type" }),
-  course_id: z.coerce.number().positive({ message: "Please select a course" }),
-  section_id: z.coerce.number().optional(),
-  semester_id: z.coerce.number().optional(),
-  max_score: z.coerce.number().min(1, { message: "Maximum score must be at least 1" }),
-  passing_score: z.coerce.number().min(1, { message: "Passing score must be at least 1" }),
-  time_limit: z.coerce.number().min(1, { message: "Time limit must be at least 1 minute" }),
+  courseId: z.coerce.number().positive({ message: "Please select a course" }),
+  sectionId: z.coerce.number().optional(),
+  semesterId: z.coerce.number().optional(),
+  maxScore: z.coerce.number().min(1, { message: "Maximum score must be at least 1" }),
+  passingScore: z.coerce.number().min(1, { message: "Passing score must be at least 1" }),
+  timeLimit: z.coerce.number().min(1, { message: "Time limit must be at least 1 minute" }),
   status: z.string().default("active"),
   gradeAThreshold: z.coerce.number().min(1).max(100).default(90),
   gradeBThreshold: z.coerce.number().min(1).max(100).default(80),
@@ -64,9 +64,9 @@ export default function ExamCreate() {
       title: "",
       description: "",
       type: "",
-      max_score: 100,
-      passing_score: 60,
-      time_limit: 60,
+      maxScore: 100,
+      passingScore: 60,
+      timeLimit: 60,
       status: "active",
       gradeAThreshold: 90,
       gradeBThreshold: 80,
@@ -76,7 +76,7 @@ export default function ExamCreate() {
   });
 
   // Watch course ID to enable fetching sections and semesters
-  const selectedCourseId = form.watch("course_id");
+  const selectedCourseId = form.watch("courseId");
 
   // Fetch sections based on selected course
   const { data: sections = [], isLoading: isLoadingSections } = useQuery({
@@ -235,7 +235,7 @@ export default function ExamCreate() {
                   {/* Course */}
                   <FormField
                     control={form.control}
-                    name="course_id"
+                    name="courseId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Course*</FormLabel>
@@ -243,8 +243,8 @@ export default function ExamCreate() {
                           onValueChange={(value) => {
                             field.onChange(parseInt(value));
                             // Reset section and semester when course changes
-                            form.setValue("section_id", undefined);
-                            form.setValue("semester_id", undefined);
+                            form.setValue("sectionId", undefined);
+                            form.setValue("semesterId", undefined);
                           }}
                           value={field.value?.toString()}
                         >
@@ -273,7 +273,7 @@ export default function ExamCreate() {
                   {/* Section (Optional) */}
                   <FormField
                     control={form.control}
-                    name="section_id"
+                    name="sectionId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Section (Optional)</FormLabel>
@@ -314,7 +314,7 @@ export default function ExamCreate() {
                   {/* Semester (Optional) */}
                   <FormField
                     control={form.control}
-                    name="semester_id"
+                    name="semesterId"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Semester (Optional)</FormLabel>
@@ -355,7 +355,7 @@ export default function ExamCreate() {
                   {/* Max Score */}
                   <FormField
                     control={form.control}
-                    name="max_score"
+                    name="maxScore"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Maximum Score*</FormLabel>
@@ -370,7 +370,7 @@ export default function ExamCreate() {
                   {/* Passing Score */}
                   <FormField
                     control={form.control}
-                    name="passing_score"
+                    name="passingScore"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Passing Score*</FormLabel>
@@ -385,7 +385,7 @@ export default function ExamCreate() {
                   {/* Time Limit */}
                   <FormField
                     control={form.control}
-                    name="time_limit"
+                    name="timeLimit"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Time Limit (minutes)*</FormLabel>
