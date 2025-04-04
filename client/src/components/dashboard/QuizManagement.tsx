@@ -53,7 +53,8 @@ const examFormSchema = z.object({
   title: z.string().min(1, { message: 'Title is required' }),
   description: z.string().optional().nullable(),
   courseId: z.coerce.number().min(1, { message: 'Please select a course' }),
-  type: z.enum(['quiz', 'midterm', 'final', 're_exam']),
+  // Type will be automatically set based on the active tab
+  type: z.enum(['quiz', 'midterm', 'final', 're_exam']).default('quiz'),
   duration: z.coerce.number().min(1, { message: 'Duration is required' }),
   totalPoints: z.coerce.number().min(1, { message: 'Total points is required' }),
   passingPoints: z.coerce.number().min(1, { message: 'Passing points is required' }),
@@ -332,8 +333,25 @@ export function QuizManagement() {
 
   // Handle exam form submission
   const onExamSubmit = (values: z.infer<typeof examFormSchema>) => {
-    console.log('Submitting form with values:', values);
-    examMutation.mutate(values);
+    // Set the type based on the active tab
+    const finalValues = {
+      ...values,
+      type: activeTab === 'quizzes' ? 'quiz' : 'midterm'
+    };
+    
+    console.log('Submitting form with values:', finalValues);
+    
+    // Check if we have a valid courseId
+    if (!finalValues.courseId || finalValues.courseId < 1) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please select a course',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    examMutation.mutate(finalValues);
   };
 
   // Handle question form submission
@@ -798,37 +816,8 @@ export function QuizManagement() {
                 )}
               />
               
-              <FormField
-                control={examForm.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {activeTab === 'quizzes' ? (
-                          <SelectItem value="quiz">Quiz</SelectItem>
-                        ) : (
-                          <>
-                            <SelectItem value="midterm">Midterm</SelectItem>
-                            <SelectItem value="final">Final</SelectItem>
-                            <SelectItem value="re_exam">Re-Exam</SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Type field removed as requested - it was deemed unnecessary */}
+              <input type="hidden" {...examForm.register('type')} value={activeTab === 'quizzes' ? 'quiz' : 'midterm'} />
               
               <div className="grid grid-cols-2 gap-4">
                 <FormField
