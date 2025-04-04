@@ -24,6 +24,7 @@ export const productTypeEnum = pgEnum('product_type', [
 ]);
 export const contentTypeEnum = pgEnum('content_type', ['hero', 'about', 'feature', 'testimonial', 'event', 'partner', 'contact']);
 export const cohortStatusEnum = pgEnum('cohort_status', ['active', 'completed', 'upcoming']);
+export const alertTypeEnum = pgEnum('alert_type', ['discount', 'registration', 'celebration', 'announcement', 'info']);
 
 // Users table
 export const users = pgTable("users", {
@@ -307,6 +308,26 @@ export const cohortEnrollments = pgTable("cohort_enrollments", {
   studentId: text("student_id"), // Custom student ID in the format PREFIX-YEAR-NUMBER
 });
 
+// Alerts/Notifications table
+export const alerts = pgTable("alerts", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  type: alertTypeEnum("type").default('announcement').notNull(),
+  bgColor: text("bg_color").default('#3cb878'), // Default brand primary color
+  textColor: text("text_color").default('#ffffff'),
+  iconName: text("icon_name").default('megaphone'), // lucide-react icon name
+  buttonText: text("button_text"),
+  buttonLink: text("button_link"),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
+  dismissable: boolean("dismissable").default(true).notNull(), // Can be closed by user
+  priority: integer("priority").default(0).notNull(), // Higher priority shows first
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Define insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
@@ -365,6 +386,13 @@ export const insertCohortSchema = createInsertSchema(cohorts)
     endDate: z.string().or(z.date()),
   });
 export const insertCohortEnrollmentSchema = createInsertSchema(cohortEnrollments).omit({ id: true, enrollmentDate: true });
+export const insertAlertSchema = createInsertSchema(alerts).omit({ id: true, createdAt: true, updatedAt: true })
+  .extend({
+    startDate: z.string().or(z.date()).optional().nullable(),
+    endDate: z.string().or(z.date()).optional().nullable(),
+    buttonText: z.string().optional().nullable(),
+    buttonLink: z.string().optional().nullable(),
+  });
 
 // Define types
 export type User = typeof users.$inferSelect;
@@ -423,6 +451,9 @@ export type InsertCohort = z.infer<typeof insertCohortSchema>;
 
 export type CohortEnrollment = typeof cohortEnrollments.$inferSelect;
 export type InsertCohortEnrollment = z.infer<typeof insertCohortEnrollmentSchema>;
+
+export type Alert = typeof alerts.$inferSelect;
+export type InsertAlert = z.infer<typeof insertAlertSchema>;
 
 // Define relationships between tables
 export const usersRelations = relations(users, ({ many }) => ({

@@ -17,7 +17,8 @@ import {
   examResults, type ExamResult, type InsertExamResult,
   semesters, type Semester, type InsertSemester,
   cohorts, type Cohort, type InsertCohort,
-  cohortEnrollments, type CohortEnrollment, type InsertCohortEnrollment
+  cohortEnrollments, type CohortEnrollment, type InsertCohortEnrollment,
+  alerts, type Alert, type InsertAlert
 } from "@shared/schema";
 import session from "express-session";
 
@@ -177,6 +178,14 @@ export interface IStorage {
   createCohortEnrollment(enrollment: InsertCohortEnrollment): Promise<CohortEnrollment>;
   updateCohortEnrollment(id: number, enrollment: Partial<CohortEnrollment>): Promise<CohortEnrollment | undefined>;
   deleteCohortEnrollment(id: number): Promise<boolean>;
+  
+  // Alert operations
+  getAlert(id: number): Promise<Alert | undefined>;
+  getActiveAlerts(): Promise<Alert[]>;
+  getAllAlerts(): Promise<Alert[]>;
+  createAlert(alert: InsertAlert): Promise<Alert>;
+  updateAlert(id: number, alert: Partial<Alert>): Promise<Alert | undefined>;
+  deleteAlert(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -199,6 +208,7 @@ export class MemStorage implements IStorage {
   private semesters: Map<number, Semester>;
   private cohorts: Map<number, Cohort>;
   private cohortEnrollments: Map<number, CohortEnrollment>;
+  private alerts: Map<number, Alert>;
   
   private userIdCounter: number;
   private courseIdCounter: number;
@@ -219,6 +229,7 @@ export class MemStorage implements IStorage {
   private semesterIdCounter: number;
   private cohortIdCounter: number;
   private cohortEnrollmentIdCounter: number;
+  private alertIdCounter: number;
   
   public sessionStore: session.Store;
 
@@ -242,6 +253,7 @@ export class MemStorage implements IStorage {
     this.semesters = new Map();
     this.cohorts = new Map();
     this.cohortEnrollments = new Map();
+    this.alerts = new Map();
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
@@ -262,6 +274,7 @@ export class MemStorage implements IStorage {
     this.semesterIdCounter = 1;
     this.cohortIdCounter = 1;
     this.cohortEnrollmentIdCounter = 1;
+    this.alertIdCounter = 1;
     
     // Create the memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -1507,6 +1520,73 @@ export class MemStorage implements IStorage {
   async deleteCohortEnrollment(id: number): Promise<boolean> {
     if (!this.cohortEnrollments.has(id)) return false;
     return this.cohortEnrollments.delete(id);
+  }
+
+  // Alert operations
+  async getAlert(id: number): Promise<Alert | undefined> {
+    return this.alerts.get(id);
+  }
+
+  async getActiveAlerts(): Promise<Alert[]> {
+    return Array.from(this.alerts.values())
+      .filter(alert => {
+        const now = new Date();
+        const isActive = alert.isActive;
+        const hasValidStartDate = !alert.startDate || (alert.startDate && new Date(alert.startDate) <= now);
+        const hasValidEndDate = !alert.endDate || (alert.endDate && new Date(alert.endDate) >= now);
+        return isActive && hasValidStartDate && hasValidEndDate;
+      })
+      .sort((a, b) => {
+        if (a.priority === b.priority) {
+          // If same priority, sort by newest first
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        // Sort by priority (higher number means higher priority)
+        return b.priority - a.priority;
+      });
+  }
+
+  async getAllAlerts(): Promise<Alert[]> {
+    return Array.from(this.alerts.values())
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+
+  async createAlert(alert: InsertAlert): Promise<Alert> {
+    const id = this.alertIdCounter++;
+    const newAlert: Alert = {
+      id,
+      type: alert.type,
+      message: alert.message,
+      priority: alert.priority || 1,
+      isActive: alert.isActive !== undefined ? alert.isActive : true,
+      startDate: alert.startDate || null,
+      endDate: alert.endDate || null,
+      buttonText: alert.buttonText || null,
+      buttonUrl: alert.buttonUrl || null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.alerts.set(id, newAlert);
+    return newAlert;
+  }
+
+  async updateAlert(id: number, alertData: Partial<Alert>): Promise<Alert | undefined> {
+    const alert = this.alerts.get(id);
+    if (!alert) return undefined;
+
+    const updatedAlert = { 
+      ...alert, 
+      ...alertData,
+      updatedAt: new Date()
+    };
+    
+    this.alerts.set(id, updatedAlert);
+    return updatedAlert;
+  }
+
+  async deleteAlert(id: number): Promise<boolean> {
+    if (!this.alerts.has(id)) return false;
+    return this.alerts.delete(id);
   }
 }
 

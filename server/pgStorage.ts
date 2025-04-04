@@ -8,9 +8,10 @@ import {
   Partner, InsertPartner, Event, InsertEvent, LandingContent, InsertLandingContent,
   Exam, InsertExam, ExamQuestion, InsertExamQuestion, ExamResult, InsertExamResult,
   Semester, InsertSemester, Cohort, InsertCohort, CohortEnrollment, InsertCohortEnrollment,
+  Alert, InsertAlert,
   users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
   products, partners, events, landingContent, exams, examQuestions, examResults,
-  semesters, cohorts, cohortEnrollments
+  semesters, cohorts, cohortEnrollments, alerts
 } from '@shared/schema';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -1051,6 +1052,114 @@ export class PgStorage implements IStorage {
       return result.length > 0;
     } catch (error) {
       console.error('Error deleting cohort enrollment:', error);
+      return false;
+    }
+  }
+
+  // Alert operations
+  async getAlert(id: number): Promise<Alert | undefined> {
+    try {
+      const result = await db.select().from(alerts).where(eq(alerts.id, id));
+      return result[0];
+    } catch (error) {
+      console.error('Error getting alert:', error);
+      return undefined;
+    }
+  }
+
+  async getActiveAlerts(): Promise<Alert[]> {
+    try {
+      const now = new Date();
+      const allAlerts = await db.select().from(alerts).where(eq(alerts.isActive, true));
+      
+      // Filter alerts by date constraints
+      const activeAlerts = allAlerts.filter(alert => {
+        const hasValidStartDate = !alert.startDate || (alert.startDate && new Date(alert.startDate) <= now);
+        const hasValidEndDate = !alert.endDate || (alert.endDate && new Date(alert.endDate) >= now);
+        return hasValidStartDate && hasValidEndDate;
+      });
+
+      // Sort by priority (higher first) and then by created date (newest first)
+      return activeAlerts.sort((a, b) => {
+        if (a.priority === b.priority) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        return b.priority - a.priority;
+      });
+    } catch (error) {
+      console.error('Error getting active alerts:', error);
+      return [];
+    }
+  }
+
+  async getAllAlerts(): Promise<Alert[]> {
+    try {
+      const result = await db.select().from(alerts)
+        .orderBy(desc(alerts.createdAt));
+      return result;
+    } catch (error) {
+      console.error('Error getting all alerts:', error);
+      return [];
+    }
+  }
+
+  async createAlert(alert: InsertAlert): Promise<Alert> {
+    try {
+      const result = await db.insert(alerts).values({
+        ...alert,
+        type: alert.type,
+        message: alert.message,
+        priority: alert.priority || 1,
+        isActive: alert.isActive !== undefined ? alert.isActive : true,
+        startDate: alert.startDate ? new Date(alert.startDate) : null,
+        endDate: alert.endDate ? new Date(alert.endDate) : null,
+        buttonText: alert.buttonText || null,
+        buttonUrl: alert.buttonUrl || null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }).returning();
+      return result[0];
+    } catch (error) {
+      console.error('Error creating alert:', error);
+      throw error;
+    }
+  }
+
+  async updateAlert(id: number, alertData: Partial<Alert>): Promise<Alert | undefined> {
+    try {
+      // Handle date conversions if strings are provided
+      const processedData = { ...alertData };
+      if (alertData.startDate && typeof alertData.startDate === 'string') {
+        processedData.startDate = new Date(alertData.startDate);
+      }
+      if (alertData.endDate && typeof alertData.endDate === 'string') {
+        processedData.endDate = new Date(alertData.endDate);
+      }
+
+      // Always update the updatedAt timestamp
+      processedData.updatedAt = new Date();
+
+      const result = await db.update(alerts)
+        .set(processedData)
+        .where(eq(alerts.id, id))
+        .returning();
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error updating alert:', error);
+      return undefined;
+    }
+  }
+
+  async deleteAlert(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(alerts)
+        .where(eq(alerts.id, id))
+        .returning({ id: alerts.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting alert:', error);
       return false;
     }
   }

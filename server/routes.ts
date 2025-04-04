@@ -8,7 +8,7 @@ import {
   insertEventSchema, insertLandingContentSchema, insertCourseSectionSchema,
   insertCourseModuleSchema, insertExamSchema, insertExamQuestionSchema,
   insertExamResultSchema, insertSemesterSchema, insertCohortSchema,
-  insertCohortEnrollmentSchema
+  insertCohortEnrollmentSchema, insertAlertSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -3575,6 +3575,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: result });
     } catch (error) {
       res.status(500).json({ message: "Error deleting enrollment" });
+    }
+  });
+  
+  // Alert routes
+  app.get("/api/alerts/active", async (req, res) => {
+    try {
+      const activeAlerts = await storage.getActiveAlerts();
+      res.json(activeAlerts);
+    } catch (error) {
+      console.error('Error fetching active alerts:', error);
+      res.status(500).json({ message: "Failed to fetch active alerts" });
+    }
+  });
+
+  app.get("/api/alerts", checkRole(["admin"]), async (req, res) => {
+    try {
+      const alerts = await storage.getAllAlerts();
+      res.json(alerts);
+    } catch (error) {
+      console.error('Error fetching alerts:', error);
+      res.status(500).json({ message: "Failed to fetch alerts" });
+    }
+  });
+
+  app.get("/api/alerts/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id, 10);
+      if (isNaN(alertId)) {
+        return res.status(400).json({ message: "Invalid alert ID" });
+      }
+      
+      const alert = await storage.getAlert(alertId);
+      if (!alert) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+      
+      res.json(alert);
+    } catch (error) {
+      console.error('Error fetching alert:', error);
+      res.status(500).json({ message: "Failed to fetch alert" });
+    }
+  });
+
+  app.post("/api/alerts", checkRole(["admin"]), async (req, res) => {
+    try {
+      // Validate request body against schema
+      const alertData = insertAlertSchema.parse(req.body);
+      
+      const newAlert = await storage.createAlert(alertData);
+      res.status(201).json(newAlert);
+    } catch (error) {
+      console.error('Error creating alert:', error);
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/alerts/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id, 10);
+      if (isNaN(alertId)) {
+        return res.status(400).json({ message: "Invalid alert ID" });
+      }
+      
+      // Get the existing alert to make sure it exists
+      const existingAlert = await storage.getAlert(alertId);
+      if (!existingAlert) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+      
+      // Update the alert
+      const updatedAlert = await storage.updateAlert(alertId, req.body);
+      res.json(updatedAlert);
+    } catch (error) {
+      console.error('Error updating alert:', error);
+      res.status(500).json({ message: "Failed to update alert" });
+    }
+  });
+
+  app.delete("/api/alerts/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const alertId = parseInt(req.params.id, 10);
+      if (isNaN(alertId)) {
+        return res.status(400).json({ message: "Invalid alert ID" });
+      }
+      
+      // Check if the alert exists
+      const existingAlert = await storage.getAlert(alertId);
+      if (!existingAlert) {
+        return res.status(404).json({ message: "Alert not found" });
+      }
+      
+      // Delete the alert
+      const success = await storage.deleteAlert(alertId);
+      if (success) {
+        res.status(204).send(); // No content response for successful deletion
+      } else {
+        res.status(500).json({ message: "Failed to delete alert" });
+      }
+    } catch (error) {
+      console.error('Error deleting alert:', error);
+      res.status(500).json({ message: "Failed to delete alert" });
     }
   });
 
