@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -506,21 +506,62 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                   <FormField
                     control={form.control}
                     name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mobile Number</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="Enter your full phone number"
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Enter your complete phone number with country code and provider prefix
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const [phoneNumber, setPhoneNumber] = useState<string>("");
+                      // Get the current selected wallet type
+                      const walletType = form.watch("walletType");
+                      
+                      // Get provider prefix based on wallet type
+                      const getPrefix = (): string => {
+                        switch (walletType) {
+                          case "EVCPlus": // Hormuud
+                            return "+25261";
+                          case "ZAAD": // Telesom 
+                            return "+25263";
+                          case "SAHAL": // Golis
+                            return "+25290";
+                          default:
+                            return "+252";
+                        }
+                      };
+                      
+                      // Update the full phone number whenever the prefix or number changes
+                      useEffect(() => {
+                        // Combine the prefix with the user input
+                        const prefix = getPrefix();
+                        const fullPhoneNumber = phoneNumber ? `${prefix}${phoneNumber}` : "";
+                        
+                        // Update the form field with the combined value
+                        field.onChange(fullPhoneNumber);
+                      }, [walletType, phoneNumber]);
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel>Mobile Number</FormLabel>
+                          <div className="flex space-x-2">
+                            <div className="w-1/3">
+                              <Input
+                                value={getPrefix()}
+                                disabled
+                                className="bg-slate-50"
+                              />
+                            </div>
+                            <div className="w-2/3">
+                              <FormControl>
+                                <Input
+                                  value={phoneNumber}
+                                  onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ""))}
+                                />
+                              </FormControl>
+                            </div>
+                          </div>
+                          <FormDescription>
+                            Enter the rest of your phone number after the prefix
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
 
                   <Alert className="border-l-4 border-primary/60 bg-primary/5">
