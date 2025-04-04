@@ -200,52 +200,24 @@ export const processPayment = async (
 };
 
 /**
- * Format mobile wallet payment data and ensure correct provider prefix is added
+ * Format mobile wallet payment data - user provides full number
  * @param {PaymentRequest} baseData The base payment data
  * @param {WalletType} walletType The type of mobile wallet
- * @returns {PaymentRequest} Formatted request with correct phone number format
+ * @returns {PaymentRequest} Formatted request with user-provided phone number
  */
 export const formatMobileWalletPayment = (
   baseData: PaymentRequest, 
   walletType: WalletType
 ): PaymentRequest => {
-  // Check if phone number already has the correct provider prefix
-  let phone = baseData.customerPhone || '';
-  
-  // Get the appropriate provider prefix for the wallet type
-  const getProviderPrefix = (wallet: WalletType): string => {
-    switch (wallet) {
-      case WalletType.ZAAD:
-        return '63';
-      case WalletType.EVCPLUS:
-        return '61';
-      case WalletType.SAHAL:
-        return '90';
-      default:
-        return '';
-    }
-  };
-  
-  const providerPrefix = getProviderPrefix(walletType);
-  
-  // If phone starts with country code, ensure it has the correct provider prefix
-  if (phone.startsWith('+252')) {
-    // Extract the part after country code
-    const afterCountryCode = phone.substring(4);
-    
-    // Check if it already has the provider prefix
-    if (!afterCountryCode.startsWith(providerPrefix)) {
-      // Format with correct provider prefix
-      phone = `+252${providerPrefix}${afterCountryCode}`; 
-    }
-  }
+  // Use the phone number exactly as provided by the user
+  // No prefix or country code manipulation
   
   // Return the formatted payment data
   return {
     ...baseData,
     paymentMethod: PaymentMethod.MOBILE_WALLET,
     walletType,
-    customerPhone: phone
+    customerPhone: baseData.customerPhone
   };
 };
 
