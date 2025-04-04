@@ -267,7 +267,17 @@ export const insertUserSchema = createInsertSchema(users).omit({ id: true, creat
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
 export const insertSemesterSchema = createInsertSchema(semesters).omit({ id: true });
 export const insertCourseModuleSchema = createInsertSchema(courseModules).omit({ id: true });
-export const insertCourseSectionSchema = createInsertSchema(courseSections).omit({ id: true });
+export const insertCourseSectionSchema = createInsertSchema(courseSections)
+  .omit({ id: true })
+  .extend({
+    description: z.string().optional().nullable(),
+    contentType: z.enum(["text", "video"]).optional().nullable(),
+    content: z.string().optional().nullable(),
+    videoUrl: z.string().optional().nullable(),
+    contentUrl: z.string().optional().nullable(),
+    duration: z.number().optional().nullable(),
+    unlockDate: z.string().optional().nullable()
+  });
 export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true });
 export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({ id: true });
 export const insertExamResultSchema = createInsertSchema(examResults).omit({ id: true, submittedAt: true, gradedAt: true });

@@ -91,14 +91,14 @@ const moduleSchema = z.object({
 // Schema for validating section form inputs
 const sectionSchema = z.object({
   title: z.string().min(2, "Title must be at least 2 characters"),
-  description: z.string().optional(),
+  description: z.string().optional().or(z.literal('')),
   moduleId: z.number(),
   duration: z.number().optional().nullable(),
-  unlockDate: z.string().optional(),
+  unlockDate: z.string().optional().nullable().or(z.literal('')),
   videoUrl: z.string().url("Please enter a valid URL").optional().or(z.literal('')),
   contentUrl: z.string().url("Please enter a valid URL").optional().or(z.literal('')),
-  content: z.string().optional(),
-  contentType: z.enum(["text", "video"]).default("text"),
+  content: z.string().optional().or(z.literal('')),
+  contentType: z.enum(["text", "video"]).default("text").optional(),
   isPublished: z.boolean().default(true),
   type: z.enum(["lesson", "quiz", "exam"]).default("lesson")
 });
@@ -709,11 +709,26 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
       const moduleId = data.moduleId;
       const existingSections = sections.filter(s => s.moduleId === moduleId);
       
-      const newSection = {
+      // Clean up data to handle empty strings and null values properly
+      const cleanedData = {
         ...data,
+        description: data.description || null,
+        contentType: data.contentType || null,
+        content: data.content || null,
+        videoUrl: data.videoUrl || null,
+        contentUrl: data.contentUrl || null,
+        duration: data.duration || null,
+        unlockDate: data.unlockDate || null,
+        isPublished: data.isPublished === undefined ? true : data.isPublished,
+      };
+      
+      const newSection = {
+        ...cleanedData,
         courseId,
         order: existingSections.length + 1
       };
+      
+      console.log("Sending section data:", newSection);
       
       const response = await apiRequest(`/api/admin/courses/${courseId}/sections`, {
         method: 'POST',
@@ -744,9 +759,24 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
   // Edit existing section mutation
   const editSectionMutation = useMutation({
     mutationFn: async (data: { id: number; data: Partial<SectionFormValues> }) => {
+      // Clean up data to handle empty strings and null values properly
+      const cleanedData = {
+        ...data.data,
+        description: data.data.description || null,
+        contentType: data.data.contentType || null,
+        content: data.data.content || null,
+        videoUrl: data.data.videoUrl || null,
+        contentUrl: data.data.contentUrl || null,
+        duration: data.data.duration || null,
+        unlockDate: data.data.unlockDate || null,
+        isPublished: data.data.isPublished === undefined ? true : data.data.isPublished,
+      };
+      
+      console.log("Sending update section data:", cleanedData);
+      
       const response = await apiRequest(`/api/admin/courses/${courseId}/sections/${data.id}`, {
         method: 'PATCH',
-        body: JSON.stringify(data.data),
+        body: JSON.stringify(cleanedData),
       });
       return response;
     },
