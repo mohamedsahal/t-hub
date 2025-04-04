@@ -334,16 +334,10 @@ export function QuizManagement() {
 
   // Handle exam form submission
   const onExamSubmit = (values: z.infer<typeof examFormSchema>) => {
-    // Set the type based on the active tab
-    const finalValues = {
-      ...values,
-      type: activeTab === 'quizzes' ? 'quiz' : 'midterm'
-    };
-    
-    console.log('Submitting form with values:', finalValues);
+    console.log('Submitting form with values:', values);
     
     // Check if we have a valid courseId
-    if (!finalValues.courseId || finalValues.courseId < 1) {
+    if (!values.courseId || values.courseId < 1) {
       toast({
         title: 'Validation Error',
         description: 'Please select a course',
@@ -352,7 +346,7 @@ export function QuizManagement() {
       return;
     }
     
-    examMutation.mutate(finalValues);
+    examMutation.mutate(values);
   };
 
   // Handle question form submission
@@ -826,8 +820,14 @@ export function QuizManagement() {
                 )}
               />
               
-              {/* Type field removed as requested - it was deemed unnecessary */}
-              <input type="hidden" {...examForm.register('type')} value={activeTab === 'quizzes' ? 'quiz' : 'midterm'} />
+              {/* Type field is still required by the backend validation */}
+              <FormField
+                control={examForm.control}
+                name="type"
+                render={({ field }) => (
+                  <input type="hidden" {...field} value={activeTab === 'quizzes' ? 'quiz' : 'midterm'} />
+                )}
+              />
               
               <div className="grid grid-cols-2 gap-4">
                 <FormField
