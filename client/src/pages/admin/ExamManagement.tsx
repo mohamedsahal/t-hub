@@ -85,20 +85,18 @@ interface Exam {
   title: string;
   description: string | null;
   type: string;
-  totalPoints: number;
-  passingPoints: number;
-  duration: number;
-  isActive: boolean;
-  courseId: number;
+  max_score: number;  // Changed from totalPoints
+  passing_score: number; // Changed from passingPoints
+  time_limit: number; // Changed from duration
+  status: string; // Changed from isActive (string instead of boolean)
+  course_id: number; // Changed from courseId
   course?: {
     title: string;
     type: string;
   };
-  sectionId?: number | null;
-  semesterId?: number | null;
-  availableFrom?: string | null;
-  availableTo?: string | null;
-  createdAt: string;
+  section_id?: number | null; // Changed from sectionId
+  semester_id?: number | null; // Changed from semesterId
+  created_at: string; // Changed from createdAt
   questions?: ExamQuestion[];
   questionCount?: number;
 }
@@ -137,7 +135,7 @@ interface Semester {
 // Extended insertExamSchema for the form
 const examFormSchema = insertExamSchema
   .extend({
-    courseId: z.number({
+    course_id: z.number({
       required_error: "Please select a course",
     }),
     title: z.string({
@@ -149,26 +147,27 @@ const examFormSchema = insertExamSchema
     type: z.enum(['quiz', 'midterm', 'final', 're_exam', 'assignment', 'project', 'practical'], {
       required_error: "Please select an exam type",
     }),
-    totalPoints: z.number({
+    max_score: z.number({
       required_error: "Please enter total points",
     }).min(1, {
       message: "Total points must be at least 1",
     }),
-    passingPoints: z.number({
+    passing_score: z.number({
       required_error: "Please enter passing points",
     }).min(1, {
       message: "Passing points must be at least 1",
     }),
-    duration: z.number({
+    time_limit: z.number({
       required_error: "Please enter duration in minutes",
     }).min(1, {
       message: "Duration must be at least 1 minute",
     }),
-    isActive: z.boolean().default(true),
-    sectionId: z.number().optional().nullable(),
-    semesterId: z.number().optional().nullable(),
-    availableFrom: z.string().optional().nullable(),
-    availableTo: z.string().optional().nullable(),
+    status: z.string().default('active'),
+    section_id: z.number().optional().nullable(),
+    semester_id: z.number().optional().nullable(),
+    // Not in DB schema, to be removed:
+    // availableFrom: z.string().optional().nullable(),
+    // availableTo: z.string().optional().nullable(),
   });
 
 const questionFormSchema = z.object({
@@ -217,10 +216,10 @@ export default function ExamManagement() {
       title: "",
       description: "",
       type: "quiz",
-      totalPoints: 100,
-      passingPoints: 60,
-      duration: 60,
-      isActive: true,
+      max_score: 100,
+      passing_score: 60,
+      time_limit: 60,
+      status: "active",
     },
   });
 
@@ -255,23 +254,23 @@ export default function ExamManagement() {
   });
 
   const { data: sections = [], isLoading: isLoadingSections } = useQuery({
-    queryKey: ['/api/course-sections', currentExam?.courseId],
+    queryKey: ['/api/course-sections', currentExam?.course_id],
     queryFn: async () => {
-      if (!currentExam?.courseId) return [];
-      const response = await apiRequest(`/api/course-sections?courseId=${currentExam.courseId}`);
+      if (!currentExam?.course_id) return [];
+      const response = await apiRequest(`/api/course-sections?courseId=${currentExam.course_id}`);
       return response as CourseSection[];
     },
-    enabled: !!currentExam?.courseId,
+    enabled: !!currentExam?.course_id,
   });
 
   const { data: semesters = [], isLoading: isLoadingSemesters } = useQuery({
-    queryKey: ['/api/semesters', currentExam?.courseId],
+    queryKey: ['/api/semesters', currentExam?.course_id],
     queryFn: async () => {
-      if (!currentExam?.courseId) return [];
-      const response = await apiRequest(`/api/semesters?courseId=${currentExam.courseId}`);
+      if (!currentExam?.course_id) return [];
+      const response = await apiRequest(`/api/semesters?courseId=${currentExam.course_id}`);
       return response as Semester[];
     },
-    enabled: !!currentExam?.courseId,
+    enabled: !!currentExam?.course_id,
   });
 
   const { data: questions = [], isLoading: isLoadingQuestions } = useQuery({
@@ -430,10 +429,18 @@ export default function ExamManagement() {
   const openExamModal = (exam?: Exam) => {
     if (exam) {
       setCurrentExam(exam);
+      // Only pass the specific fields we need to avoid type conflicts
       examForm.reset({
-        ...exam,
-        availableFrom: exam.availableFrom || undefined,
-        availableTo: exam.availableTo || undefined,
+        title: exam.title,
+        description: exam.description || "",
+        type: exam.type as any, // Type assertion to handle string type from API
+        max_score: exam.max_score,
+        passing_score: exam.passing_score,
+        time_limit: exam.time_limit,
+        status: exam.status,
+        course_id: exam.course_id,
+        section_id: exam.section_id,
+        semester_id: exam.semester_id
       });
     } else {
       setCurrentExam(null);
@@ -441,10 +448,10 @@ export default function ExamManagement() {
         title: "",
         description: "",
         type: "quiz",
-        totalPoints: 100,
-        passingPoints: 60,
-        duration: 60,
-        isActive: true,
+        max_score: 100,
+        passing_score: 60,
+        time_limit: 60,
+        status: "active",
       });
     }
     setIsExamModalOpen(true);
@@ -496,7 +503,7 @@ export default function ExamManagement() {
 
   const filteredExams = exams
     .filter(exam => {
-      const matchesCourse = !courseFilter || exam.courseId === courseFilter;
+      const matchesCourse = !courseFilter || exam.course_id === courseFilter;
       const matchesType = !typeFilter || exam.type === typeFilter;
       const matchesSearch = searchQuery.trim() === "" || 
         exam.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -514,11 +521,11 @@ export default function ExamManagement() {
         case "type":
           comparison = a.type.localeCompare(b.type);
           break;
-        case "totalPoints":
-          comparison = a.totalPoints - b.totalPoints;
+        case "max_score":
+          comparison = a.max_score - b.max_score;
           break;
-        case "duration":
-          comparison = a.duration - b.duration;
+        case "time_limit":
+          comparison = a.time_limit - b.time_limit;
           break;
         default:
           comparison = 0;
@@ -572,8 +579,8 @@ export default function ExamManagement() {
               <h1 className="text-2xl font-bold tracking-tight">Questions for {currentExam.title}</h1>
               <p className="text-muted-foreground">
                 {currentExam.type.charAt(0).toUpperCase() + currentExam.type.slice(1)} | 
-                Total Points: {currentExam.totalPoints} | 
-                Duration: {currentExam.duration} minutes
+                Total Points: {currentExam.max_score} | 
+                Duration: {currentExam.time_limit} minutes
               </p>
             </div>
             <div className="flex gap-2">
@@ -885,7 +892,11 @@ export default function ExamManagement() {
                     <FormItem>
                       <FormLabel>Explanation (Optional)</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="Explain the correct answer" {...field} />
+                        <Textarea 
+                          placeholder="Explain the correct answer" 
+                          {...field} 
+                          value={field.value || ''} 
+                        />
                       </FormControl>
                       <FormDescription>
                         This will be shown to students after they submit their answer or complete the exam.
@@ -1051,18 +1062,18 @@ export default function ExamManagement() {
                     </div>
                   </TableHead>
                   <TableHead>Course</TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSortChange("totalPoints")}>
+                  <TableHead className="cursor-pointer" onClick={() => handleSortChange("max_score")}>
                     <div className="flex items-center">
                       Points
-                      {sortField === "totalPoints" && (
+                      {sortField === "max_score" && (
                         <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
                       )}
                     </div>
                   </TableHead>
-                  <TableHead className="cursor-pointer" onClick={() => handleSortChange("duration")}>
+                  <TableHead className="cursor-pointer" onClick={() => handleSortChange("time_limit")}>
                     <div className="flex items-center">
                       Duration
-                      {sortField === "duration" && (
+                      {sortField === "time_limit" && (
                         <ArrowUpDown className={`ml-2 h-4 w-4 ${sortDirection === "desc" ? "rotate-180" : ""}`} />
                       )}
                     </div>
@@ -1104,18 +1115,20 @@ export default function ExamManagement() {
                           </span>
                         </div>
                       </TableCell>
-                      <TableCell>{exam.totalPoints} pts</TableCell>
+                      <TableCell>{exam.max_score} pts</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Clock className="h-4 w-4 text-muted-foreground" />
-                          <span>{exam.duration} min</span>
+                          <span>{exam.time_limit} min</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        {exam.isActive ? (
-                          <Badge variant="success">Active</Badge>
+                        {exam.status === 'active' ? (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active</Badge>
+                        ) : exam.status === 'draft' ? (
+                          <Badge variant="secondary">Draft</Badge>
                         ) : (
-                          <Badge variant="secondary">Inactive</Badge>
+                          <Badge variant="outline">Archived</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -1233,7 +1246,7 @@ export default function ExamManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={examForm.control}
-                      name="courseId"
+                      name="course_id"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Course*</FormLabel>
@@ -1293,7 +1306,7 @@ export default function ExamManagement() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                       control={examForm.control}
-                      name="totalPoints"
+                      name="max_score"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Total Points*</FormLabel>
@@ -1311,7 +1324,7 @@ export default function ExamManagement() {
                     
                     <FormField
                       control={examForm.control}
-                      name="passingPoints"
+                      name="passing_score"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Passing Points*</FormLabel>
@@ -1329,7 +1342,7 @@ export default function ExamManagement() {
                     
                     <FormField
                       control={examForm.control}
-                      name="duration"
+                      name="time_limit"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Duration (minutes)*</FormLabel>
@@ -1348,21 +1361,29 @@ export default function ExamManagement() {
                   
                   <FormField
                     control={examForm.control}
-                    name="isActive"
+                    name="status"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center gap-2 space-y-0 pt-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div>
-                          <FormLabel className="cursor-pointer">Active</FormLabel>
-                          <FormDescription>
-                            If checked, this exam will be visible to students and available for taking.
-                          </FormDescription>
-                        </div>
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          Active exams are visible to students and available for taking.
+                        </FormDescription>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />

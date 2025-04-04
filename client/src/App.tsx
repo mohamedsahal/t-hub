@@ -34,7 +34,7 @@ import ProductsAdminPage from "@/pages/admin/Products";
 import ProfilePage from "@/pages/admin/Profile";
 import QuizManagementPage from "@/pages/admin/QuizManagementPage";
 import CertificatesManagement from "@/pages/admin/Certificates";
-import ExamManagement from "@/pages/admin/ExamManagement";
+import ExamManagement from "./pages/admin/ExamManagement";
 
 import { ProtectedRoute } from "./lib/protected-route";
 import { AdminProtectedRoute } from "./lib/admin-protected-route";
