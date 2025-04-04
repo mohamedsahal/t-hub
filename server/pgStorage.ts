@@ -679,8 +679,16 @@ export class PgStorage implements IStorage {
 
   async createExam(exam: InsertExam): Promise<Exam> {
     const result = await db.insert(exams).values({
-      ...exam,
-      isActive: exam.isActive === undefined ? true : exam.isActive,
+      title: exam.title,
+      description: exam.description,
+      type: exam.type,
+      courseId: exam.course_id,
+      sectionId: exam.section_id || null,
+      semesterId: exam.semester_id || null,
+      maxScore: exam.max_score,
+      passingScore: exam.passing_score,
+      timeLimit: exam.time_limit,
+      status: exam.status || 'active',
       availableFrom: exam.availableFrom ? new Date(exam.availableFrom) : null,
       availableTo: exam.availableTo ? new Date(exam.availableTo) : null,
       gradeAThreshold: exam.gradeAThreshold || 90,
@@ -856,7 +864,13 @@ export class PgStorage implements IStorage {
   
   // Exam operations that were missing
   async getAllExams(): Promise<Exam[]> {
-    return await db.select().from(exams);
+    try {
+      const result = await db.select().from(exams);
+      return result;
+    } catch (error) {
+      console.error("Error in exam fetch logic:", error);
+      return [];
+    }
   }
   
   async getExamsBySemester(semesterId: number): Promise<Exam[]> {
@@ -872,10 +886,26 @@ export class PgStorage implements IStorage {
   }
 
   async getSemestersByCourse(courseId: number): Promise<Semester[]> {
-    return await db.select()
-      .from(semesters)
-      .where(eq(semesters.courseId, courseId))
-      .orderBy(asc(semesters.order));
+    try {
+      // Select only the columns that exist in the database
+      const result = await db.query.semesters.findMany({
+        where: eq(semesters.courseId, courseId),
+        orderBy: asc(semesters.id),
+        columns: {
+          id: true,
+          courseId: true,
+          name: true,
+          description: true,
+          startDate: true,
+          endDate: true,
+          isActive: true
+        }
+      });
+      return result;
+    } catch (error) {
+      console.error("Error fetching semesters:", error);
+      return [];
+    }
   }
 
   async getAllSemesters(): Promise<Semester[]> {

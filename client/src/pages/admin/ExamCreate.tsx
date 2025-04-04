@@ -156,17 +156,17 @@ export default function ExamCreate() {
           </p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Exam Details</CardTitle>
+        <Card className="mx-auto w-full max-w-4xl">
+          <CardHeader className="space-y-1 px-4 pt-5 sm:px-6">
+            <CardTitle className="text-xl sm:text-2xl">Exam Details</CardTitle>
             <CardDescription>
               Fill in the form below to create a new exam. You can add questions after creating the exam.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
                   {/* Title */}
                   <FormField
                     control={form.control}
@@ -597,11 +597,20 @@ export default function ExamCreate() {
                   </AlertDescription>
                 </Alert>
 
-                <div className="flex justify-end space-x-4 pt-4">
-                  <Button type="button" variant="outline" onClick={() => navigate('/admin/exams')}>
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-4 pt-4 space-y-3 space-y-reverse sm:space-y-0">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    className="w-full sm:w-auto" 
+                    onClick={() => navigate('/admin/exams')}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto"
+                  >
                     {isSubmitting ? "Creating..." : "Create Exam"}
                   </Button>
                 </div>
