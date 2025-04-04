@@ -3620,13 +3620,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/alerts", checkRole(["admin"]), async (req, res) => {
     try {
+      console.log('Received alert data:', req.body);
+      
       // Validate request body against schema
       const alertData = insertAlertSchema.parse(req.body);
+      console.log('Parsed alert data:', alertData);
       
       const newAlert = await storage.createAlert(alertData);
+      console.log('Created new alert:', newAlert);
+      
       res.status(201).json(newAlert);
     } catch (error) {
-      console.error('Error creating alert:', error);
+      console.error('Error creating alert (detailed):', error);
+      if (error.issues) {
+        console.error('Validation issues:', JSON.stringify(error.issues, null, 2));
+      }
       handleZodError(error, res);
     }
   });

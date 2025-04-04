@@ -126,12 +126,14 @@ const AlertManagement: React.FC = () => {
   // Create alert mutation
   const { mutate: createAlert, isPending: isCreating } = useMutation({
     mutationFn: (data: AlertFormValues) => {
+      console.log('Sending data to API:', data);
       return apiRequest('/api/alerts', {
         method: 'POST',
         data,
       });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('Alert created successfully:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/alerts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/alerts/active'] });
       setIsOpen(false);
@@ -207,6 +209,7 @@ const AlertManagement: React.FC = () => {
   });
 
   const handleSubmit = (values: AlertFormValues) => {
+    console.log('Form values being submitted:', values);
     if (editingAlert) {
       updateAlert({ id: editingAlert.id, data: values });
     } else {
