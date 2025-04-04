@@ -32,9 +32,13 @@ import PaymentsAdminPage from "@/pages/admin/Payments";
 import CohortPage from "@/pages/admin/Cohorts";
 import ProductsAdminPage from "@/pages/admin/Products";
 import ProfilePage from "@/pages/admin/Profile";
-import QuizManagementPage from "@/pages/admin/QuizManagementPage";
 import CertificatesManagement from "@/pages/admin/Certificates";
 import ExamManagement from "./pages/admin/ExamManagement";
+import ExamTypes from "./pages/admin/ExamTypes";
+import ExamCreate from "./pages/admin/ExamCreate";
+import ExamRules from "./pages/admin/ExamRules";
+import ExamMarks from "./pages/admin/ExamMarks";
+import ExamResults from "./pages/admin/ExamResults";
 
 import { ProtectedRoute } from "./lib/protected-route";
 import { AdminProtectedRoute } from "./lib/admin-protected-route";
@@ -82,8 +86,15 @@ function Router() {
       <AdminProtectedRoute path="/admin/enrollments" component={() => <EnrollmentsAdminPage />} />
       <AdminProtectedRoute path="/admin/certificates" component={() => <CertificatesManagement />} />
       <AdminProtectedRoute path="/admin/testimonials" component={() => <div>Testimonials Admin Page</div>} />
-      <AdminProtectedRoute path="/admin/quizzes" component={() => <QuizManagementPage />} />
+      
+      {/* Exam Management Routes */}
       <AdminProtectedRoute path="/admin/exams" component={() => <ExamManagement />} />
+      <AdminProtectedRoute path="/admin/exam-types" component={() => <ExamTypes />} />
+      <AdminProtectedRoute path="/admin/exam-create" component={() => <ExamCreate />} />
+      <AdminProtectedRoute path="/admin/exam-rules" component={() => <ExamRules />} />
+      <AdminProtectedRoute path="/admin/exam-marks" component={() => <ExamMarks />} />
+      <AdminProtectedRoute path="/admin/exam-results" component={() => <ExamResults />} />
+      
       <AdminProtectedRoute path="/admin/products" component={() => <ProductsAdminPage />} />
       <AdminProtectedRoute path="/admin/partners" component={() => <div>Partners Admin Page</div>} />
       <AdminProtectedRoute path="/admin/content" component={() => <div>Content Admin Page</div>} />

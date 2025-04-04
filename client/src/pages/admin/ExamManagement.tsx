@@ -956,8 +956,8 @@ export default function ExamManagement() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Exam Management</h1>
-          <Button onClick={() => openExamModal()}>
-            <Plus className="mr-2 h-4 w-4" /> Add Exam
+          <Button onClick={() => window.location.href = '/admin/exam-create'}>
+            <Plus className="mr-2 h-4 w-4" /> Create Exam
           </Button>
         </div>
 

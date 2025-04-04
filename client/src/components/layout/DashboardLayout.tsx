@@ -274,18 +274,66 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 href="/admin/testimonials" 
                 isActive={location === "/admin/testimonials"} 
               />
-              <SidebarItem 
-                icon={<FileText size={18} />} 
-                label="Quiz Management" 
-                href="/admin/quizzes" 
-                isActive={location === "/admin/quizzes"} 
-              />
-              <SidebarItem 
-                icon={<ClipboardCheck size={18} />} 
-                label="Exams" 
-                href="/admin/exams" 
-                isActive={location === "/admin/exams"} 
-              />
+              <div className="relative group">
+                <div 
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer",
+                    (location === "/admin/exams" || 
+                     location === "/admin/exam-types" || 
+                     location === "/admin/exam-create" || 
+                     location === "/admin/exam-rules" || 
+                     location === "/admin/exam-marks" ||
+                     location === "/admin/exam-results") 
+                      ? "bg-gray-800 text-white" : "text-gray-300 hover:text-white"
+                  )}
+                >
+                  <div className="w-6 h-6 flex items-center justify-center">
+                    <ClipboardCheck size={18} />
+                  </div>
+                  <span>Exams</span>
+                  <ChevronDown size={14} className="ml-auto" />
+                </div>
+                <div className="hidden group-hover:block absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-10">
+                  <div className="py-1">
+                    <Link 
+                      href="/admin/exams" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      All Exams
+                    </Link>
+                    <Link 
+                      href="/admin/exam-types" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Exam Types
+                    </Link>
+                    <Link 
+                      href="/admin/exam-create" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Create Exam
+                    </Link>
+                    <Link 
+                      href="/admin/exam-rules" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Exam Rules
+                    </Link>
+                    <Link 
+                      href="/admin/exam-marks" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Exam Marks
+                    </Link>
+                    <Link 
+                      href="/admin/exam-results" 
+                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    >
+                      Exam Results
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </SidebarCategory>
             
             <SidebarCategory label="PRODUCTS">
