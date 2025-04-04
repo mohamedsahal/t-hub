@@ -77,10 +77,10 @@ const techStacks = [
 
 
 
-const HeroSection = () => {
+const HeroSection = ({ hasAlert = false }: { hasAlert?: boolean }) => {
 
   return (
-    <section className="relative py-16 md:py-20 overflow-hidden">
+    <section className={`relative ${hasAlert ? 'pt-6' : 'pt-0'} pb-16 md:pb-20 overflow-hidden`}>
       {/* Gradient background using THub colors (blue #0080c9 and green #3cb878) */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#0080c9]/10 via-white to-[#3cb878]/10 z-0"></div>
       

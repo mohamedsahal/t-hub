@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { useQuery } from '@tanstack/react-query';
 import HeroSection from "@/components/home/HeroSection";
 import CourseCategories from "@/components/home/CourseCategories";
 import FeatureHighlights from "@/components/home/FeatureHighlights";
@@ -10,13 +12,39 @@ import RecentEvents from "@/components/home/RecentEvents";
 import CallToAction from "@/components/home/CallToAction";
 import AlertBanner from "@/components/ui/AlertBanner";
 
+// Alert type for TypeScript
+interface Alert {
+  id: number;
+  message: string;
+  type: string;
+  buttonText?: string;
+  buttonUrl?: string;
+}
+
 const Home = () => {
+  // Fetch active alerts
+  const { data: alerts = [] } = useQuery<Alert[]>({
+    queryKey: ['/api/alerts/active'],
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+  
+  // Get alerts that haven't been dismissed
+  const [dismissedAlerts, setDismissedAlerts] = useState<number[]>(() => {
+    const saved = localStorage.getItem('dismissedAlerts');
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const visibleAlerts = alerts.filter(alert => !dismissedAlerts.includes(alert.id));
+  const hasAlerts = visibleAlerts.length > 0;
+
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        <AlertBanner />
-      </div>
-      <HeroSection />
+      {hasAlerts && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+          <AlertBanner />
+        </div>
+      )}
+      <HeroSection hasAlert={hasAlerts} />
       <CourseCategories />
       <FeatureHighlights />
       <ProgramCategories />
