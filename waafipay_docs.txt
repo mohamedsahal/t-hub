@@ -1,0 +1,102 @@
+    Waafipaydocs WaafiPay
+
+   (BUTTON) (BUTTON) (BUTTON)
+
+   Waafipaydocs WaafiPay
+   (BUTTON) Search
+   88K
+
+   Get Started
+   IntroductionQuickstartSupport
+
+   Guides
+   PreAuthorizationPurchaseHosted Payment Page (HPP)
+
+   API Reference
+   IntroductionPurchasePreAuthorizationHosted Payment PageWebhooks
+   (BUTTON) (BUTTON)
+
+   (BUTTON) On this page
+
+Introduction
+
+   Welcome to the WaafiPay Ecommerce Payment Gateway
+
+WaafiPay
+
+   WaafiPay is the leading payment gateway in East Africa, we offer a
+   comprehensive solution for merchants to seamlessly accept payments from
+   customers using cards, mobile wallets, and bank accounts. Designed with
+   the flexibility to cater to a diverse marketplace, our API enables
+   businesses to expand their reach and facilitate smoother transactions
+   across different payment platforms.
+
+   WaafiPay is committed to providing a secure transaction environment and
+   is fully compliant with the Payment Card Industry Data Security
+   Standard (PCI DSS). This ensures that every transaction is processed
+   with the highest level of security, safeguarding merchant and customer
+   data against fraud and breaches.
+
+   By integrating with WaafiPay, merchants gain a competitive edge with
+   the ability to process payments through popular mobile wallets like
+   WAAFI, ZAAD, EVCPlus, and SAHAL, alongside direct Card and Bank Account
+   transactions. This versatility makes WaafiPay an ideal partner for
+   businesses looking to enhance their payment systems, improve customer
+   satisfaction, and increase sales efficiency in the dynamic East African
+   market.
+
+   Whether you are integrating WaafiPay into a mobile app, a web store, or
+   a custom-built e-commerce solution, our documentation will guide you
+   through the necessary steps and technical details. It includes detailed
+   descriptions of our API endpoints, data formats, and operational
+   procedures, along with code examples in multiple programming languages
+   to assist you in a smooth integration process. Whether you're a small
+   business, a large enterprise, or a freelance developer, Waafipay
+   provides the flexibility and functionality you need to manage payments
+   efficiently and securely.
+
+Setup
+
+    1. API Access: You must have a valid Waafipay account. If you do not
+       have one, please visit WAAFI HQ Offices (Telesom, Zaad, Golis,
+       WAAFI SAB) to register in person. Once registered, you will receive
+       your API credentials, including an API key and a client ID, which
+       are necessary for authentication.
+    2. Secure Environment: Ensure that your development and production
+       environments comply with our security standards, which include
+       using HTTPS to encrypt all API requests to safeguard sensitive
+       data.
+    3. Compatibility Check: Your system should be compatible with our API
+       specifications. We support JSON for request and response bodies,
+       and our API can be accessed from any platform that supports HTTPS
+       requests.
+    4. Development Tools: You should have the necessary development tools
+       installed, including a REST client for testing API requests, and an
+       environment for writing and testing your integration code.
+
+   By meeting these requirements, you will be ready to proceed with
+   integrating the WaafiPay API and start processing payments securely and
+   efficiently through Mobile Wallets and Bank Accounts.
+
+Reference APIs
+
+   Customize and integrate WaafiPay's secure payment solutions directly
+   into any application using our robust API.
+
+WordPress Plugin
+
+   Easily accept payments on your WordPress or WooCommerce site with
+   WaafiPay integration.
+
+Odoo Plugin
+
+   Seamlessly integrate WaafiPay with Odoo for managing payments,
+   invoices, and transactions.
+
+   Next
+
+   Quickstart
+
+On this page
+
+   WaafiPaySetup

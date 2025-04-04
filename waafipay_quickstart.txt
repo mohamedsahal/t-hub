@@ -1,0 +1,82 @@
+    Waafipaydocs WaafiPay
+
+   (BUTTON) (BUTTON) (BUTTON)
+
+   Waafipaydocs WaafiPay
+   (BUTTON) Search
+   88K
+
+   Get Started
+   IntroductionQuickstartSupport
+
+   Guides
+   PreAuthorizationPurchaseHosted Payment Page (HPP)
+
+   API Reference
+   IntroductionPurchasePreAuthorizationHosted Payment PageWebhooks
+   (BUTTON) (BUTTON)
+
+   (BUTTON) On this page
+
+Quickstart
+
+   WaafiPay API Quickstart Guide
+
+   Welcome to the WaafiPay API Quickstart guide! This document will help
+   you set up and test your integration with WaafiPay's sandbox
+   environment, allowing you to process secure transactions through cards,
+   mobile wallets, and bank accounts.
+
+Overview
+
+   The WaafiPay API allows client applications to communicate directly
+   with WaafiPay's secure servers in a predefined message format,
+   facilitating smooth, real-time transactions. With multiple programming
+   languages supported, WaafiPay makes it easy to integrate into your
+   existing website or application.
+
+   For code snippets and additional examples, refer to our Github
+   repository. It contains sample integrations to help you get up and
+   running quickly.
+
+Testing with Mobile Wallets and Test Cards
+
+   WaafiPay provides test data for both mobile wallets and cards, ensuring
+   you can fully simulate a range of payment scenarios during integration.
+
+Mobile Wallets
+
+   Use the following test numbers for simulating mobile wallet
+   transactions:
+      Wallet Brand       Provider    Mobile Number PIN
+   EVCPlus             Hormuud       252611111111  1212
+   ZAAD Service        Telesom       252631111111  1212
+   SAHAL Service       Golis Telecom 252911111111  1212
+   WAAFI Djibouti      WAAFI         253711111111  1212
+   WAAFI International WAAFI         9715111111111 1212
+   These wallet numbers are for testing only and WILL NOT work in the
+   production environment.
+
+Test Cards
+
+   Use the following test card details to simulate card transactions:
+        Network           Card Number     Expiration Date CVV
+   Visa               4111 1111 1111 1111 12/28           000
+   MasterCard         5555 5555 5555 4444 12/28           000
+   Sandbox MasterCard 5555 5555 5555 5599 12/34           123
+   American Express   3411 1111 1111 1111 12/28           000
+   These card numbers are for Testing purposes only and CAN NOT be used
+   for LIVE transactions.
+
+   Previous
+
+   Introduction
+
+   Next
+
+   Support
+
+On this page
+
+   OverviewTesting with Mobile Wallets and Test CardsMobile WalletsTest
+   Cards
