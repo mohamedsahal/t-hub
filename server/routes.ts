@@ -6,7 +6,8 @@ import {
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
   insertTestimonialSchema, insertProductSchema, insertPartnerSchema,
   insertEventSchema, insertLandingContentSchema, insertCourseSectionSchema,
-  insertCourseModuleSchema
+  insertCourseModuleSchema, insertExamSchema, insertExamQuestionSchema,
+  insertExamResultSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -1884,6 +1885,590 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedSections);
     } catch (error) {
       res.status(500).json({ message: "Error reordering course sections" });
+    }
+  });
+  
+  // Exam routes
+  app.get("/api/admin/exams", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = req.query.courseId ? parseInt(req.query.courseId as string) : undefined;
+      const sectionId = req.query.sectionId ? parseInt(req.query.sectionId as string) : undefined;
+      
+      let exams = [];
+      
+      if (courseId) {
+        exams = await storage.getExamsByCourse(courseId);
+      } else if (sectionId) {
+        exams = await storage.getExamsBySection(sectionId);
+      } else {
+        // For admin, return all exams
+        // For teachers, return exams for their courses
+        const user = req.user as any;
+        if (user.role === "admin") {
+          // In a real production app, we would paginate this
+          const allCourses = await storage.getAllCourses();
+          for (const course of allCourses) {
+            const courseExams = await storage.getExamsByCourse(course.id);
+            exams.push(...courseExams);
+          }
+        } else if (user.role === "teacher") {
+          const allCourses = await storage.getAllCourses();
+          const teacherCourses = allCourses.filter(course => course.teacherId === user.id);
+          for (const course of teacherCourses) {
+            const courseExams = await storage.getExamsByCourse(course.id);
+            exams.push(...courseExams);
+          }
+        }
+      }
+      
+      res.json(exams);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching exams" });
+    }
+  });
+  
+  app.get("/api/admin/exams/:id", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const exam = await storage.getExam(examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Check if user is authorized to view this exam
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to view this exam" });
+        }
+      }
+      
+      res.json(exam);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching exam" });
+    }
+  });
+  
+  app.post("/api/admin/exams", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examData = insertExamSchema.parse(req.body);
+      
+      // Verify the course exists
+      const course = await storage.getCourse(examData.courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Check if user is authorized to add exams to this course
+      const user = req.user as any;
+      if (user.role !== "admin" && course.teacherId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to add exams to this course" });
+      }
+      
+      // If sectionId is provided, verify the section exists
+      if (examData.sectionId) {
+        const section = await storage.getCourseSection(examData.sectionId);
+        if (!section) {
+          return res.status(404).json({ message: "Section not found" });
+        }
+        
+        // Verify the section belongs to the specified course
+        if (section.courseId !== examData.courseId) {
+          return res.status(400).json({ message: "Section does not belong to the specified course" });
+        }
+      }
+      
+      const exam = await storage.createExam(examData);
+      res.status(201).json(exam);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+  
+  app.patch("/api/admin/exams/:id", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const exam = await storage.getExam(examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Check if user is authorized to update this exam
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to update this exam" });
+        }
+      }
+      
+      const examData = req.body;
+      const updatedExam = await storage.updateExam(examId, examData);
+      
+      res.json(updatedExam);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+  
+  app.delete("/api/admin/exams/:id", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const exam = await storage.getExam(examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Check if user is authorized to delete this exam
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to delete this exam" });
+        }
+      }
+      
+      await storage.deleteExam(examId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting exam" });
+    }
+  });
+  
+  // Exam Questions routes
+  app.get("/api/admin/exams/:examId/questions", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      const exam = await storage.getExam(examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Check if user is authorized to view these questions
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to view questions for this exam" });
+        }
+      }
+      
+      const questions = await storage.getExamQuestionsByExam(examId);
+      res.json(questions);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching exam questions" });
+    }
+  });
+  
+  app.post("/api/admin/exams/:examId/questions", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      const exam = await storage.getExam(examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Check if user is authorized to add questions to this exam
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to add questions to this exam" });
+        }
+      }
+      
+      const questionData = insertExamQuestionSchema.parse(req.body);
+      
+      // Ensure the question is linked to the correct exam
+      questionData.examId = examId;
+      
+      // Get the current highest order value and add 1
+      const existingQuestions = await storage.getExamQuestionsByExam(examId);
+      const maxOrder = existingQuestions.length > 0 
+        ? Math.max(...existingQuestions.map(q => q.order)) 
+        : 0;
+      
+      questionData.order = questionData.order || maxOrder + 1;
+      
+      const question = await storage.createExamQuestion(questionData);
+      res.status(201).json(question);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+  
+  app.patch("/api/admin/exams/:examId/questions/:questionId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      const questionId = parseInt(req.params.questionId);
+      
+      const exam = await storage.getExam(examId);
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      const question = await storage.getExamQuestion(questionId);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      // Verify the question belongs to the specified exam
+      if (question.examId !== examId) {
+        return res.status(400).json({ message: "Question does not belong to the specified exam" });
+      }
+      
+      // Check if user is authorized to update this question
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to update questions for this exam" });
+        }
+      }
+      
+      const questionData = req.body;
+      const updatedQuestion = await storage.updateExamQuestion(questionId, questionData);
+      
+      res.json(updatedQuestion);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+  
+  app.delete("/api/admin/exams/:examId/questions/:questionId", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      const questionId = parseInt(req.params.questionId);
+      
+      const exam = await storage.getExam(examId);
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      const question = await storage.getExamQuestion(questionId);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      // Verify the question belongs to the specified exam
+      if (question.examId !== examId) {
+        return res.status(400).json({ message: "Question does not belong to the specified exam" });
+      }
+      
+      // Check if user is authorized to delete this question
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to delete questions for this exam" });
+        }
+      }
+      
+      await storage.deleteExamQuestion(questionId);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting exam question" });
+    }
+  });
+  
+  // Reorder questions
+  app.patch("/api/admin/exams/:examId/questions/reorder", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      
+      // Verify the exam exists
+      const exam = await storage.getExam(examId);
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Check if user is authorized to modify this exam
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to reorder questions in this exam" });
+        }
+      }
+      
+      // Validate request body
+      if (!req.body.questions || !Array.isArray(req.body.questions)) {
+        return res.status(400).json({ message: "Invalid request body - questions array required" });
+      }
+      
+      // Update the order of each question
+      const questions = req.body.questions;
+      for (const question of questions) {
+        await storage.updateExamQuestion(question.id, { order: question.order });
+      }
+      
+      // Return the updated questions
+      const updatedQuestions = await storage.getExamQuestionsByExam(examId);
+      res.json(updatedQuestions);
+    } catch (error) {
+      res.status(500).json({ message: "Error reordering exam questions" });
+    }
+  });
+  
+  // Student Exam Endpoints
+  app.get("/api/exams", isAuthenticated, async (req, res) => {
+    try {
+      const courseId = req.query.courseId ? parseInt(req.query.courseId as string) : undefined;
+      const user = req.user as any;
+      
+      if (!courseId) {
+        return res.status(400).json({ message: "Course ID is required" });
+      }
+      
+      // Verify the user is enrolled in the course
+      const enrollments = await storage.getEnrollmentsByUser(user.id);
+      const isEnrolled = enrollments.some(enrollment => enrollment.courseId === courseId);
+      
+      if (!isEnrolled && user.role === "student") {
+        return res.status(403).json({ message: "Not enrolled in this course" });
+      }
+      
+      const exams = await storage.getExamsByCourse(courseId);
+      
+      // Filter out inactive exams and include only available ones for students
+      const filteredExams = user.role === "student" 
+        ? exams.filter(exam => {
+            const isActive = exam.isActive;
+            const isAvailable = (!exam.availableFrom || new Date(exam.availableFrom) <= new Date()) && 
+                               (!exam.availableTo || new Date(exam.availableTo) >= new Date());
+            return isActive && isAvailable;
+          })
+        : exams;
+        
+      res.json(filteredExams);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching exams" });
+    }
+  });
+  
+  app.get("/api/exams/:id", isAuthenticated, async (req, res) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const exam = await storage.getExam(examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      const user = req.user as any;
+      
+      // For students, check if they're enrolled and if the exam is active and available
+      if (user.role === "student") {
+        const enrollments = await storage.getEnrollmentsByUser(user.id);
+        const isEnrolled = enrollments.some(enrollment => enrollment.courseId === exam.courseId);
+        
+        if (!isEnrolled) {
+          return res.status(403).json({ message: "Not enrolled in this course" });
+        }
+        
+        const isActive = exam.isActive;
+        const isAvailable = (!exam.availableFrom || new Date(exam.availableFrom) <= new Date()) && 
+                           (!exam.availableTo || new Date(exam.availableTo) >= new Date());
+                           
+        if (!isActive || !isAvailable) {
+          return res.status(403).json({ message: "Exam is not available" });
+        }
+      }
+      
+      // For teachers, check if they are assigned to the course
+      if (user.role === "teacher") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to view this exam" });
+        }
+      }
+      
+      // Get questions for the exam but exclude correct answers for students
+      const questions = await storage.getExamQuestionsByExam(examId);
+      
+      if (user.role === "student") {
+        // Remove correct answers for students
+        const sanitizedQuestions = questions.map(q => {
+          const { correctAnswer, explanation, ...rest } = q;
+          return rest;
+        });
+        
+        res.json({
+          ...exam,
+          questions: sanitizedQuestions
+        });
+      } else {
+        // Include all data for teachers and admins
+        res.json({
+          ...exam,
+          questions
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching exam" });
+    }
+  });
+  
+  // Submit exam results
+  app.post("/api/exams/:id/submit", isAuthenticated, async (req, res) => {
+    try {
+      const examId = parseInt(req.params.id);
+      const exam = await storage.getExam(examId);
+      
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      const user = req.user as any;
+      
+      // Verify the user is enrolled in the course
+      const enrollments = await storage.getEnrollmentsByUser(user.id);
+      const isEnrolled = enrollments.some(enrollment => enrollment.courseId === exam.courseId);
+      
+      if (!isEnrolled && user.role === "student") {
+        return res.status(403).json({ message: "Not enrolled in this course" });
+      }
+      
+      // Verify the exam is active and available
+      const isActive = exam.isActive;
+      const isAvailable = (!exam.availableFrom || new Date(exam.availableFrom) <= new Date()) && 
+                         (!exam.availableTo || new Date(exam.availableTo) >= new Date());
+                         
+      if (!isActive || !isAvailable) {
+        return res.status(403).json({ message: "Exam is not available" });
+      }
+      
+      // Validate submitted answers
+      if (!req.body.answers || !Array.isArray(req.body.answers)) {
+        return res.status(400).json({ message: "Invalid request body - answers array required" });
+      }
+      
+      // Get all questions for the exam
+      const questions = await storage.getExamQuestionsByExam(examId);
+      
+      // Calculate score
+      const answers = req.body.answers;
+      let score = 0;
+      let totalPoints = 0;
+      
+      // Process only questions with automatic scoring (multiple choice, true/false)
+      const automaticQuestions = questions.filter(q => 
+        q.type === 'multiple_choice' || q.type === 'true_false');
+      
+      for (const question of automaticQuestions) {
+        totalPoints += question.points;
+        
+        // Find the submitted answer for this question
+        const submittedAnswer = answers.find((a: any) => a.questionId === question.id);
+        
+        if (submittedAnswer && submittedAnswer.answer === question.correctAnswer) {
+          score += question.points;
+        }
+      }
+      
+      // Determine exam status
+      let status: 'pending' | 'completed' | 'failed' | 'passed' = 'pending';
+      
+      // If there are only multiple choice/true-false questions, we can automatically grade
+      if (questions.length === automaticQuestions.length) {
+        status = score >= exam.passingPoints ? 'passed' : 'failed';
+      } else {
+        // If there are essay/short answer questions, mark as pending for manual grading
+        status = 'pending';
+      }
+      
+      // Save the exam result
+      const result = await storage.createExamResult({
+        examId,
+        userId: user.id,
+        score,
+        status,
+        attemptNumber: 1, // Would need to check previous attempts in production
+        answers: answers.map((a: any) => JSON.stringify(a)),
+      });
+      
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(500).json({ message: "Error submitting exam" });
+    }
+  });
+  
+  // Get exam results for a student
+  app.get("/api/user/exam-results", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const results = await storage.getExamResultsByUser(user.id);
+      
+      // Enrich with exam data
+      const enrichedResults = [];
+      for (const result of results) {
+        const exam = await storage.getExam(result.examId);
+        if (exam) {
+          enrichedResults.push({
+            ...result,
+            examTitle: exam.title,
+            examType: exam.type,
+            courseId: exam.courseId
+          });
+        }
+      }
+      
+      res.json(enrichedResults);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching exam results" });
+    }
+  });
+  
+  // Grade an exam (for teachers and admins)
+  app.patch("/api/admin/exam-results/:id/grade", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const resultId = parseInt(req.params.id);
+      const result = await storage.getExamResult(resultId);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Exam result not found" });
+      }
+      
+      const exam = await storage.getExam(result.examId);
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Check if user is authorized to grade this exam
+      const user = req.user as any;
+      if (user.role !== "admin") {
+        const course = await storage.getCourse(exam.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to grade exams for this course" });
+        }
+      }
+      
+      // Validate request body
+      if (typeof req.body.score !== 'number') {
+        return res.status(400).json({ message: "Invalid request body - score is required" });
+      }
+      
+      // Determine status based on score
+      const status = req.body.score >= exam.passingPoints ? 'passed' : 'failed';
+      
+      // Update the exam result
+      const updatedResult = await storage.updateExamResult(resultId, {
+        score: req.body.score,
+        status,
+        gradedBy: user.id,
+        gradedAt: new Date(),
+        feedback: req.body.feedback
+      });
+      
+      res.json(updatedResult);
+    } catch (error) {
+      res.status(500).json({ message: "Error grading exam" });
     }
   });
 

@@ -6,8 +6,9 @@ import {
   Enrollment, InsertEnrollment, Certificate, InsertCertificate, 
   Testimonial, InsertTestimonial, Product, InsertProduct,
   Partner, InsertPartner, Event, InsertEvent, LandingContent, InsertLandingContent,
+  Exam, InsertExam, ExamQuestion, InsertExamQuestion, ExamResult, InsertExamResult,
   users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
-  products, partners, events, landingContent
+  products, partners, events, landingContent, exams, examQuestions, examResults
 } from '@shared/schema';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -165,7 +166,7 @@ export class PgStorage implements IStorage {
       status: payment.status || "pending",
       transactionId: payment.transactionId || null,
       numberOfInstallments: payment.numberOfInstallments || null,
-      dueDate: payment.dueDate || null,
+      dueDate: payment.dueDate ? new Date(payment.dueDate) : null,
       paymentDate: new Date()
     }).returning();
     return result[0];
@@ -492,11 +493,23 @@ export class PgStorage implements IStorage {
     
     // Set the order to be one more than the current maximum
     const sectionToCreate = {
-      ...section,
+      title: section.title,
+      courseId: section.courseId,
+      moduleId: section.moduleId || null,
+      semesterId: section.semesterId || null,
+      description: section.description || null,
+      duration: section.duration || null,
+      unlockDate: section.unlockDate ? new Date(section.unlockDate) : null,
       order: section.order || maxOrder + 1,
+      isPublished: section.isPublished !== undefined ? section.isPublished : true,
+      type: section.type || 'lesson',
+      videoUrl: section.videoUrl || null,
+      contentUrl: section.contentUrl || null,
+      content: section.content || null,
+      contentType: section.contentType || null
     };
     
-    const result = await db.insert(courseSections).values(sectionToCreate).returning();
+    const result = await db.insert(courseSections).values([sectionToCreate]).returning();
     return result[0];
   }
 
@@ -557,7 +570,7 @@ export class PgStorage implements IStorage {
         order: module.order || maxOrder + 1,
       };
       
-      const result = await db.insert(courseModules).values(moduleToCreate).returning();
+      const result = await db.insert(courseModules).values([moduleToCreate]).returning();
       return result[0];
     } catch (error) {
       console.error("Error creating course module:", error);
@@ -615,6 +628,148 @@ export class PgStorage implements IStorage {
       return result.length > 0;
     } catch (error) {
       console.error("Error deleting course:", error);
+      return false;
+    }
+  }
+
+  // Exam operations
+  async getExam(id: number): Promise<Exam | undefined> {
+    const result = await db.select().from(exams).where(eq(exams.id, id));
+    return result[0];
+  }
+
+  async getExamsByCourse(courseId: number): Promise<Exam[]> {
+    return await db.select().from(exams).where(eq(exams.courseId, courseId));
+  }
+
+  async getExamsBySection(sectionId: number): Promise<Exam[]> {
+    return await db.select().from(exams).where(eq(exams.sectionId, sectionId));
+  }
+
+  async createExam(exam: InsertExam): Promise<Exam> {
+    const result = await db.insert(exams).values({
+      ...exam,
+      isActive: exam.isActive === undefined ? true : exam.isActive,
+      availableFrom: exam.availableFrom ? new Date(exam.availableFrom) : null,
+      availableTo: exam.availableTo ? new Date(exam.availableTo) : null,
+      createdAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateExam(id: number, examData: Partial<Exam>): Promise<Exam | undefined> {
+    const result = await db.update(exams)
+      .set(examData)
+      .where(eq(exams.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteExam(id: number): Promise<boolean> {
+    try {
+      // First, delete all related exam questions
+      await db.delete(examQuestions).where(eq(examQuestions.examId, id));
+      
+      // Then delete the exam
+      const result = await db.delete(exams)
+        .where(eq(exams.id, id))
+        .returning({ id: exams.id });
+        
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting exam:', error);
+      return false;
+    }
+  }
+
+  // Exam Question operations
+  async getExamQuestion(id: number): Promise<ExamQuestion | undefined> {
+    const result = await db.select().from(examQuestions).where(eq(examQuestions.id, id));
+    return result[0];
+  }
+
+  async getExamQuestionsByExam(examId: number): Promise<ExamQuestion[]> {
+    return await db.select()
+      .from(examQuestions)
+      .where(eq(examQuestions.examId, examId))
+      .orderBy(examQuestions.order);
+  }
+
+  async createExamQuestion(question: InsertExamQuestion): Promise<ExamQuestion> {
+    const result = await db.insert(examQuestions).values({
+      ...question,
+      order: question.order || 1,
+      explanation: question.explanation || null,
+    }).returning();
+    return result[0];
+  }
+
+  async updateExamQuestion(id: number, questionData: Partial<ExamQuestion>): Promise<ExamQuestion | undefined> {
+    const result = await db.update(examQuestions)
+      .set(questionData)
+      .where(eq(examQuestions.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteExamQuestion(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(examQuestions)
+        .where(eq(examQuestions.id, id))
+        .returning({ id: examQuestions.id });
+        
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting exam question:', error);
+      return false;
+    }
+  }
+
+  // Exam Result operations
+  async getExamResult(id: number): Promise<ExamResult | undefined> {
+    const result = await db.select().from(examResults).where(eq(examResults.id, id));
+    return result[0];
+  }
+
+  async getExamResultsByExam(examId: number): Promise<ExamResult[]> {
+    return await db.select().from(examResults).where(eq(examResults.examId, examId));
+  }
+
+  async getExamResultsByUser(userId: number): Promise<ExamResult[]> {
+    return await db.select().from(examResults).where(eq(examResults.userId, userId));
+  }
+
+  async createExamResult(result: InsertExamResult): Promise<ExamResult> {
+    const examResult = await db.insert(examResults).values({
+      ...result,
+      submittedAt: new Date(),
+      gradedAt: null
+    }).returning();
+    return examResult[0];
+  }
+
+  async updateExamResult(id: number, resultData: Partial<ExamResult>): Promise<ExamResult | undefined> {
+    const updatedData: any = { ...resultData };
+    if (resultData.gradedBy) {
+      updatedData.gradedAt = new Date();
+    }
+    
+    const result = await db.update(examResults)
+      .set(updatedData)
+      .where(eq(examResults.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteExamResult(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(examResults)
+        .where(eq(examResults.id, id))
+        .returning({ id: examResults.id });
+        
+      return result.length > 0;
+    } catch (error) {
+      console.error('Error deleting exam result:', error);
       return false;
     }
   }

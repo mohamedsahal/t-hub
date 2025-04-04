@@ -15,6 +15,7 @@ export const examTypeEnum = pgEnum('exam_type', ['quiz', 'midterm', 'final', 're
 export const examStatusEnum = pgEnum('exam_status', ['pending', 'completed', 'failed', 'passed']);
 export const sectionTypeEnum = pgEnum('section_type', ['lesson', 'quiz', 'exam']);
 export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['text', 'video']);
+export const questionTypeEnum = pgEnum('question_type', ['multiple_choice', 'true_false', 'short_answer', 'essay']);
 export const productTypeEnum = pgEnum('product_type', [
   'restaurant', 'school', 'laundry', 'inventory', 
   'task', 'hotel', 'hospital', 'dental', 
@@ -127,10 +128,12 @@ export const examQuestions = pgTable("exam_questions", {
   id: serial("id").primaryKey(),
   examId: integer("exam_id").references(() => exams.id).notNull(),
   question: text("question").notNull(),
+  type: questionTypeEnum("type").default('multiple_choice').notNull(),
   options: text("options").array(), // Multiple choice options
   correctAnswer: text("correct_answer").notNull(),
   points: integer("points").notNull().default(1),
   order: integer("order").default(1).notNull(),
+  explanation: text("explanation"), // Explanation for the correct answer
 });
 
 // Student Exam Results
@@ -279,7 +282,12 @@ export const insertCourseSectionSchema = createInsertSchema(courseSections)
     unlockDate: z.string().optional().nullable()
   });
 export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true });
-export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({ id: true });
+export const insertExamQuestionSchema = createInsertSchema(examQuestions)
+  .omit({ id: true })
+  .extend({
+    explanation: z.string().optional().nullable(),
+    options: z.array(z.string()).optional().nullable(),
+  });
 export const insertExamResultSchema = createInsertSchema(examResults).omit({ id: true, submittedAt: true, gradedAt: true });
 export const insertPaymentSchema = createInsertSchema(payments).omit({ id: true, paymentDate: true });
 export const insertInstallmentSchema = createInsertSchema(installments).omit({ id: true, paymentDate: true });

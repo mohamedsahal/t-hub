@@ -11,7 +11,10 @@ import {
   products, type Product, type InsertProduct,
   partners, type Partner, type InsertPartner,
   events, type Event, type InsertEvent,
-  landingContent, type LandingContent, type InsertLandingContent
+  landingContent, type LandingContent, type InsertLandingContent,
+  exams, type Exam, type InsertExam,
+  examQuestions, type ExamQuestion, type InsertExamQuestion,
+  examResults, type ExamResult, type InsertExamResult
 } from "@shared/schema";
 import session from "express-session";
 
@@ -115,6 +118,29 @@ export interface IStorage {
   getAllLandingContent(): Promise<LandingContent[]>;
   createLandingContent(content: InsertLandingContent): Promise<LandingContent>;
   updateLandingContent(id: number, content: Partial<LandingContent>): Promise<LandingContent | undefined>;
+  
+  // Exam operations
+  getExam(id: number): Promise<Exam | undefined>;
+  getExamsByCourse(courseId: number): Promise<Exam[]>;
+  getExamsBySection(sectionId: number): Promise<Exam[]>;
+  createExam(exam: InsertExam): Promise<Exam>;
+  updateExam(id: number, exam: Partial<Exam>): Promise<Exam | undefined>;
+  deleteExam(id: number): Promise<boolean>;
+  
+  // Exam Question operations
+  getExamQuestion(id: number): Promise<ExamQuestion | undefined>;
+  getExamQuestionsByExam(examId: number): Promise<ExamQuestion[]>;
+  createExamQuestion(question: InsertExamQuestion): Promise<ExamQuestion>;
+  updateExamQuestion(id: number, question: Partial<ExamQuestion>): Promise<ExamQuestion | undefined>;
+  deleteExamQuestion(id: number): Promise<boolean>;
+  
+  // Exam Result operations
+  getExamResult(id: number): Promise<ExamResult | undefined>;
+  getExamResultsByExam(examId: number): Promise<ExamResult[]>;
+  getExamResultsByUser(userId: number): Promise<ExamResult[]>;
+  createExamResult(result: InsertExamResult): Promise<ExamResult>;
+  updateExamResult(id: number, result: Partial<ExamResult>): Promise<ExamResult | undefined>;
+  deleteExamResult(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -131,6 +157,9 @@ export class MemStorage implements IStorage {
   private partners: Map<number, Partner>;
   private events: Map<number, Event>;
   private landingContents: Map<number, LandingContent>;
+  private exams: Map<number, Exam>;
+  private examQuestions: Map<number, ExamQuestion>;
+  private examResults: Map<number, ExamResult>;
   
   private userIdCounter: number;
   private courseIdCounter: number;
@@ -145,6 +174,9 @@ export class MemStorage implements IStorage {
   private partnerIdCounter: number;
   private eventIdCounter: number;
   private landingContentIdCounter: number;
+  private examIdCounter: number;
+  private examQuestionIdCounter: number;
+  private examResultIdCounter: number;
   
   public sessionStore: session.Store;
 
@@ -162,6 +194,9 @@ export class MemStorage implements IStorage {
     this.partners = new Map();
     this.events = new Map();
     this.landingContents = new Map();
+    this.exams = new Map();
+    this.examQuestions = new Map();
+    this.examResults = new Map();
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
@@ -176,6 +211,9 @@ export class MemStorage implements IStorage {
     this.partnerIdCounter = 1;
     this.eventIdCounter = 1;
     this.landingContentIdCounter = 1;
+    this.examIdCounter = 1;
+    this.examQuestionIdCounter = 1;
+    this.examResultIdCounter = 1;
     
     // Create the memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -598,10 +636,12 @@ export class MemStorage implements IStorage {
       moduleId: section.moduleId || null,
       semesterId: section.semesterId || null,
       duration: section.duration || null,
-      unlockDate: section.unlockDate || null,
+      unlockDate: section.unlockDate ? new Date(section.unlockDate) : null,
       order: section.order || maxOrder + 1,
       videoUrl: section.videoUrl || null,
       contentUrl: section.contentUrl || null,
+      content: section.content || null,
+      contentType: section.contentType || null,
       isPublished: section.isPublished !== undefined ? section.isPublished : true,
       type: section.type || 'lesson'
     };
@@ -989,6 +1029,186 @@ export class MemStorage implements IStorage {
     };
     this.landingContents.set(id, updatedContent);
     return updatedContent;
+  }
+
+  // Exam operations
+  async getExam(id: number): Promise<Exam | undefined> {
+    return this.exams.get(id);
+  }
+
+  async getExamsByCourse(courseId: number): Promise<Exam[]> {
+    const exams: Exam[] = [];
+    this.exams.forEach(exam => {
+      if (exam.courseId === courseId) {
+        exams.push(exam);
+      }
+    });
+    return exams;
+  }
+
+  async getExamsBySection(sectionId: number): Promise<Exam[]> {
+    const exams: Exam[] = [];
+    this.exams.forEach(exam => {
+      if (exam.sectionId === sectionId) {
+        exams.push(exam);
+      }
+    });
+    return exams;
+  }
+
+  async createExam(exam: InsertExam): Promise<Exam> {
+    const id = this.examIdCounter++;
+    const newExam: Exam = {
+      id,
+      title: exam.title,
+      description: exam.description || null,
+      courseId: exam.courseId,
+      sectionId: exam.sectionId || null,
+      semesterId: exam.semesterId || null,
+      type: exam.type || 'quiz',
+      duration: exam.duration || 60,
+      totalPoints: exam.totalPoints || 100,
+      passingPoints: exam.passingPoints || 60,
+      isActive: exam.isActive !== undefined ? exam.isActive : true,
+      availableFrom: exam.availableFrom || null,
+      availableTo: exam.availableTo || null,
+      createdAt: new Date()
+    };
+    this.exams.set(id, newExam);
+    return newExam;
+  }
+
+  async updateExam(id: number, examData: Partial<Exam>): Promise<Exam | undefined> {
+    const exam = this.exams.get(id);
+    if (!exam) return undefined;
+    
+    const updatedExam = { ...exam, ...examData };
+    this.exams.set(id, updatedExam);
+    return updatedExam;
+  }
+
+  async deleteExam(id: number): Promise<boolean> {
+    if (!this.exams.has(id)) return false;
+    
+    // Also delete associated questions
+    this.examQuestions.forEach((question, questionId) => {
+      if (question.examId === id) {
+        this.examQuestions.delete(questionId);
+      }
+    });
+    
+    // Also delete associated results
+    this.examResults.forEach((result, resultId) => {
+      if (result.examId === id) {
+        this.examResults.delete(resultId);
+      }
+    });
+    
+    return this.exams.delete(id);
+  }
+
+  // Exam Question operations
+  async getExamQuestion(id: number): Promise<ExamQuestion | undefined> {
+    return this.examQuestions.get(id);
+  }
+
+  async getExamQuestionsByExam(examId: number): Promise<ExamQuestion[]> {
+    const questions: ExamQuestion[] = [];
+    this.examQuestions.forEach(question => {
+      if (question.examId === examId) {
+        questions.push(question);
+      }
+    });
+    return questions.sort((a, b) => a.order - b.order);
+  }
+
+  async createExamQuestion(question: InsertExamQuestion): Promise<ExamQuestion> {
+    const id = this.examQuestionIdCounter++;
+    const newQuestion: ExamQuestion = {
+      id,
+      examId: question.examId,
+      question: question.question,
+      type: question.type || 'multiple_choice',
+      options: question.options || [],
+      correctAnswer: question.correctAnswer,
+      points: question.points || 1,
+      order: question.order || 1,
+      explanation: question.explanation || null
+    };
+    this.examQuestions.set(id, newQuestion);
+    return newQuestion;
+  }
+
+  async updateExamQuestion(id: number, questionData: Partial<ExamQuestion>): Promise<ExamQuestion | undefined> {
+    const question = this.examQuestions.get(id);
+    if (!question) return undefined;
+    
+    const updatedQuestion = { ...question, ...questionData };
+    this.examQuestions.set(id, updatedQuestion);
+    return updatedQuestion;
+  }
+
+  async deleteExamQuestion(id: number): Promise<boolean> {
+    if (!this.examQuestions.has(id)) return false;
+    return this.examQuestions.delete(id);
+  }
+
+  // Exam Result operations
+  async getExamResult(id: number): Promise<ExamResult | undefined> {
+    return this.examResults.get(id);
+  }
+
+  async getExamResultsByExam(examId: number): Promise<ExamResult[]> {
+    const results: ExamResult[] = [];
+    this.examResults.forEach(result => {
+      if (result.examId === examId) {
+        results.push(result);
+      }
+    });
+    return results;
+  }
+
+  async getExamResultsByUser(userId: number): Promise<ExamResult[]> {
+    const results: ExamResult[] = [];
+    this.examResults.forEach(result => {
+      if (result.userId === userId) {
+        results.push(result);
+      }
+    });
+    return results;
+  }
+
+  async createExamResult(result: InsertExamResult): Promise<ExamResult> {
+    const id = this.examResultIdCounter++;
+    const newResult: ExamResult = {
+      id,
+      examId: result.examId,
+      userId: result.userId,
+      score: result.score || 0,
+      status: result.status || 'pending',
+      submittedAt: new Date(),
+      gradedAt: null,
+      gradedBy: null,
+      attemptNumber: result.attemptNumber || 1,
+      answers: result.answers || [],
+      feedback: null
+    };
+    this.examResults.set(id, newResult);
+    return newResult;
+  }
+
+  async updateExamResult(id: number, resultData: Partial<ExamResult>): Promise<ExamResult | undefined> {
+    const result = this.examResults.get(id);
+    if (!result) return undefined;
+    
+    const updatedResult = { ...result, ...resultData };
+    this.examResults.set(id, updatedResult);
+    return updatedResult;
+  }
+
+  async deleteExamResult(id: number): Promise<boolean> {
+    if (!this.examResults.has(id)) return false;
+    return this.examResults.delete(id);
   }
 }
 
