@@ -197,7 +197,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                      location === "/admin/courses/specialist" || 
                      location === "/admin/courses/bootcamp" || 
                      location === "/admin/courses/diploma" || 
-                     location.startsWith("/admin/course-builder")) 
+                     location.startsWith("/admin/course-builder") ||
+                     location.startsWith("/admin/courses/short/builder")) 
                       ? "bg-gray-800 text-white" : "text-gray-300 hover:text-white"
                   )}
                 >
