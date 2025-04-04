@@ -82,6 +82,9 @@ export interface IStorage {
   getCertificateByUniqueId(certificateId: string): Promise<Certificate | undefined>;
   getCertificatesByUser(userId: number): Promise<Certificate[]>;
   createCertificate(certificate: InsertCertificate): Promise<Certificate>;
+  updateCertificate(id: number, certificate: Partial<Certificate>): Promise<Certificate | undefined>;
+  getAllCertificates(): Promise<Certificate[]>;
+  deleteCertificate(id: number): Promise<boolean>;
   
   // Testimonial operations
   getTestimonial(id: number): Promise<Testimonial | undefined>;
@@ -851,6 +854,23 @@ export class MemStorage implements IStorage {
     };
     this.certificates.set(id, newCertificate);
     return newCertificate;
+  }
+
+  async updateCertificate(id: number, certificateData: Partial<Certificate>): Promise<Certificate | undefined> {
+    const certificate = this.certificates.get(id);
+    if (!certificate) return undefined;
+    
+    const updatedCertificate = { ...certificate, ...certificateData };
+    this.certificates.set(id, updatedCertificate);
+    return updatedCertificate;
+  }
+
+  async getAllCertificates(): Promise<Certificate[]> {
+    return Array.from(this.certificates.values());
+  }
+
+  async deleteCertificate(id: number): Promise<boolean> {
+    return this.certificates.delete(id);
   }
 
   // Testimonial operations

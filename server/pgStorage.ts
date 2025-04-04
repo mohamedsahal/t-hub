@@ -281,6 +281,31 @@ export class PgStorage implements IStorage {
     return result[0];
   }
 
+  async updateCertificate(id: number, certificateData: Partial<Certificate>): Promise<Certificate | undefined> {
+    const result = await db.update(certificates)
+      .set(certificateData)
+      .where(eq(certificates.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getAllCertificates(): Promise<Certificate[]> {
+    return await db.select().from(certificates);
+  }
+
+  async deleteCertificate(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(certificates)
+        .where(eq(certificates.id, id))
+        .returning({ id: certificates.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting certificate:", error);
+      return false;
+    }
+  }
+
   // Testimonial operations
   async getTestimonial(id: number): Promise<Testimonial | undefined> {
     const result = await db.select().from(testimonials).where(eq(testimonials.id, id));

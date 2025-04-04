@@ -323,6 +323,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Certificate CRUD routes
+  app.get("/api/certificates", async (req, res) => {
+    try {
+      const certificates = await storage.getAllCertificates();
+      res.json(certificates);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching certificates" });
+    }
+  });
+
+  app.get("/api/certificates/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const certificate = await storage.getCertificate(id);
+      
+      if (!certificate) {
+        return res.status(404).json({ message: "Certificate not found" });
+      }
+      
+      res.json(certificate);
+    } catch (error) {
+      res.status(500).json({ message: "Error fetching certificate" });
+    }
+  });
+
+  app.post("/api/certificates", checkRole(["admin"]), async (req, res) => {
+    try {
+      const certificateData = insertCertificateSchema.parse(req.body);
+      
+      // Check if certificate ID already exists
+      const existingCertificate = await storage.getCertificateByUniqueId(certificateData.certificateId);
+      if (existingCertificate) {
+        return res.status(400).json({ message: "Certificate ID already exists" });
+      }
+      
+      const certificate = await storage.createCertificate(certificateData);
+      res.status(201).json(certificate);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/certificates/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const certificateData = req.body;
+      
+      // If certificateId is being updated, check if it already exists and is not the current one
+      if (certificateData.certificateId) {
+        const existingCertificate = await storage.getCertificateByUniqueId(certificateData.certificateId);
+        if (existingCertificate && existingCertificate.id !== id) {
+          return res.status(400).json({ message: "Certificate ID already exists" });
+        }
+      }
+      
+      const updatedCertificate = await storage.updateCertificate(id, certificateData);
+      
+      if (!updatedCertificate) {
+        return res.status(404).json({ message: "Certificate not found" });
+      }
+      
+      res.json(updatedCertificate);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.delete("/api/certificates/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const certificate = await storage.getCertificate(id);
+      
+      if (!certificate) {
+        return res.status(404).json({ message: "Certificate not found" });
+      }
+      
+      const success = await storage.deleteCertificate(id);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete certificate" });
+      }
+      
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Error deleting certificate" });
+    }
+  });
+
   // Testimonial routes
   app.get("/api/testimonials", async (req, res) => {
     try {
