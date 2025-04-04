@@ -349,7 +349,12 @@ export const insertProductSchema = createInsertSchema(products).omit({ id: true,
 export const insertPartnerSchema = createInsertSchema(partners).omit({ id: true, createdAt: true });
 export const insertLandingContentSchema = createInsertSchema(landingContent).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertEventSchema = createInsertSchema(events).omit({ id: true, createdAt: true });
-export const insertCohortSchema = createInsertSchema(cohorts).omit({ id: true, createdAt: true });
+export const insertCohortSchema = createInsertSchema(cohorts)
+  .omit({ id: true, createdAt: true })
+  .extend({
+    startDate: z.string().or(z.date()),
+    endDate: z.string().or(z.date()),
+  });
 export const insertCohortEnrollmentSchema = createInsertSchema(cohortEnrollments).omit({ id: true, enrollmentDate: true });
 
 // Define types

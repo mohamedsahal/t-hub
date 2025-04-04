@@ -2042,6 +2042,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         name: name.trim(),
         courseId: typeof courseId === 'string' ? parseInt(courseId) : courseId,
+        // Convert string dates to actual Date objects
+        startDate: startDate instanceof Date ? startDate : new Date(startDate),
+        endDate: endDate instanceof Date ? endDate : new Date(endDate),
         maxStudents: req.body.maxStudents ? 
           (typeof req.body.maxStudents === 'string' ? 
             parseInt(req.body.maxStudents) : req.body.maxStudents) : null
@@ -2094,6 +2097,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: name?.trim(),
         courseId: courseId !== undefined ? 
           (typeof courseId === 'string' ? parseInt(courseId) : courseId) : 
+          undefined,
+        // Convert string dates to actual Date objects if they're provided
+        startDate: startDate ? 
+          (startDate instanceof Date ? startDate : new Date(startDate)) : 
+          undefined,
+        endDate: endDate ? 
+          (endDate instanceof Date ? endDate : new Date(endDate)) : 
           undefined,
         maxStudents: req.body.maxStudents !== undefined ? 
           (typeof req.body.maxStudents === 'string' ? 
