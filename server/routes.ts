@@ -1889,36 +1889,336 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Semester management routes
+  app.get("/api/admin/semesters", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = req.query.courseId ? parseInt(req.query.courseId as string) : undefined;
+      
+      let semesters: any[] = [];
+      if (courseId) {
+        semesters = await storage.getSemestersByCourse(courseId);
+      } else {
+        semesters = await storage.getAllSemesters();
+      }
+      
+      res.json(semesters);
+    } catch (error) {
+      console.error("Error fetching semesters:", error);
+      res.status(500).json({ message: "Error fetching semesters" });
+    }
+  });
+
+  app.get("/api/admin/semesters/:id", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const semesterId = parseInt(req.params.id);
+      const semester = await storage.getSemester(semesterId);
+      
+      if (!semester) {
+        return res.status(404).json({ message: "Semester not found" });
+      }
+      
+      // Get course to check permissions for teachers
+      const user = req.user as any;
+      if (user.role === "teacher") {
+        const course = await storage.getCourse(semester.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to view this semester" });
+        }
+      }
+      
+      res.json(semester);
+    } catch (error) {
+      console.error("Error fetching semester:", error);
+      res.status(500).json({ message: "Error fetching semester" });
+    }
+  });
+
+  app.post("/api/admin/semesters", checkRole(["admin"]), async (req, res) => {
+    try {
+      const semesterData = insertSemesterSchema.parse(req.body);
+      
+      // Verify the course exists
+      const course = await storage.getCourse(semesterData.courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      const semester = await storage.createSemester(semesterData);
+      res.status(201).json(semester);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/semesters/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const semesterId = parseInt(req.params.id);
+      const semester = await storage.getSemester(semesterId);
+      
+      if (!semester) {
+        return res.status(404).json({ message: "Semester not found" });
+      }
+      
+      const updatedSemester = await storage.updateSemester(semesterId, req.body);
+      res.json(updatedSemester);
+    } catch (error) {
+      console.error("Error updating semester:", error);
+      res.status(500).json({ message: "Error updating semester" });
+    }
+  });
+  
+  // Cohort management routes
+  app.get("/api/admin/cohorts", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const courseId = req.query.courseId ? parseInt(req.query.courseId as string) : undefined;
+      
+      let cohorts: any[] = [];
+      if (courseId) {
+        cohorts = await storage.getCohortsByCourse(courseId);
+      } else {
+        cohorts = await storage.getAllCohorts();
+      }
+      
+      res.json(cohorts);
+    } catch (error) {
+      console.error("Error fetching cohorts:", error);
+      res.status(500).json({ message: "Error fetching cohorts" });
+    }
+  });
+
+  app.get("/api/admin/cohorts/:id", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const cohortId = parseInt(req.params.id);
+      const cohort = await storage.getCohort(cohortId);
+      
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+      
+      // For teachers, check if they are assigned to the course
+      const user = req.user as any;
+      if (user.role === "teacher") {
+        const course = await storage.getCourse(cohort.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to view this cohort" });
+        }
+      }
+      
+      res.json(cohort);
+    } catch (error) {
+      console.error("Error fetching cohort:", error);
+      res.status(500).json({ message: "Error fetching cohort" });
+    }
+  });
+
+  app.post("/api/admin/cohorts", checkRole(["admin"]), async (req, res) => {
+    try {
+      const cohortData = insertCohortSchema.parse(req.body);
+      
+      // Verify the course exists
+      const course = await storage.getCourse(cohortData.courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      const cohort = await storage.createCohort(cohortData);
+      res.status(201).json(cohort);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/cohorts/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const cohortId = parseInt(req.params.id);
+      const cohort = await storage.getCohort(cohortId);
+      
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+      
+      const updatedCohort = await storage.updateCohort(cohortId, req.body);
+      res.json(updatedCohort);
+    } catch (error) {
+      console.error("Error updating cohort:", error);
+      res.status(500).json({ message: "Error updating cohort" });
+    }
+  });
+
+  app.delete("/api/admin/cohorts/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const cohortId = parseInt(req.params.id);
+      const cohort = await storage.getCohort(cohortId);
+      
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+      
+      // Delete the cohort and all its enrollments
+      await storage.deleteCohort(cohortId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting cohort:", error);
+      res.status(500).json({ message: "Error deleting cohort" });
+    }
+  });
+  
+  // Cohort Enrollment routes
+  app.get("/api/admin/cohorts/:cohortId/enrollments", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const cohortId = parseInt(req.params.cohortId);
+      const cohort = await storage.getCohort(cohortId);
+      
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+      
+      // For teachers, check if they are assigned to the course
+      const user = req.user as any;
+      if (user.role === "teacher") {
+        const course = await storage.getCourse(cohort.courseId);
+        if (!course || course.teacherId !== user.id) {
+          return res.status(403).json({ message: "Not authorized to view enrollments for this cohort" });
+        }
+      }
+      
+      const enrollments = await storage.getCohortEnrollmentsByCohort(cohortId);
+      res.json(enrollments);
+    } catch (error) {
+      console.error("Error fetching cohort enrollments:", error);
+      res.status(500).json({ message: "Error fetching cohort enrollments" });
+    }
+  });
+
+  app.post("/api/admin/cohorts/:cohortId/enrollments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const cohortId = parseInt(req.params.cohortId);
+      const cohort = await storage.getCohort(cohortId);
+      
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+      
+      // Validate the enrollment data
+      const enrollmentData = insertCohortEnrollmentSchema.parse({
+        ...req.body,
+        cohortId
+      });
+      
+      // Verify the user exists
+      const user = await storage.getUser(enrollmentData.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Check if the user is already enrolled in this cohort
+      const existingEnrollments = await storage.getCohortEnrollmentsByCohort(cohortId);
+      const userAlreadyEnrolled = existingEnrollments.some(e => e.userId === enrollmentData.userId);
+      
+      if (userAlreadyEnrolled) {
+        return res.status(400).json({ message: "User is already enrolled in this cohort" });
+      }
+      
+      const enrollment = await storage.createCohortEnrollment(enrollmentData);
+      res.status(201).json(enrollment);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.patch("/api/admin/cohorts/:cohortId/enrollments/:enrollmentId", checkRole(["admin"]), async (req, res) => {
+    try {
+      const cohortId = parseInt(req.params.cohortId);
+      const enrollmentId = parseInt(req.params.enrollmentId);
+      
+      const cohort = await storage.getCohort(cohortId);
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+      
+      const enrollment = await storage.getCohortEnrollment(enrollmentId);
+      if (!enrollment) {
+        return res.status(404).json({ message: "Enrollment not found" });
+      }
+      
+      // Verify the enrollment belongs to the specified cohort
+      if (enrollment.cohortId !== cohortId) {
+        return res.status(400).json({ message: "Enrollment does not belong to the specified cohort" });
+      }
+      
+      const updatedEnrollment = await storage.updateCohortEnrollment(enrollmentId, req.body);
+      res.json(updatedEnrollment);
+    } catch (error) {
+      console.error("Error updating cohort enrollment:", error);
+      res.status(500).json({ message: "Error updating cohort enrollment" });
+    }
+  });
+
+  app.delete("/api/admin/cohorts/:cohortId/enrollments/:enrollmentId", checkRole(["admin"]), async (req, res) => {
+    try {
+      const cohortId = parseInt(req.params.cohortId);
+      const enrollmentId = parseInt(req.params.enrollmentId);
+      
+      const cohort = await storage.getCohort(cohortId);
+      if (!cohort) {
+        return res.status(404).json({ message: "Cohort not found" });
+      }
+      
+      const enrollment = await storage.getCohortEnrollment(enrollmentId);
+      if (!enrollment) {
+        return res.status(404).json({ message: "Enrollment not found" });
+      }
+      
+      // Verify the enrollment belongs to the specified cohort
+      if (enrollment.cohortId !== cohortId) {
+        return res.status(400).json({ message: "Enrollment does not belong to the specified cohort" });
+      }
+      
+      await storage.deleteCohortEnrollment(enrollmentId);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting cohort enrollment:", error);
+      res.status(500).json({ message: "Error deleting cohort enrollment" });
+    }
+  });
+  
   // Exam routes
   app.get("/api/admin/exams", checkRole(["admin", "teacher"]), async (req, res) => {
     try {
       const courseId = req.query.courseId ? parseInt(req.query.courseId as string) : undefined;
       const sectionId = req.query.sectionId ? parseInt(req.query.sectionId as string) : undefined;
+      const semesterId = req.query.semesterId ? parseInt(req.query.semesterId as string) : undefined;
       
-      let exams = [];
+      let exams: any[] = [];
       
       if (courseId) {
         exams = await storage.getExamsByCourse(courseId);
       } else if (sectionId) {
         exams = await storage.getExamsBySection(sectionId);
+      } else if (semesterId) {
+        exams = await storage.getExamsBySemester(semesterId);
       } else {
         // For admin, return all exams
         // For teachers, return exams for their courses
-        const user = req.user as any;
-        if (user.role === "admin") {
-          // In a real production app, we would paginate this
-          const allCourses = await storage.getAllCourses();
-          for (const course of allCourses) {
-            const courseExams = await storage.getExamsByCourse(course.id);
-            exams.push(...courseExams);
+        try {
+          const user = req.user as any;
+          if (user.role === "admin") {
+            // Use the new getAllExams method
+            exams = await storage.getAllExams();
+          } else if (user.role === "teacher") {
+            const allCourses = await storage.getAllCourses();
+            const teacherCourses = allCourses.filter(course => course.teacherId === user.id);
+            for (const course of teacherCourses) {
+              try {
+                const courseExams = await storage.getExamsByCourse(course.id);
+                exams.push(...courseExams);
+              } catch (e) {
+                console.error(`Error getting exams for course ${course.id}:`, e);
+              }
+            }
           }
-        } else if (user.role === "teacher") {
-          const allCourses = await storage.getAllCourses();
-          const teacherCourses = allCourses.filter(course => course.teacherId === user.id);
-          for (const course of teacherCourses) {
-            const courseExams = await storage.getExamsByCourse(course.id);
-            exams.push(...courseExams);
-          }
+        } catch (e) {
+          console.error("Error in exam fetch logic:", e);
         }
       }
       
