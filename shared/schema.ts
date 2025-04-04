@@ -116,9 +116,9 @@ export const exams = pgTable("exams", {
   title: text("title").notNull(),
   description: text("description"),
   type: examTypeEnum("type").notNull(),
-  max_score: integer("max_score").notNull(),
-  passing_score: integer("passing_score").notNull(),
-  time_limit: integer("time_limit").notNull(), // in minutes
+  maxScore: integer("max_score").notNull(),
+  passingScore: integer("passing_score").notNull(),
+  timeLimit: integer("time_limit").notNull(), // in minutes
   status: text("status").default('active').notNull(),
   // Grading scale thresholds (percentage required for each grade)
   gradeAThreshold: integer("grade_a_threshold").default(90),
