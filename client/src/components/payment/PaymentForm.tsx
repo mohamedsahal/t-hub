@@ -32,7 +32,8 @@ import {
   CreditCard, 
   AlertCircle, 
   Smartphone, 
-  ArrowRight 
+  ArrowRight,
+  LockKeyhole
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import InstallmentOptions from "./InstallmentOptions";
@@ -99,7 +100,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
   const { toast } = useToast();
   const { user } = useAuth();
   const [installmentPlan, setInstallmentPlan] = useState<{ months: number; amounts: number[] } | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("card");
+  const [activeTab, setActiveTab] = useState<string>("mobile_wallet");
   
   const form = useForm<z.infer<typeof paymentSchema>>({
     resolver: zodResolver(paymentSchema),
@@ -109,8 +110,9 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
       expiryDate: "",
       cvv: "",
       paymentType: "one_time",
-      paymentMethod: "card",
-      phone: user?.phone || "",
+      paymentMethod: "mobile_wallet",
+      walletType: "EVCPlus",
+      phone: user?.phone || "+25261",
     },
   });
 
@@ -210,24 +212,56 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
   };
 
   // Format phone number to ensure it starts with country code
-  const formatPhoneNumber = (value: string) => {
-    // If doesn't start with +, add +252 (Somalia code)
-    if (!value.startsWith("+")) {
-      return "+252" + value.replace(/[^0-9]/g, "");
+  const formatPhoneNumber = (value: string, walletType?: string) => {
+    // Clean the number first
+    const cleaned = value.replace(/[^0-9+]/g, "");
+    
+    // If already has + sign, but not the correct prefix, replace it
+    if (cleaned.startsWith("+") && walletType) {
+      const prefix = getCountryCodePrefix(walletType);
+      // Check if it has the wrong prefix
+      if (!cleaned.startsWith(prefix)) {
+        // Remove the + and any digits up to the country code length, then add the correct prefix
+        return prefix + cleaned.substring(cleaned.indexOf('+') + 4); // +252 is 4 chars
+      }
+      return cleaned;
     }
-    return value;
+    
+    // If no + sign, add the appropriate prefix based on wallet type
+    if (!cleaned.startsWith("+")) {
+      const prefix = getCountryCodePrefix(walletType);
+      return prefix + cleaned;
+    }
+    
+    return cleaned;
+  };
+  
+  // Get country code prefix based on wallet type
+  const getCountryCodePrefix = (walletType?: string): string => {
+    if (!walletType) return "+252"; // Default Somalia code
+    
+    switch (walletType) {
+      case "EVCPlus": // Hormuud
+        return "+25261";
+      case "ZAAD": // Telesom
+        return "+25263";
+      case "SAHAL": // Golis
+        return "+25290";
+      default:
+        return "+252";
+    }
   };
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Complete Your Enrollment</CardTitle>
-        <CardDescription>
-          Course: {title} - {formatCurrency(price)}
-        </CardDescription>
-      </CardHeader>
+    <Card className="w-full border-0 shadow-lg overflow-hidden">
+      <div className="bg-primary text-white py-5 px-6">
+        <h2 className="text-xl font-bold">Complete Your Enrollment</h2>
+        <p className="text-sm opacity-90 mt-1">
+          Course: {title} - <span className="font-semibold">{formatCurrency(price)}</span>
+        </p>
+      </div>
       
-      <CardContent>
+      <CardContent className="p-6 pt-8">
         {isError && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -285,15 +319,21 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
             <div className="border-t pt-4">
               <h3 className="font-medium text-lg mb-4">Select Payment Method</h3>
               
-              <Tabs defaultValue="card" value={activeTab} onValueChange={handleTabChange}>
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="card" className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    <span>Card</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="mobile_wallet" className="flex items-center gap-2">
+              <Tabs defaultValue="mobile_wallet" value={activeTab} onValueChange={handleTabChange} className="mt-2">
+                <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/30">
+                  <TabsTrigger 
+                    value="mobile_wallet" 
+                    className={`flex items-center gap-2 rounded-md ${activeTab === 'mobile_wallet' ? 'bg-primary text-white' : 'hover:bg-muted/60'}`}
+                  >
                     <Smartphone className="h-4 w-4" />
                     <span>Mobile Wallet</span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="card" 
+                    className={`flex items-center gap-2 rounded-md ${activeTab === 'card' ? 'bg-primary text-white' : 'hover:bg-muted/60'}`}
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    <span>Card</span>
                   </TabsTrigger>
                 </TabsList>
                 
@@ -416,19 +456,37 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                       <FormItem>
                         <FormLabel>Select Mobile Wallet</FormLabel>
                         <Select 
-                          onValueChange={field.onChange} 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            // Update phone number with correct prefix based on wallet
+                            const currentPhone = form.getValues("phone") || "";
+                            const newPhone = formatPhoneNumber(currentPhone, value);
+                            form.setValue("phone", newPhone);
+                          }} 
                           defaultValue={field.value}
                         >
                           <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="bg-white">
                               <SelectValue placeholder="Select wallet" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="EVCPlus">EVCPlus (Hormuud)</SelectItem>
-                            <SelectItem value="ZAAD">ZAAD Service (Telesom)</SelectItem>
-                            <SelectItem value="SAHAL">SAHAL Service (Golis)</SelectItem>
-                            <SelectItem value="WAAFI">WAAFI</SelectItem>
+                            <SelectItem value="EVCPlus" className="flex items-center">
+                              <div className="mr-2 h-4 w-4 rounded-full bg-green-500"></div>
+                              <span>EVCPlus (Hormuud)</span>
+                            </SelectItem>
+                            <SelectItem value="ZAAD" className="flex items-center">
+                              <div className="mr-2 h-4 w-4 rounded-full bg-blue-500"></div>
+                              <span>ZAAD Service (Telesom)</span>
+                            </SelectItem>
+                            <SelectItem value="SAHAL" className="flex items-center">
+                              <div className="mr-2 h-4 w-4 rounded-full bg-orange-500"></div>
+                              <span>SAHAL Service (Golis)</span>
+                            </SelectItem>
+                            <SelectItem value="WAAFI" className="flex items-center">
+                              <div className="mr-2 h-4 w-4 rounded-full bg-purple-500"></div>
+                              <span>WAAFI</span>
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <FormDescription>
@@ -442,49 +500,84 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                   <FormField
                     control={form.control}
                     name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Mobile Number</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="+252xxxxxxxxx" 
-                            {...field} 
-                            onChange={(e) => {
-                              field.onChange(formatPhoneNumber(e.target.value));
-                            }}
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          {watchPaymentMethod === "mobile_wallet" 
-                            ? "For testing, use: +252611111111 (EVCPlus), +252631111111 (ZAAD), +252911111111 (SAHAL)"
-                            : "Required for payment confirmation"}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    render={({ field }) => {
+                      const walletType = form.getValues("walletType");
+                      const prefix = getCountryCodePrefix(walletType);
+                      const placeholderExample = walletType === "EVCPlus" 
+                        ? "+25261xxxxxxx" 
+                        : walletType === "ZAAD" 
+                          ? "+25263xxxxxxx" 
+                          : walletType === "SAHAL" 
+                            ? "+25290xxxxxxx" 
+                            : "+252xxxxxxxx";
+                      
+                      return (
+                        <FormItem>
+                          <FormLabel>Mobile Number</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input 
+                                placeholder={placeholderExample}
+                                {...field} 
+                                className="pl-20" // Extra padding for the prefix
+                                onChange={(e) => {
+                                  const formattedValue = formatPhoneNumber(e.target.value, walletType);
+                                  field.onChange(formattedValue);
+                                }}
+                              />
+                              <div className="absolute left-0 top-0 flex h-full items-center px-3 font-medium text-sm text-muted-foreground border-r">
+                                {prefix}
+                              </div>
+                            </div>
+                          </FormControl>
+                          <FormDescription>
+                            {watchPaymentMethod === "mobile_wallet" 
+                              ? walletType === "EVCPlus" 
+                                ? "For testing, use: +252611111111 (PIN: 1212)"
+                                : walletType === "ZAAD"
+                                  ? "For testing, use: +252631111111 (PIN: 1212)"
+                                  : walletType === "SAHAL"
+                                    ? "For testing, use: +252911111111 (PIN: 1212)"
+                                    : "For testing, use mobile number with PIN: 1212"
+                              : "Required for payment confirmation"}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
 
-                  <Alert>
-                    <AlertDescription>
-                      You will receive a prompt on your mobile device to confirm the payment.
-                      For test accounts, use PIN: 1212
+                  <Alert className="border-l-4 border-primary/60 bg-primary/5">
+                    <AlertDescription className="flex items-start">
+                      <Smartphone className="h-4 w-4 mr-2 mt-0.5 text-primary" />
+                      <div>
+                        You will receive a prompt on your mobile device to confirm the payment.
+                        <span className="block mt-1 font-medium">For test accounts, use PIN: 1212</span>
+                      </div>
                     </AlertDescription>
                   </Alert>
                 </TabsContent>
               </Tabs>
             </div>
 
-            <Alert className="bg-blue-50 text-blue-800 border-blue-200">
-              <AlertDescription className="text-sm">
-                You'll be redirected to WaafiPay's secure payment gateway to complete your payment.
-                After payment is processed, you'll automatically return to this site.
+            <Alert className="border-l-4 border-blue-500 bg-blue-50 text-blue-800">
+              <AlertDescription className="flex items-start">
+                <LockKeyhole className="h-4 w-4 mr-2 mt-0.5 text-blue-600" />
+                <div className="text-sm">
+                  You'll be redirected to WaafiPay's secure payment gateway to complete your payment.
+                  After payment is processed, you'll automatically return to this site.
+                </div>
               </AlertDescription>
             </Alert>
             
-            <Button type="submit" className="w-full" disabled={isPending}>
+            <Button 
+              type="submit" 
+              className="w-full h-12 mt-6 text-base font-semibold shadow-md bg-primary hover:bg-primary/90 transition-all" 
+              disabled={isPending}
+            >
               {isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Processing...
                 </>
               ) : (
@@ -492,7 +585,7 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
                   {`Pay ${watchPaymentType === "installment" && installmentPlan 
                     ? formatCurrency(installmentPlan.amounts[0]) + " now" 
                     : formatCurrency(price)}`}
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </>
               )}
             </Button>
@@ -500,9 +593,14 @@ const PaymentForm = ({ courseId, price, title, onSuccess }: PaymentFormProps) =>
         </Form>
       </CardContent>
       
-      <CardFooter className="flex justify-between border-t pt-4 text-sm text-gray-500">
-        <div>Secure Payment</div>
-        <div>Powered by WaafiPay</div>
+      <CardFooter className="flex justify-between items-center border-t p-4 px-6 text-sm bg-gray-50">
+        <div className="flex items-center">
+          <LockKeyhole className="h-4 w-4 mr-2 text-primary/70" />
+          <span>Secure Payment</span>
+        </div>
+        <div className="flex items-center font-medium text-primary/80">
+          Powered by WaafiPay
+        </div>
       </CardFooter>
     </Card>
   );
