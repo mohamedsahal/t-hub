@@ -1189,7 +1189,7 @@ export default function ExamManagement() {
 
       {/* Exam Form Modal */}
       <Dialog open={isExamModalOpen} onOpenChange={setIsExamModalOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto w-[95vw]">
           <DialogHeader>
             <DialogTitle>{currentExam ? "Edit Exam" : "Create New Exam"}</DialogTitle>
             <DialogDescription>
@@ -1243,7 +1243,7 @@ export default function ExamManagement() {
                     )}
                   />
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <FormField
                       control={examForm.control}
                       name="course_id"
@@ -1303,7 +1303,7 @@ export default function ExamManagement() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <FormField
                       control={examForm.control}
                       name="max_score"
@@ -1390,7 +1390,7 @@ export default function ExamManagement() {
                 </TabsContent>
                 
                 <TabsContent value="advanced" className="space-y-4 pt-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={examForm.control}
                       name="sectionId"
@@ -1458,7 +1458,7 @@ export default function ExamManagement() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={examForm.control}
                       name="availableFrom"
@@ -1502,7 +1502,7 @@ export default function ExamManagement() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <FormField
                       control={examForm.control}
                       name="gradeAThreshold"
