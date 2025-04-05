@@ -2563,25 +2563,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log("Received exam creation request:", JSON.stringify(req.body, null, 2));
       
+      // The request data is wrapped in a 'data' property
+      const formData = req.body.data || req.body;
+      
       // Simplified approach - directly create an object with expected database field names
       // but using the values from the incoming request
       const examData = {
-        title: req.body.title,
-        description: req.body.description || null,
-        course_id: req.body.courseId,
-        section_id: req.body.sectionId || null,
-        semester_id: req.body.semesterId || null,
-        type: req.body.type,
-        max_score: req.body.maxScore,
-        passing_score: req.body.passingScore,
-        time_limit: req.body.timeLimit,
-        status: req.body.status || 'active',
-        grade_a_threshold: req.body.gradeAThreshold || 90,
-        grade_b_threshold: req.body.gradeBThreshold || 80,
-        grade_c_threshold: req.body.gradeCThreshold || 70, 
-        grade_d_threshold: req.body.gradeDThreshold || 60,
-        available_from: req.body.availableFrom || null,
-        available_to: req.body.availableTo || null
+        title: formData.title,
+        description: formData.description || null,
+        course_id: formData.courseId,
+        section_id: formData.sectionId || null,
+        semester_id: formData.semesterId || null,
+        type: formData.type,
+        max_score: formData.maxScore,
+        passing_score: formData.passingScore,
+        time_limit: formData.timeLimit,
+        status: formData.status || 'active',
+        grade_a_threshold: formData.gradeAThreshold || 90,
+        grade_b_threshold: formData.gradeBThreshold || 80,
+        grade_c_threshold: formData.gradeCThreshold || 70, 
+        grade_d_threshold: formData.gradeDThreshold || 60,
+        available_from: formData.availableFrom || null,
+        available_to: formData.availableTo || null
       };
       
       console.log("Direct exam data without schema validation:", JSON.stringify(examData, null, 2));
@@ -2645,24 +2648,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // The request data is wrapped in a 'data' property
+      const formData = req.body.data || req.body;
+      
       // Convert camelCase properties to snake_case before updating
       const convertedBody = {
-        title: req.body.title,
-        description: req.body.description,
-        course_id: req.body.courseId,
-        section_id: req.body.sectionId,
-        semester_id: req.body.semesterId,
-        type: req.body.type,
-        max_score: req.body.maxScore,
-        passing_score: req.body.passingScore,
-        time_limit: req.body.timeLimit,
-        status: req.body.status,
-        grade_a_threshold: req.body.gradeAThreshold,
-        grade_b_threshold: req.body.gradeBThreshold,
-        grade_c_threshold: req.body.gradeCThreshold,
-        grade_d_threshold: req.body.gradeDThreshold,
-        available_from: req.body.availableFrom,
-        available_to: req.body.availableTo
+        title: formData.title,
+        description: formData.description,
+        course_id: formData.courseId,
+        section_id: formData.sectionId,
+        semester_id: formData.semesterId,
+        type: formData.type,
+        max_score: formData.maxScore,
+        passing_score: formData.passingScore,
+        time_limit: formData.timeLimit,
+        status: formData.status,
+        grade_a_threshold: formData.gradeAThreshold,
+        grade_b_threshold: formData.gradeBThreshold,
+        grade_c_threshold: formData.gradeCThreshold,
+        grade_d_threshold: formData.gradeDThreshold,
+        available_from: formData.availableFrom,
+        available_to: formData.availableTo
       };
       
       console.log("Converted exam data for update:", JSON.stringify(convertedBody, null, 2));
@@ -2743,16 +2749,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log("Received question creation request:", JSON.stringify(req.body, null, 2));
+      
+      // The request data may be wrapped in a 'data' property
+      const formData = req.body.data || req.body;
+      
       // Convert camelCase properties to snake_case before validation
       const questionData = {
         exam_id: examId,
-        question: req.body.question,
-        type: req.body.type,
-        options: req.body.options || [],
-        correct_answer: req.body.correctAnswer,
-        points: req.body.points,
-        order: req.body.order,
-        explanation: req.body.explanation || null
+        question: formData.question,
+        type: formData.type,
+        options: formData.options || [],
+        correct_answer: formData.correctAnswer,
+        points: formData.points,
+        order: formData.order,
+        explanation: formData.explanation || null
       };
       
       console.log("Direct question data without schema validation:", JSON.stringify(questionData, null, 2));
@@ -2801,16 +2812,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log("Received question update request:", JSON.stringify(req.body, null, 2));
+      
+      // The request data may be wrapped in a 'data' property
+      const formData = req.body.data || req.body;
+      
       // Convert camelCase properties to snake_case before updating
       const convertedBody = {
-        exam_id: req.body.examId || examId,
-        question: req.body.question,
-        type: req.body.type,
-        options: req.body.options,
-        correct_answer: req.body.correctAnswer,
-        points: req.body.points,
-        order: req.body.order,
-        explanation: req.body.explanation
+        exam_id: formData.examId || examId,
+        question: formData.question,
+        type: formData.type,
+        options: formData.options,
+        correct_answer: formData.correctAnswer,
+        points: formData.points,
+        order: formData.order,
+        explanation: formData.explanation
       };
       
       console.log("Converted question data for update:", JSON.stringify(convertedBody, null, 2));
