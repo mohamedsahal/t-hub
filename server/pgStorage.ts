@@ -730,7 +730,6 @@ export class PgStorage implements IStorage {
   async getExamQuestion(id: number): Promise<ExamQuestion | undefined> {
     try {
       // Use direct SQL query to avoid schema mismatch issues
-      const { pool } = require('./db');
       const result = await pool.query(
         'SELECT * FROM exam_questions WHERE id = $1',
         [id]
@@ -764,7 +763,6 @@ export class PgStorage implements IStorage {
     console.log(`Fetching questions for exam ID: ${examId}`);
     try {
       // Use direct SQL query to avoid schema mismatch issues
-      const { pool } = require('./db');
       const result = await pool.query(
         `SELECT * FROM exam_questions 
          WHERE exam_id = $1
@@ -808,9 +806,6 @@ export class PgStorage implements IStorage {
       if (Array.isArray(question.options) && question.options.length > 0) {
         options = question.options;
       }
-      
-      // Use direct SQL to avoid schema mismatch issues
-      const { pool } = require('./db');
       
       // Insert using direct SQL query
       const result = await pool.query(
@@ -936,9 +931,6 @@ export class PgStorage implements IStorage {
       // Add ID to values array for the WHERE clause
       values.push(id);
       
-      // Use direct SQL to avoid schema mismatch issues
-      const { pool } = require('./db');
-      
       // Build and execute the SQL query
       const query = `
         UPDATE exam_questions 
@@ -980,9 +972,7 @@ export class PgStorage implements IStorage {
 
   async deleteExamQuestion(id: number): Promise<boolean> {
     try {
-      // Use direct SQL to avoid schema mismatch issues
-      const { pool } = require('./db');
-      
+      // Direct SQL query for deleting exam question
       const result = await pool.query(
         'DELETE FROM exam_questions WHERE id = $1 RETURNING id',
         [id]
