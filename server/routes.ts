@@ -1,6 +1,7 @@
 import express, { type Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { pool } from "./db";
 import { 
   insertUserSchema, insertCourseSchema, insertPaymentSchema, 
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
@@ -2845,7 +2846,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const finalSortOrder = sortOrder || maxOrder + 1;
       
       // Create question directly with SQL
-      const { pool } = require('../server/db');
+      // Using the imported pool from the top of the file
       
       const insertQuery = `
         INSERT INTO exam_questions(
@@ -2923,7 +2924,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Use direct SQL to get the question since we have schema issues
-      const { pool } = require('../server/db');
+      // Using the imported pool from the top of the file
       const questionResult = await pool.query(
         'SELECT * FROM exam_questions WHERE id = $1',
         [questionId]
@@ -3107,7 +3108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Use direct SQL to get the question
-      const { pool } = require('../server/db');
+      // Using the imported pool from the top of the file
       const questionResult = await pool.query(
         'SELECT * FROM exam_questions WHERE id = $1',
         [questionId]
@@ -3176,7 +3177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Update the order of each question directly with SQL
-      const { pool } = require('../server/db');
+      // Using the imported pool from the top of the file
       const questions = req.body.questions;
       
       for (const question of questions) {
