@@ -759,17 +759,16 @@ export class PgStorage implements IStorage {
         correctAnswer = ''; // Use empty string if not provided for these types
       }
       
-      // Convert options array to a JSON object for JSONB column
-      let optionsJson;
+      // Since schema.ts defines options as array but DB column is JSONB,
+      // we need to handle the conversion carefully
+      let optionsForDB;
+      
       if (Array.isArray(question.options) && question.options.length > 0) {
-        // Convert array to a JSON object with numbered keys - better format for PostgreSQL
-        const optionsObj = question.options.reduce((acc, option, index) => {
-          acc[index + 1] = option;  // Create 1-based indexing for options
-          return acc;
-        }, {} as Record<string, string>);
-        optionsJson = optionsObj;
+        // Keep the array as is - the PostgreSQL driver will convert it to JSON
+        optionsForDB = question.options;
       } else {
-        optionsJson = {}; // Empty object if no options
+        // If null or empty, use empty array (PostgreSQL will handle this correctly)
+        optionsForDB = [];
       }
       
       // Map the field names to match the database column names
@@ -777,7 +776,7 @@ export class PgStorage implements IStorage {
         exam_id: question.examId,
         question_text: question.question,
         question_type: question.type,
-        options: optionsJson, // Use the properly formatted JSON object
+        options: optionsForDB, // Use array format since schema expects array
         correct_answer: correctAnswer,
         points: question.points || 1,
         sort_order: question.order || 1,
@@ -816,17 +815,14 @@ export class PgStorage implements IStorage {
         }
       }
       
-      // Handle options field formatting for JSON
+      // Handle options field formatting
       if (questionData.options !== undefined) {
         if (Array.isArray(questionData.options) && questionData.options.length > 0) {
-          // Convert array to a JSON object with numbered keys
-          const optionsObj = questionData.options.reduce((acc, option, index) => {
-            acc[index + 1] = option;  // Create 1-based indexing for options
-            return acc;
-          }, {} as Record<string, string>);
-          mappedData.options = optionsObj;
+          // Leave the array as is - the PostgreSQL driver will handle it
+          mappedData.options = questionData.options;
         } else {
-          mappedData.options = {};  // Empty object if no options
+          // Empty array if options is null or undefined
+          mappedData.options = [];
         }
       }
       
