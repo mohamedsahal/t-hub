@@ -332,6 +332,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Certificate sharing endpoint
+  app.get("/api/certificates/share/:id", async (req, res) => {
+    try {
+      const certificateId = req.params.id;
+      const certificate = await storage.getCertificateByUniqueId(certificateId);
+      
+      if (!certificate) {
+        return res.status(404).json({ 
+          success: false,
+          message: "Certificate not found" 
+        });
+      }
+      
+      // Get related user and course
+      const user = await storage.getUser(certificate.userId);
+      const course = await storage.getCourse(certificate.courseId);
+      
+      // Generate sharing metadata
+      const shareData = {
+        success: true,
+        certificate: {
+          id: certificate.certificateId,
+          issueDate: certificate.issueDate,
+          expiryDate: certificate.expiryDate,
+          studentName: user?.name,
+          courseName: course?.title,
+          verificationUrl: `${req.protocol}://${req.get('host')}/verify-certificate?id=${certificate.certificateId}`,
+          organisation: "Thub Innovation",
+          shareTitle: `${user?.name}'s ${course?.title} Certificate`,
+          shareDescription: `This certificate was issued to ${user?.name} by Thub Innovation for completing ${course?.title}`,
+        }
+      };
+      
+      res.json(shareData);
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Error generating share data" });
+    }
+  });
+
   // Certificate CRUD routes
   app.get("/api/certificates", async (req, res) => {
     try {

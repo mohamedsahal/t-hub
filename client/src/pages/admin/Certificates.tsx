@@ -1,6 +1,21 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { PlusCircle, Search, Trash2, Edit, Award, XCircle, Filter, RefreshCw } from "lucide-react";
+import { 
+  PlusCircle, 
+  Search, 
+  Trash2, 
+  Edit, 
+  Award, 
+  XCircle, 
+  Filter, 
+  RefreshCw, 
+  Linkedin, 
+  Twitter, 
+  Facebook, 
+  Copy, 
+  Check,
+  Share2
+} from "lucide-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -58,6 +73,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { insertCertificateSchema } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
@@ -76,14 +92,27 @@ const certificateFormSchema = insertCertificateSchema.extend({
 
 type CertificateFormValues = z.infer<typeof certificateFormSchema>;
 
+// Define ShareData interface
+interface ShareData {
+  verificationUrl: string;
+  shareTitle: string;
+  shareDescription: string;
+  studentName: string;
+  courseName: string;
+}
+
 const CertificatesManagement = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [selectedCertificate, setSelectedCertificate] = useState<Certificate | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [shareData, setShareData] = useState<ShareData | null>(null);
+  const [isLoadingShareData, setIsLoadingShareData] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   
   // State for student search
   const [studentSearchQuery, setStudentSearchQuery] = useState("");
@@ -343,6 +372,59 @@ const CertificatesManagement = () => {
   const getCourseName = (courseId: number) => {
     const course = courses.find((c: Course) => c.id === courseId);
     return course ? course.title : "Unknown course";
+  };
+  
+  // Handle the share certificate function
+  const handleShareCertificate = async (certificate: Certificate) => {
+    setSelectedCertificate(certificate);
+    setIsLoadingShareData(true);
+    setLinkCopied(false);
+    
+    try {
+      // Fetch the share data from the API
+      const response = await fetch(`/api/certificates/share/${certificate.certificateId}`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setShareData({
+          verificationUrl: data.certificate.verificationUrl,
+          shareTitle: data.certificate.shareTitle,
+          shareDescription: data.certificate.shareDescription,
+          studentName: data.certificate.studentName,
+          courseName: data.certificate.courseName
+        });
+        setIsShareDialogOpen(true);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to retrieve sharing information",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to retrieve sharing information. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingShareData(false);
+    }
+  };
+  
+  // Handle copy to clipboard
+  const handleCopyLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    setLinkCopied(true);
+    toast({
+      title: "Link copied",
+      description: "Certificate verification link copied to clipboard",
+    });
+    
+    // Reset the copied state after 3 seconds
+    setTimeout(() => {
+      setLinkCopied(false);
+    }, 3000);
   };
 
   return (
@@ -658,6 +740,17 @@ const CertificatesManagement = () => {
                             <Button
                               variant="outline"
                               size="sm"
+                              onClick={() => handleShareCertificate(certificate)}
+                              className="text-blue-500"
+                            >
+                              <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 8a3 3 0 10-2.977-2.63l-4.94 2.47a3 3 0 100 4.319l4.94 2.47a3 3 0 10.895-1.789l-4.94-2.47a3.027 3.027 0 000-.74l4.94-2.47C13.456 7.68 14.19 8 15 8z" />
+                              </svg>
+                              <span className="sr-only">Share</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={() => handleDeleteClick(certificate)}
                             >
                               <Trash2 className="h-4 w-4 text-red-500" />
@@ -898,6 +991,137 @@ const CertificatesManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Share Certificate Dialog */}
+      <Dialog open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Share2 className="h-5 w-5 mr-2 text-primary" />
+              Share Certificate
+            </DialogTitle>
+            <DialogDescription>
+              {shareData ? (
+                <>Share {shareData.studentName}'s certificate for {shareData.courseName}</>
+              ) : (
+                <>Share this certificate with others</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {isLoadingShareData ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+              <p className="text-gray-600">Loading share information...</p>
+            </div>
+          ) : shareData ? (
+            <div className="space-y-6">
+              <div className="bg-gray-50 p-4 rounded-md">
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Certificate URL:</strong>
+                </p>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    value={shareData.verificationUrl}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyLink(shareData.verificationUrl)}
+                    className="shrink-0"
+                  >
+                    {linkCopied ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-3">Share to social media</h3>
+                <Tabs defaultValue="linkedin" className="w-full">
+                  <TabsList className="grid grid-cols-3 mb-4">
+                    <TabsTrigger value="linkedin" className="flex items-center gap-2">
+                      <Linkedin className="h-4 w-4" />
+                      <span>LinkedIn</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="twitter" className="flex items-center gap-2">
+                      <Twitter className="h-4 w-4" />
+                      <span>Twitter</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="facebook" className="flex items-center gap-2">
+                      <Facebook className="h-4 w-4" />
+                      <span>Facebook</span>
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="linkedin" className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Share this certificate on LinkedIn to showcase your skills and achievements.
+                    </p>
+                    <Button 
+                      className="w-full"
+                      onClick={() => window.open(
+                        `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareData.verificationUrl)}&title=${encodeURIComponent(shareData.shareTitle)}&summary=${encodeURIComponent(shareData.shareDescription)}`,
+                        "_blank"
+                      )}
+                    >
+                      <Linkedin className="h-4 w-4 mr-2" />
+                      Share on LinkedIn
+                    </Button>
+                  </TabsContent>
+                  
+                  <TabsContent value="twitter" className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Tweet about your achievement and share your certificate with your followers.
+                    </p>
+                    <Button 
+                      className="w-full"
+                      onClick={() => window.open(
+                        `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareData.shareDescription)}&url=${encodeURIComponent(shareData.verificationUrl)}`,
+                        "_blank"
+                      )}
+                    >
+                      <Twitter className="h-4 w-4 mr-2" />
+                      Share on Twitter
+                    </Button>
+                  </TabsContent>
+                  
+                  <TabsContent value="facebook" className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Share this achievement with friends and family on Facebook.
+                    </p>
+                    <Button 
+                      className="w-full"
+                      onClick={() => window.open(
+                        `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareData.verificationUrl)}&quote=${encodeURIComponent(shareData.shareDescription)}`,
+                        "_blank"
+                      )}
+                    >
+                      <Facebook className="h-4 w-4 mr-2" />
+                      Share on Facebook
+                    </Button>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
+          ) : (
+            <div className="py-4 text-center text-gray-500">
+              Unable to load sharing information
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsShareDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 };

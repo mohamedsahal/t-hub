@@ -138,49 +138,49 @@ interface Semester {
   courseId: number;
 }
 
-// Extended insertExamSchema for the form
-const examFormSchema = insertExamSchema
-  .extend({
-    // Map from snake_case to camelCase for form fields
-    courseId: z.number({
-      required_error: "Please select a course",
-    }),
-    title: z.string({
-      required_error: "Please enter a title",
-    }).min(3, {
-      message: "Title must be at least 3 characters",
-    }),
-    description: z.string().optional().nullable(),
-    type: z.enum(['quiz', 'midterm', 'final', 're_exam', 'assignment', 'project', 'practical'], {
-      required_error: "Please select an exam type",
-    }),
-    maxScore: z.number({
-      required_error: "Please enter total points",
-    }).min(1, {
-      message: "Total points must be at least 1",
-    }),
-    passingScore: z.number({
-      required_error: "Please enter passing points",
-    }).min(1, {
-      message: "Passing points must be at least 1",
-    }),
-    timeLimit: z.number({
-      required_error: "Please enter duration in minutes",
-    }).min(1, {
-      message: "Duration must be at least 1 minute",
-    }),
-    status: z.string().default('active'),
-    sectionId: z.number().optional().nullable(),
-    semesterId: z.number().optional().nullable(),
-    // Grade thresholds
-    gradeAThreshold: z.number().default(90).optional(),
-    gradeBThreshold: z.number().default(80).optional(),
-    gradeCThreshold: z.number().default(70).optional(),
-    gradeDThreshold: z.number().default(60).optional(),
-    // Availability dates
-    availableFrom: z.string().optional().nullable(),
-    availableTo: z.string().optional().nullable(),
-  });
+// Form schema that matches the snake_case field names expected by the backend
+const examFormSchema = z.object({
+  title: z.string({
+    required_error: "Please enter a title",
+  }).min(3, {
+    message: "Title must be at least 3 characters",
+  }),
+  description: z.string().optional().nullable(),
+  type: z.enum(['quiz', 'midterm', 'final', 're_exam', 'assignment', 'project', 'practical'], {
+    required_error: "Please select an exam type",
+  }),
+  status: z.string().default('active'),
+  // In our form we use camelCase, but we're calling these snake_case in API
+  courseId: z.number({
+    required_error: "Please select a course",
+  }),
+  maxScore: z.number({
+    required_error: "Please enter total points",
+  }).min(1, {
+    message: "Total points must be at least 1",
+  }),
+  passingScore: z.number({
+    required_error: "Please enter passing points",
+  }).min(1, {
+    message: "Passing points must be at least 1",
+  }),
+  timeLimit: z.number({
+    required_error: "Please enter duration in minutes",
+  }).min(1, {
+    message: "Duration must be at least 1 minute",
+  }),
+  // Optional fields
+  sectionId: z.number().optional().nullable(),
+  semesterId: z.number().optional().nullable(),
+  // Grade thresholds
+  gradeAThreshold: z.number().default(90).optional(),
+  gradeBThreshold: z.number().default(80).optional(),
+  gradeCThreshold: z.number().default(70).optional(),
+  gradeDThreshold: z.number().default(60).optional(),
+  // Availability dates
+  availableFrom: z.string().optional().nullable(),
+  availableTo: z.string().optional().nullable(),
+});
 
 const questionFormSchema = z.object({
   question: z.string().min(3, {
@@ -307,31 +307,32 @@ export default function ExamManagement() {
   // Mutations
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues) => {
-      // Transform the data to match the expected API format - using snake_case for the backend
+      // Transform the data to match the expected API format
+      // Server expects camelCase based on code examination of pgStorage.ts
       const transformedData = {
         title: data.title,
         description: data.description,
         type: data.type,
         status: data.status,
-        // Required backend fields with correct backend-expected snake_case
-        course_id: data.courseId,
-        max_score: data.maxScore,
-        passing_score: data.passingScore,
-        time_limit: data.timeLimit,
-        // Optional fields that might be undefined
-        section_id: data.sectionId || null,
-        semester_id: data.semesterId || null,
+        // Required fields
+        courseId: data.courseId,
+        maxScore: data.maxScore,
+        passingScore: data.passingScore,
+        timeLimit: data.timeLimit,
+        // Optional fields
+        sectionId: data.sectionId || null,
+        semesterId: data.semesterId || null,
         // Grade thresholds
-        grade_a_threshold: data.gradeAThreshold || 90,
-        grade_b_threshold: data.gradeBThreshold || 80, 
-        grade_c_threshold: data.gradeCThreshold || 70,
-        grade_d_threshold: data.gradeDThreshold || 60,
-        // Date ranges if provided
-        available_from: data.availableFrom || null,
-        available_to: data.availableTo || null
+        gradeAThreshold: data.gradeAThreshold || 90,
+        gradeBThreshold: data.gradeBThreshold || 80, 
+        gradeCThreshold: data.gradeCThreshold || 70,
+        gradeDThreshold: data.gradeDThreshold || 60,
+        // Date ranges
+        availableFrom: data.availableFrom || null,
+        availableTo: data.availableTo || null
       };
       
-      console.log("Sending exam data:", transformedData);
+      console.log("Sending exam data (in camelCase):", transformedData);
       
       return await apiRequest('/api/admin/exams', {
         method: 'POST',
@@ -360,31 +361,32 @@ export default function ExamManagement() {
     mutationFn: async (data: ExamFormValues & { id: number }) => {
       const { id, ...formData } = data;
       
-      // Transform the data to match the expected API format - using snake_case for the backend
+      // Transform the data to match the expected API format
+      // Server expects camelCase based on code examination of pgStorage.ts
       const transformedData = {
         title: formData.title,
         description: formData.description,
         type: formData.type,
         status: formData.status,
-        // Required backend fields with correct backend-expected snake_case
-        course_id: formData.courseId,
-        max_score: formData.maxScore,
-        passing_score: formData.passingScore,
-        time_limit: formData.timeLimit,
-        // Optional fields that might be undefined
-        section_id: formData.sectionId || null,
-        semester_id: formData.semesterId || null,
+        // Required fields
+        courseId: formData.courseId,
+        maxScore: formData.maxScore,
+        passingScore: formData.passingScore,
+        timeLimit: formData.timeLimit,
+        // Optional fields
+        sectionId: formData.sectionId || null,
+        semesterId: formData.semesterId || null,
         // Grade thresholds
-        grade_a_threshold: formData.gradeAThreshold || 90,
-        grade_b_threshold: formData.gradeBThreshold || 80, 
-        grade_c_threshold: formData.gradeCThreshold || 70,
-        grade_d_threshold: formData.gradeDThreshold || 60,
-        // Date ranges if provided
-        available_from: formData.availableFrom || null,
-        available_to: formData.availableTo || null
+        gradeAThreshold: formData.gradeAThreshold || 90,
+        gradeBThreshold: formData.gradeBThreshold || 80, 
+        gradeCThreshold: formData.gradeCThreshold || 70,
+        gradeDThreshold: formData.gradeDThreshold || 60,
+        // Date ranges
+        availableFrom: formData.availableFrom || null,
+        availableTo: formData.availableTo || null
       };
       
-      console.log("Sending updated exam data:", transformedData);
+      console.log("Sending updated exam data (in camelCase):", transformedData);
       
       return await apiRequest(`/api/admin/exams/${id}`, {
         method: 'PATCH',
@@ -519,7 +521,7 @@ export default function ExamManagement() {
   const openExamModal = (exam?: Exam) => {
     if (exam) {
       setCurrentExam(exam);
-      // Only pass the specific fields we need to avoid type conflicts
+      // Map from API response (snake_case) to our form fields (camelCase)
       examForm.reset({
         title: exam.title,
         description: exam.description || "",
@@ -640,6 +642,19 @@ export default function ExamManagement() {
     });
 
   const handleExamFormSubmit = (data: ExamFormValues) => {
+    console.log("Form data before submission:", data);
+    
+    // Log any form validation errors
+    if (Object.keys(examForm.formState.errors).length > 0) {
+      console.error("Form has validation errors:", examForm.formState.errors);
+      toast({
+        title: "Validation Error",
+        description: "Please check the form for errors",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (currentExam) {
       updateExamMutation.mutate({ ...data, id: currentExam.id });
     } else {
