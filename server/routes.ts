@@ -2529,7 +2529,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json(exams);
+      // Enrich exams with course information
+      const allCourses = await storage.getAllCourses();
+      const enrichedExams = exams.map(exam => {
+        const course = allCourses.find(c => c.id === exam.courseId);
+        return {
+          ...exam,
+          course: course ? { id: course.id, title: course.title } : null
+        };
+      });
+      
+      res.json(enrichedExams);
     } catch (error) {
       res.status(500).json({ message: "Error fetching exams" });
     }
@@ -2553,7 +2563,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json(exam);
+      // Add course information
+      const course = await storage.getCourse(exam.courseId);
+      const enrichedExam = {
+        ...exam,
+        course: course ? { id: course.id, title: course.title } : null
+      };
+      
+      res.json(enrichedExam);
     } catch (error) {
       res.status(500).json({ message: "Error fetching exam" });
     }
@@ -2953,14 +2970,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter out inactive exams and include only available ones for students
       const filteredExams = user.role === "student" 
         ? exams.filter(exam => {
-            const isActive = exam.isActive;
+            const isActive = exam.status === 'active'; // Use status property instead of isActive
             const isAvailable = (!exam.availableFrom || new Date(exam.availableFrom) <= new Date()) && 
                                (!exam.availableTo || new Date(exam.availableTo) >= new Date());
             return isActive && isAvailable;
           })
         : exams;
+      
+      // Add course information to exam responses
+      const allCourses = await storage.getAllCourses();
+      const enrichedExams = filteredExams.map(exam => {
+        const course = allCourses.find(c => c.id === exam.courseId);
+        return {
+          ...exam,
+          course: course ? { id: course.id, title: course.title } : null
+        };
+      });
         
-      res.json(filteredExams);
+      res.json(enrichedExams);
     } catch (error) {
       console.error("Error fetching exams:", error);
       res.status(500).json({ message: "Error fetching exams" });
@@ -2987,7 +3014,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ message: "Not enrolled in this course" });
         }
         
-        const isActive = exam.isActive;
+        const isActive = exam.status === 'active'; // Use status property instead of isActive
         const isAvailable = (!exam.availableFrom || new Date(exam.availableFrom) <= new Date()) && 
                            (!exam.availableTo || new Date(exam.availableTo) >= new Date());
                            
@@ -3007,6 +3034,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get questions for the exam but exclude correct answers for students
       const questions = await storage.getExamQuestionsByExam(examId);
       
+      // Add course information to the exam response
+      const course = await storage.getCourse(exam.courseId);
+      const examWithCourse = {
+        ...exam,
+        course: course ? { id: course.id, title: course.title } : null
+      };
+      
       if (user.role === "student") {
         // Remove correct answers for students
         const sanitizedQuestions = questions.map(q => {
@@ -3015,13 +3049,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         res.json({
-          ...exam,
+          ...examWithCourse,
           questions: sanitizedQuestions
         });
       } else {
         // Include all data for teachers and admins
         res.json({
-          ...exam,
+          ...examWithCourse,
           questions
         });
       }
@@ -3051,7 +3085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify the exam is active and available
-      const isActive = exam.isActive;
+      const isActive = exam.status === 'active'; // Use status property instead of isActive
       const isAvailable = (!exam.availableFrom || new Date(exam.availableFrom) <= new Date()) && 
                          (!exam.availableTo || new Date(exam.availableTo) >= new Date());
                          
@@ -3113,7 +3147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If there are only multiple choice/true-false questions, we can automatically grade
       if (questions.length === automaticQuestions.length) {
-        status = score >= exam.passingPoints ? 'passed' : 'failed';
+        status = score >= (exam.passingScore || 60) ? 'passed' : 'failed';
         
         // Calculate grade for auto-gradable exams
         grade = determineGrade(
@@ -3256,7 +3290,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               examId: exam.id,
               examTitle: exam.title,
               examType: exam.type,
-              totalPoints: exam.totalPoints,
+              // Get max score from exam
+              totalPoints: exam.maxScore || 100,
               studentId: student.id,
               studentName: student.name,
               studentEmail: student.email
@@ -3302,10 +3337,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Determine status based on score
-      const status = req.body.score >= exam.passingPoints ? 'passed' : 'failed';
+      const status = req.body.score >= (exam.passingScore || 60) ? 'passed' : 'failed';
+      
+      // Calculate total possible points from the questions
+      const questions = await storage.getExamQuestionsByExam(exam.id);
+      const totalPossiblePoints = questions.reduce((sum, q) => sum + q.points, 0);
       
       // Calculate grade based on percentage score and thresholds
-      const percentScore = (req.body.score / exam.totalPoints) * 100;
+      const percentScore = (req.body.score / (totalPossiblePoints || exam.maxScore || 100)) * 100;
       
       // Helper function to determine the grade
       const determineGrade = (
