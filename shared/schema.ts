@@ -121,6 +121,8 @@ export const exams = pgTable("exams", {
   passingScore: integer("passing_score").notNull(),
   timeLimit: integer("time_limit").notNull(), // in minutes
   status: text("status").default('active').notNull(),
+  // Automatic or manual grading mode
+  gradingMode: text("grading_mode").default('auto').notNull(), // 'auto' or 'manual'
   // Grading scale thresholds (percentage required for each grade)
   gradeAThreshold: integer("grade_a_threshold").default(90),
   gradeBThreshold: integer("grade_b_threshold").default(80),
@@ -352,6 +354,7 @@ export const insertExamSchema = createInsertSchema(exams)
     semesterId: z.number().optional().nullable(),
     availableFrom: z.string().optional().nullable(),
     availableTo: z.string().optional().nullable(),
+    gradingMode: z.enum(['auto', 'manual']).default('auto'),
     gradeAThreshold: z.number().optional().default(90),
     gradeBThreshold: z.number().optional().default(80),
     gradeCThreshold: z.number().optional().default(70),

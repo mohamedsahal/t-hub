@@ -60,6 +60,7 @@ export const mapExamToFormData = (exam: any) => {
     type: exam.type,
     status: exam.status || 'active',
     // Convert snake_case fields to camelCase for form usage
+    gradingMode: exam.grading_mode || 'auto',
     courseId: exam.course_id,
     maxScore: exam.max_score,
     passingScore: exam.passing_score,
@@ -88,6 +89,7 @@ export const mapFormDataToExam = (formData: any) => {
     maxScore, // Extract maxScore (previously totalPoints)
     passingScore, // Extract passingScore (previously passingPoints)
     timeLimit, // Extract timeLimit (previously duration)
+    gradingMode = 'auto', // Extract gradingMode with default 'auto'
     gradeAThreshold = 90,
     gradeBThreshold = 80,
     gradeCThreshold = 70,
@@ -106,6 +108,7 @@ export const mapFormDataToExam = (formData: any) => {
     max_score: maxScore, // Convert maxScore to max_score
     passing_score: passingScore, // Convert passingScore to passing_score
     time_limit: timeLimit, // Convert timeLimit to time_limit
+    grading_mode: gradingMode, // Convert gradingMode to grading_mode
     grade_a_threshold: gradeAThreshold,
     grade_b_threshold: gradeBThreshold,
     grade_c_threshold: gradeCThreshold,

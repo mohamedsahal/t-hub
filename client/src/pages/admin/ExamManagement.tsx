@@ -66,6 +66,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Tooltip,
@@ -96,6 +97,7 @@ interface Exam {
   passing_score: number; // Changed from passingPoints
   time_limit: number; // Changed from duration
   status: string; // Changed from isActive (string instead of boolean)
+  grading_mode: string; // 'auto' or 'manual'
   course_id: number; // Changed from courseId
   course?: {
     title: string;
@@ -157,6 +159,10 @@ const examFormSchema = z.object({
     required_error: "Please select an exam type",
   }),
   status: z.string().default('active'),
+  // Grading mode - auto or manual
+  gradingMode: z.enum(['auto', 'manual'], {
+    required_error: "Please select a grading mode",
+  }).default('auto'),
   // In our form we use camelCase, but we're calling these snake_case in API
   courseId: z.number({
     required_error: "Please select a course",
@@ -239,6 +245,7 @@ export default function ExamManagement() {
       passingScore: 60,
       timeLimit: 60,
       status: "active",
+      gradingMode: "auto",
       courseId: undefined,
       sectionId: undefined,
       semesterId: undefined,
@@ -517,6 +524,7 @@ export default function ExamManagement() {
         passingScore: 60,
         timeLimit: 60,
         status: "active",
+        gradingMode: "auto",
         courseId: undefined, // Explicitly set courseId to undefined
         sectionId: undefined,
         semesterId: undefined,
@@ -831,8 +839,18 @@ export default function ExamManagement() {
                         <SelectContent>
                           <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                           <SelectItem value="true_false">True/False</SelectItem>
-                          <SelectItem value="short_answer">Short Answer</SelectItem>
-                          <SelectItem value="essay">Essay</SelectItem>
+                          <SelectItem 
+                            value="short_answer" 
+                            disabled={currentExam?.grading_mode === 'auto'}
+                          >
+                            Short Answer {currentExam?.grading_mode === 'auto' && "(requires manual grading)"}
+                          </SelectItem>
+                          <SelectItem 
+                            value="essay" 
+                            disabled={currentExam?.grading_mode === 'auto'}
+                          >
+                            Essay {currentExam?.grading_mode === 'auto' && "(requires manual grading)"}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1474,6 +1492,44 @@ export default function ExamManagement() {
                         </Select>
                         <FormDescription>
                           Active exams are visible to students and available for taking.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={examForm.control}
+                    name="gradingMode"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel>Grading Mode</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex flex-col space-y-1"
+                          >
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="auto" />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                Auto-graded
+                              </FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-3 space-y-0">
+                              <FormControl>
+                                <RadioGroupItem value="manual" />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                Manually graded
+                              </FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormDescription>
+                          Auto-graded exams are scored automatically, while manually graded exams require teacher review.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
