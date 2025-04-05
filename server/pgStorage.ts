@@ -753,13 +753,32 @@ export class PgStorage implements IStorage {
     try {
       console.log(`Creating exam question with data:`, JSON.stringify(question, null, 2));
       
+      // For short_answer and essay types, correctAnswer can be optional
+      let correctAnswer = question.correctAnswer;
+      if ((question.type === 'short_answer' || question.type === 'essay') && !correctAnswer) {
+        correctAnswer = ''; // Use empty string if not provided for these types
+      }
+      
+      // Convert options array to a JSON object for JSONB column
+      let optionsJson;
+      if (Array.isArray(question.options) && question.options.length > 0) {
+        // Convert array to a JSON object with numbered keys - better format for PostgreSQL
+        const optionsObj = question.options.reduce((acc, option, index) => {
+          acc[index + 1] = option;  // Create 1-based indexing for options
+          return acc;
+        }, {} as Record<string, string>);
+        optionsJson = optionsObj;
+      } else {
+        optionsJson = {}; // Empty object if no options
+      }
+      
       // Map the field names to match the database column names
       const mappedQuestion = {
         exam_id: question.examId,
         question_text: question.question,
         question_type: question.type,
-        options: question.options || [],
-        correct_answer: question.correctAnswer,
+        options: optionsJson, // Use the properly formatted JSON object
+        correct_answer: correctAnswer,
         points: question.points || 1,
         sort_order: question.order || 1,
         explanation: question.explanation || null,
@@ -786,8 +805,31 @@ export class PgStorage implements IStorage {
       if (questionData.examId !== undefined) mappedData.exam_id = questionData.examId;
       if (questionData.question !== undefined) mappedData.question_text = questionData.question;
       if (questionData.type !== undefined) mappedData.question_type = questionData.type;
-      if (questionData.options !== undefined) mappedData.options = questionData.options;
-      if (questionData.correctAnswer !== undefined) mappedData.correct_answer = questionData.correctAnswer;
+      
+      // For short_answer and essay questions, correctAnswer can be empty
+      if (questionData.correctAnswer !== undefined) {
+        if (questionData.type === 'short_answer' || questionData.type === 'essay') {
+          // Make correctAnswer optional for these types
+          mappedData.correct_answer = questionData.correctAnswer || '';
+        } else {
+          mappedData.correct_answer = questionData.correctAnswer;
+        }
+      }
+      
+      // Handle options field formatting for JSON
+      if (questionData.options !== undefined) {
+        if (Array.isArray(questionData.options) && questionData.options.length > 0) {
+          // Convert array to a JSON object with numbered keys
+          const optionsObj = questionData.options.reduce((acc, option, index) => {
+            acc[index + 1] = option;  // Create 1-based indexing for options
+            return acc;
+          }, {} as Record<string, string>);
+          mappedData.options = optionsObj;
+        } else {
+          mappedData.options = {};  // Empty object if no options
+        }
+      }
+      
       if (questionData.points !== undefined) mappedData.points = questionData.points;
       if (questionData.order !== undefined) mappedData.sort_order = questionData.order;
       if (questionData.explanation !== undefined) mappedData.explanation = questionData.explanation;

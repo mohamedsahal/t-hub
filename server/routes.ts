@@ -2808,13 +2808,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Question type is required" });
       }
       
+      // Determine if correct answer is required
+      const questionType = formData.type;
+      const isCorrectAnswerRequired = (questionType === 'multiple_choice' || questionType === 'true_false');
+      
+      // Check if correct answer is provided when required
+      if (isCorrectAnswerRequired && 
+          !formData.correct_answer && 
+          !formData.correctAnswer) {
+        return res.status(400).json({ 
+          message: `Correct answer is required for ${questionType} questions` 
+        });
+      }
+      
       // Use camelCase properties to match the Drizzle schema, handling both camelCase and snake_case
       const questionData = {
         examId: examId,
         question: formData.question,
         type: formData.type,
         options: formData.options || [],
-        correctAnswer: formData.correct_answer || formData.correctAnswer || "", // Handle both formats
+        correctAnswer: formData.correct_answer || formData.correctAnswer || "", // Optional for short_answer/essay
         points: formData.points || 1,  // Default to 1 point if not specified
         order: formData.order || 0,  // Will be updated below
         explanation: formData.explanation || null
@@ -2899,16 +2912,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questionData.question = formData.question;
       }
       
+      // Handle question type update
       if (formData.type !== undefined) {
         questionData.type = formData.type;
+        
+        // If changing to a type that requires correct answer, check if it's provided
+        const newType = formData.type;
+        const isCorrectAnswerRequired = (newType === 'multiple_choice' || newType === 'true_false');
+        
+        if (isCorrectAnswerRequired) {
+          // For types requiring a correct answer, ensure it's present or use existing
+          const correctAnswer = formData.correct_answer || formData.correctAnswer;
+          if (correctAnswer === undefined && question.correctAnswer === null) {
+            return res.status(400).json({
+              message: `Correct answer is required for ${newType} questions`
+            });
+          }
+        }
       }
       
       if (formData.options !== undefined) {
         questionData.options = formData.options;
       }
       
+      // Handle correct answer updates - consider type context
       if (formData.correct_answer !== undefined || formData.correctAnswer !== undefined) {
-        questionData.correctAnswer = formData.correct_answer || formData.correctAnswer;
+        const correctAnswer = formData.correct_answer || formData.correctAnswer;
+        questionData.correctAnswer = correctAnswer;
+        
+        // Type-safe check (use existing type if type not being updated)
+        const questionType = formData.type || question.type;
+        const isCorrectAnswerRequired = (questionType === 'multiple_choice' || questionType === 'true_false');
+        
+        if (isCorrectAnswerRequired && !correctAnswer && correctAnswer !== "") {
+          return res.status(400).json({
+            message: `Correct answer is required for ${questionType} questions`
+          });
+        }
       }
       
       if (formData.points !== undefined) {
