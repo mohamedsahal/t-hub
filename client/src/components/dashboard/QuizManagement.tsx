@@ -156,18 +156,19 @@ export function QuizManagement() {
   // Mutation for creating/updating a question
   const questionMutation = useMutation({
     mutationFn: (data: any) => {
+      if (!selectedExam) {
+        throw new Error('No exam selected');
+      }
+      
       if (selectedQuestion) {
-        return apiRequest(`/api/admin/exam-questions/${selectedQuestion.id}`, {
+        return apiRequest(`/api/admin/exams/${selectedExam.id}/questions/${selectedQuestion.id}`, {
           method: 'PATCH',
           data
         });
       } else {
-        return apiRequest('/api/admin/exam-questions', {
+        return apiRequest(`/api/admin/exams/${selectedExam.id}/questions`, {
           method: 'POST',
-          data: {
-            ...data,
-            examId: selectedExam?.id
-          }
+          data
         });
       }
     },
@@ -219,7 +220,10 @@ export function QuizManagement() {
   // Mutation for deleting a question
   const deleteQuestionMutation = useMutation({
     mutationFn: (questionId: number) => {
-      return apiRequest(`/api/admin/exam-questions/${questionId}`, {
+      if (!selectedExam) {
+        throw new Error('No exam selected');
+      }
+      return apiRequest(`/api/admin/exams/${selectedExam.id}/questions/${questionId}`, {
         method: 'DELETE'
       });
     },
