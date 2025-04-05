@@ -19,7 +19,8 @@ import {
   User,
   LogOut,
   ClipboardCheck,
-  Info
+  Info,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ThubLogo from "@/components/ui/ThubLogo";
@@ -32,6 +33,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { 
+  Collapsible, 
+  CollapsibleContent, 
+  CollapsibleTrigger 
+} from "@/components/ui/collapsible";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -190,61 +196,99 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </SidebarCategory>
             
             <SidebarCategory label="EDUCATION">
-              <div className="relative group">
-                <div 
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer",
-                    (location === "/admin/courses" || 
-                     location === "/admin/courses/short" || 
-                     location === "/admin/courses/specialist" || 
-                     location === "/admin/courses/bootcamp" || 
-                     location === "/admin/courses/diploma" || 
-                     location.startsWith("/admin/course-builder") ||
-                     location.startsWith("/admin/courses/short/builder")) 
-                      ? "bg-gray-800 text-white" : "text-gray-300 hover:text-white"
-                  )}
-                >
-                  <div className="w-6 h-6 flex items-center justify-center">
-                    <BookOpen size={18} />
+              <Collapsible 
+                className={cn(
+                  "rounded-md overflow-hidden", 
+                  (location === "/admin/courses" || 
+                  location === "/admin/courses/short" || 
+                  location === "/admin/courses/specialist" || 
+                  location === "/admin/courses/bootcamp" || 
+                  location === "/admin/courses/diploma" || 
+                  location.startsWith("/admin/course-builder") ||
+                  location.startsWith("/admin/courses/short/builder")) ? "bg-gray-800/50" : ""
+                )}
+              >
+                <CollapsibleTrigger className="w-full">
+                  <div 
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer w-full",
+                      (location === "/admin/courses" || 
+                      location === "/admin/courses/short" || 
+                      location === "/admin/courses/specialist" || 
+                      location === "/admin/courses/bootcamp" || 
+                      location === "/admin/courses/diploma" || 
+                      location.startsWith("/admin/course-builder") ||
+                      location.startsWith("/admin/courses/short/builder")) 
+                        ? "text-white" : "text-gray-300 hover:text-white"
+                    )}
+                  >
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <BookOpen size={18} />
+                    </div>
+                    <span>Courses</span>
+                    <ChevronDown size={14} className="ml-auto transition-transform duration-200 ui-open:rotate-180" />
                   </div>
-                  <span>Courses</span>
-                  <ChevronDown size={14} className="ml-auto" />
-                </div>
-                <div className="hidden group-hover:block absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="py-1">
-                    <Link 
-                      href="/admin/courses" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="pl-9 pr-2 py-1 space-y-1">
+                    <div 
+                      onClick={() => window.location.href = "/admin/courses"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/courses" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       All Courses
-                    </Link>
-                    <Link 
-                      href="/admin/courses/short" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    </div>
+                    <div 
+                      onClick={() => window.location.href = "/admin/courses/short"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/courses/short" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       Short Courses
-                    </Link>
-                    <Link 
-                      href="/admin/courses/specialist" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    </div>
+                    <div 
+                      onClick={() => window.location.href = "/admin/courses/specialist"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/courses/specialist" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       Specialist Programs
-                    </Link>
-                    <Link 
-                      href="/admin/courses/bootcamp" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    </div>
+                    <div 
+                      onClick={() => window.location.href = "/admin/courses/bootcamp"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/courses/bootcamp" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       Bootcamps
-                    </Link>
-                    <Link 
-                      href="/admin/courses/diploma" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    </div>
+                    <div 
+                      onClick={() => window.location.href = "/admin/courses/diploma"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/courses/diploma" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       Diploma Programs
-                    </Link>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
               <SidebarItem 
                 icon={<CreditCard size={18} />} 
                 label="Payments" 
@@ -275,45 +319,69 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 href="/admin/testimonials" 
                 isActive={location === "/admin/testimonials"} 
               />
-              <div className="relative group">
-                <div 
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer",
-                    (location === "/admin/exams" || 
-                     location === "/admin/exam-marks" ||
-                     location === "/admin/exam-results") 
-                      ? "bg-gray-800 text-white" : "text-gray-300 hover:text-white"
-                  )}
-                >
-                  <div className="w-6 h-6 flex items-center justify-center">
-                    <ClipboardCheck size={18} />
+              <Collapsible 
+                className={cn(
+                  "rounded-md overflow-hidden", 
+                  (location === "/admin/exams" || 
+                  location === "/admin/exam-marks" ||
+                  location === "/admin/exam-results") ? "bg-gray-800/50" : ""
+                )}
+              >
+                <CollapsibleTrigger className="w-full">
+                  <div 
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer w-full",
+                      (location === "/admin/exams" || 
+                      location === "/admin/exam-marks" ||
+                      location === "/admin/exam-results") 
+                        ? "text-white" : "text-gray-300 hover:text-white"
+                    )}
+                  >
+                    <div className="w-6 h-6 flex items-center justify-center">
+                      <ClipboardCheck size={18} />
+                    </div>
+                    <span>Exams</span>
+                    <ChevronDown size={14} className="ml-auto transition-transform duration-200 ui-open:rotate-180" />
                   </div>
-                  <span>Exams</span>
-                  <ChevronDown size={14} className="ml-auto" />
-                </div>
-                <div className="hidden group-hover:block absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-gray-800 ring-1 ring-black ring-opacity-5 z-10">
-                  <div className="py-1">
-                    <Link 
-                      href="/admin/exams" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="pl-9 pr-2 py-1 space-y-1">
+                    <div 
+                      onClick={() => window.location.href = "/admin/exams"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/exams" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       All Exams
-                    </Link>
-                    <Link 
-                      href="/admin/exam-marks" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    </div>
+                    <div 
+                      onClick={() => window.location.href = "/admin/exam-marks"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/exam-marks" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       Grading
-                    </Link>
-                    <Link 
-                      href="/admin/exam-results" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
+                    </div>
+                    <div 
+                      onClick={() => window.location.href = "/admin/exam-results"}
+                      className={cn(
+                        "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
+                        location === "/admin/exam-results" 
+                          ? "bg-gray-700 text-white" 
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                      )}
                     >
                       Results
-                    </Link>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             </SidebarCategory>
             
             <SidebarCategory label="PRODUCTS">
