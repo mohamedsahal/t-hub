@@ -2562,7 +2562,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/exams", checkRole(["admin", "teacher"]), async (req, res) => {
     try {
       console.log("Received exam creation request:", JSON.stringify(req.body, null, 2));
-      const examData = insertExamSchema.parse(req.body);
+      
+      // Convert camelCase properties to snake_case before validation
+      const convertedBody = {
+        title: req.body.title,
+        description: req.body.description,
+        course_id: req.body.courseId,
+        section_id: req.body.sectionId,
+        semester_id: req.body.semesterId,
+        type: req.body.type,
+        max_score: req.body.maxScore,
+        passing_score: req.body.passingScore,
+        time_limit: req.body.timeLimit,
+        status: req.body.status,
+        grade_a_threshold: req.body.gradeAThreshold,
+        grade_b_threshold: req.body.gradeBThreshold,
+        grade_c_threshold: req.body.gradeCThreshold,
+        grade_d_threshold: req.body.gradeDThreshold,
+        available_from: req.body.availableFrom,
+        available_to: req.body.availableTo
+      };
+      
+      console.log("Converted exam data for validation:", JSON.stringify(convertedBody, null, 2));
+      const examData = insertExamSchema.parse(convertedBody);
       console.log("Parsed exam data:", JSON.stringify(examData, null, 2));
       
       // Verify the course exists
@@ -2622,8 +2644,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const examData = req.body;
-      const updatedExam = await storage.updateExam(examId, examData);
+      // Convert camelCase properties to snake_case before updating
+      const convertedBody = {
+        title: req.body.title,
+        description: req.body.description,
+        course_id: req.body.courseId,
+        section_id: req.body.sectionId,
+        semester_id: req.body.semesterId,
+        type: req.body.type,
+        max_score: req.body.maxScore,
+        passing_score: req.body.passingScore,
+        time_limit: req.body.timeLimit,
+        status: req.body.status,
+        grade_a_threshold: req.body.gradeAThreshold,
+        grade_b_threshold: req.body.gradeBThreshold,
+        grade_c_threshold: req.body.gradeCThreshold,
+        grade_d_threshold: req.body.gradeDThreshold,
+        available_from: req.body.availableFrom,
+        available_to: req.body.availableTo
+      };
+      
+      console.log("Converted exam data for update:", JSON.stringify(convertedBody, null, 2));
+      const updatedExam = await storage.updateExam(examId, convertedBody);
       
       res.json(updatedExam);
     } catch (error) {
@@ -2700,7 +2742,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const questionData = insertExamQuestionSchema.parse(req.body);
+      // Convert camelCase properties to snake_case before validation
+      const convertedBody = {
+        exam_id: req.body.examId || examId,
+        question: req.body.question,
+        type: req.body.type,
+        options: req.body.options,
+        correct_answer: req.body.correctAnswer,
+        points: req.body.points,
+        order: req.body.order,
+        explanation: req.body.explanation
+      };
+      
+      console.log("Converted question data for validation:", JSON.stringify(convertedBody, null, 2));
+      const questionData = insertExamQuestionSchema.parse(convertedBody);
       
       // Ensure the question is linked to the correct exam
       questionData.examId = examId;
@@ -2749,8 +2804,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const questionData = req.body;
-      const updatedQuestion = await storage.updateExamQuestion(questionId, questionData);
+      // Convert camelCase properties to snake_case before updating
+      const convertedBody = {
+        exam_id: req.body.examId || examId,
+        question: req.body.question,
+        type: req.body.type,
+        options: req.body.options,
+        correct_answer: req.body.correctAnswer,
+        points: req.body.points,
+        order: req.body.order,
+        explanation: req.body.explanation
+      };
+      
+      console.log("Converted question data for update:", JSON.stringify(convertedBody, null, 2));
+      const updatedQuestion = await storage.updateExamQuestion(questionId, convertedBody);
       
       res.json(updatedQuestion);
     } catch (error) {
