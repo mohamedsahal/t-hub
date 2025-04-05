@@ -280,8 +280,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer",
                     (location === "/admin/exams" || 
-                     location === "/admin/exam-types" || 
-                     location === "/admin/exam-rules" || 
                      location === "/admin/exam-marks" ||
                      location === "/admin/exam-results") 
                       ? "bg-gray-800 text-white" : "text-gray-300 hover:text-white"
@@ -302,29 +300,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       All Exams
                     </Link>
                     <Link 
-                      href="/admin/exam-types" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-                    >
-                      Exam Types
-                    </Link>
-
-                    <Link 
-                      href="/admin/exam-rules" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-                    >
-                      Exam Rules
-                    </Link>
-                    <Link 
                       href="/admin/exam-marks" 
                       className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
                     >
-                      Exam Marks
+                      Grading
                     </Link>
                     <Link 
                       href="/admin/exam-results" 
                       className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
                     >
-                      Exam Results
+                      Results
                     </Link>
                   </div>
                 </div>
