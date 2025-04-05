@@ -20,6 +20,12 @@ import {
 } from 'lucide-react';
 
 import { apiRequest } from '@/lib/queryClient';
+import { 
+  convertKeysToSnakeCase, 
+  convertKeysToCamelCase,
+  mapExamToFormData,
+  mapFormDataToExam
+} from '@/lib/dataUtils';
 import { insertExamSchema } from '@shared/schema';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { 
@@ -307,32 +313,12 @@ export default function ExamManagement() {
   // Mutations
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues) => {
-      // Transform the data to match the expected API format
-      // Server expects camelCase based on code examination of pgStorage.ts
-      const transformedData = {
-        title: data.title,
-        description: data.description,
-        type: data.type,
-        status: data.status,
-        // Required fields
-        courseId: data.courseId,
-        maxScore: data.maxScore,
-        passingScore: data.passingScore,
-        timeLimit: data.timeLimit,
-        // Optional fields
-        sectionId: data.sectionId || null,
-        semesterId: data.semesterId || null,
-        // Grade thresholds
-        gradeAThreshold: data.gradeAThreshold || 90,
-        gradeBThreshold: data.gradeBThreshold || 80, 
-        gradeCThreshold: data.gradeCThreshold || 70,
-        gradeDThreshold: data.gradeDThreshold || 60,
-        // Date ranges
-        availableFrom: data.availableFrom || null,
-        availableTo: data.availableTo || null
-      };
+      console.log("Form data before submission:", data);
       
-      console.log("Sending exam data (in camelCase):", transformedData);
+      // Transform all keys from camelCase to snake_case automatically using utility
+      const transformedData = mapFormDataToExam(data);
+      
+      console.log("Sending exam data (in snake_case):", transformedData);
       
       return await apiRequest('/api/admin/exams', {
         method: 'POST',
@@ -360,33 +346,12 @@ export default function ExamManagement() {
   const updateExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues & { id: number }) => {
       const { id, ...formData } = data;
+      console.log("Form data before update:", formData);
       
-      // Transform the data to match the expected API format
-      // Server expects camelCase based on code examination of pgStorage.ts
-      const transformedData = {
-        title: formData.title,
-        description: formData.description,
-        type: formData.type,
-        status: formData.status,
-        // Required fields
-        courseId: formData.courseId,
-        maxScore: formData.maxScore,
-        passingScore: formData.passingScore,
-        timeLimit: formData.timeLimit,
-        // Optional fields
-        sectionId: formData.sectionId || null,
-        semesterId: formData.semesterId || null,
-        // Grade thresholds
-        gradeAThreshold: formData.gradeAThreshold || 90,
-        gradeBThreshold: formData.gradeBThreshold || 80, 
-        gradeCThreshold: formData.gradeCThreshold || 70,
-        gradeDThreshold: formData.gradeDThreshold || 60,
-        // Date ranges
-        availableFrom: formData.availableFrom || null,
-        availableTo: formData.availableTo || null
-      };
+      // Transform all keys from camelCase to snake_case automatically using utility
+      const transformedData = mapFormDataToExam(formData);
       
-      console.log("Sending updated exam data (in camelCase):", transformedData);
+      console.log("Sending updated exam data (in snake_case):", transformedData);
       
       return await apiRequest(`/api/admin/exams/${id}`, {
         method: 'PATCH',
@@ -437,9 +402,15 @@ export default function ExamManagement() {
   const createQuestionMutation = useMutation({
     mutationFn: async (data: QuestionFormValues & { examId: number }) => {
       const { examId, ...questionData } = data;
+      console.log("Question data before submission:", questionData);
+      
+      // Convert question data to snake_case format
+      const transformedData = convertKeysToSnakeCase(questionData);
+      console.log("Sending question data (in snake_case):", transformedData);
+      
       return await apiRequest(`/api/admin/exams/${examId}/questions`, {
         method: 'POST',
-        data: questionData
+        data: transformedData
       });
     },
     onSuccess: () => {
@@ -471,9 +442,15 @@ export default function ExamManagement() {
   const updateQuestionMutation = useMutation({
     mutationFn: async (data: QuestionFormValues & { examId: number, id: number }) => {
       const { examId, id, ...questionData } = data;
+      console.log("Question data before update:", questionData);
+      
+      // Convert question data to snake_case format
+      const transformedData = convertKeysToSnakeCase(questionData);
+      console.log("Sending updated question data (in snake_case):", transformedData);
+      
       return await apiRequest(`/api/admin/exams/${examId}/questions/${id}`, {
         method: 'PATCH',
-        data: questionData
+        data: transformedData
       });
     },
     onSuccess: () => {
@@ -521,25 +498,14 @@ export default function ExamManagement() {
   const openExamModal = (exam?: Exam) => {
     if (exam) {
       setCurrentExam(exam);
-      // Map from API response (snake_case) to our form fields (camelCase)
-      examForm.reset({
-        title: exam.title,
-        description: exam.description || "",
-        type: exam.type as any, // Type assertion to handle string type from API
-        maxScore: exam.max_score,
-        passingScore: exam.passing_score,
-        timeLimit: exam.time_limit,
-        status: exam.status,
-        courseId: exam.course_id,
-        sectionId: exam.section_id,
-        semesterId: exam.semester_id,
-        gradeAThreshold: exam.grade_a_threshold,
-        gradeBThreshold: exam.grade_b_threshold,
-        gradeCThreshold: exam.grade_c_threshold,
-        gradeDThreshold: exam.grade_d_threshold,
-        availableFrom: exam.available_from,
-        availableTo: exam.available_to
-      });
+      console.log("Original exam data (in snake_case):", exam);
+      
+      // Use the utility function to map exam data to form values
+      const formData = mapExamToFormData(exam);
+      console.log("Mapped exam data for form:", formData);
+      
+      // Set form values
+      examForm.reset(formData);
     } else {
       setCurrentExam(null);
       examForm.reset({
