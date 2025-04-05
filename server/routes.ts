@@ -2588,20 +2588,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const examData = {
         title: formData.title,
         description: formData.description || null,
-        courseId: formData.courseId, // Using camelCase to match schema
-        sectionId: formData.sectionId || null,
-        semesterId: formData.semesterId || null,
+        // Fix mapping snake_case to camelCase
+        courseId: formData.course_id || formData.courseId, // Check both formats
+        sectionId: formData.section_id || formData.sectionId || null,
+        semesterId: formData.semester_id || formData.semesterId || null,
         type: formData.type,
-        maxScore: formData.maxScore, // Using camelCase to match schema
-        passingScore: formData.passingScore, // Using camelCase to match schema
-        timeLimit: formData.timeLimit, // Using camelCase to match schema
+        maxScore: formData.max_score || formData.maxScore, // Check both formats
+        passingScore: formData.passing_score || formData.passingScore, // Check both formats
+        timeLimit: formData.time_limit || formData.timeLimit, // Check both formats
         status: formData.status || 'active',
-        gradeAThreshold: formData.gradeAThreshold || 90, // Using camelCase to match schema
-        gradeBThreshold: formData.gradeBThreshold || 80, // Using camelCase to match schema
-        gradeCThreshold: formData.gradeCThreshold || 70, // Using camelCase to match schema
-        gradeDThreshold: formData.gradeDThreshold || 60, // Using camelCase to match schema
-        availableFrom: formData.availableFrom || null,
-        availableTo: formData.availableTo || null
+        gradeAThreshold: formData.grade_a_threshold || formData.gradeAThreshold || 90, // Check both formats
+        gradeBThreshold: formData.grade_b_threshold || formData.gradeBThreshold || 80, // Check both formats
+        gradeCThreshold: formData.grade_c_threshold || formData.gradeCThreshold || 70, // Check both formats
+        gradeDThreshold: formData.grade_d_threshold || formData.gradeDThreshold || 60, // Check both formats
+        availableFrom: formData.available_from || formData.availableFrom || null,
+        availableTo: formData.available_to || formData.availableTo || null
       };
       
       console.log("Direct exam data without schema validation:", JSON.stringify(examData, null, 2));
@@ -2668,24 +2669,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data is wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Use camelCase properties to match the Drizzle schema
+      // Use camelCase properties to match the Drizzle schema, handling both camelCase and snake_case
       const examData = {
         title: formData.title,
         description: formData.description,
-        courseId: formData.courseId,
-        sectionId: formData.sectionId,
-        semesterId: formData.semesterId,
+        courseId: formData.course_id || formData.courseId,
+        sectionId: formData.section_id || formData.sectionId,
+        semesterId: formData.semester_id || formData.semesterId,
         type: formData.type,
-        maxScore: formData.maxScore,
-        passingScore: formData.passingScore,
-        timeLimit: formData.timeLimit,
+        maxScore: formData.max_score || formData.maxScore,
+        passingScore: formData.passing_score || formData.passingScore,
+        timeLimit: formData.time_limit || formData.timeLimit,
         status: formData.status,
-        gradeAThreshold: formData.gradeAThreshold,
-        gradeBThreshold: formData.gradeBThreshold,
-        gradeCThreshold: formData.gradeCThreshold,
-        gradeDThreshold: formData.gradeDThreshold,
-        availableFrom: formData.availableFrom,
-        availableTo: formData.availableTo
+        gradeAThreshold: formData.grade_a_threshold || formData.gradeAThreshold,
+        gradeBThreshold: formData.grade_b_threshold || formData.gradeBThreshold,
+        gradeCThreshold: formData.grade_c_threshold || formData.gradeCThreshold,
+        gradeDThreshold: formData.grade_d_threshold || formData.gradeDThreshold,
+        availableFrom: formData.available_from || formData.availableFrom,
+        availableTo: formData.available_to || formData.availableTo
       };
       
       console.log("Exam data for update:", JSON.stringify(examData, null, 2));
