@@ -849,12 +849,18 @@ export default function ExamManagement() {
                         <SelectContent>
                           <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                           <SelectItem value="true_false">True/False</SelectItem>
-                          {currentExam?.grading_mode !== 'auto' && (
-                            <>
-                              <SelectItem value="short_answer">Short Answer</SelectItem>
-                              <SelectItem value="essay">Essay</SelectItem>
-                            </>
-                          )}
+                          <SelectItem 
+                            value="short_answer" 
+                            disabled={currentExam?.grading_mode === 'auto'}
+                          >
+                            Short Answer {currentExam?.grading_mode === 'auto' && "(requires manual grading)"}
+                          </SelectItem>
+                          <SelectItem 
+                            value="essay" 
+                            disabled={currentExam?.grading_mode === 'auto'}
+                          >
+                            Essay {currentExam?.grading_mode === 'auto' && "(requires manual grading)"}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -868,27 +874,29 @@ export default function ExamManagement() {
                     <FormDescription>
                       {currentExam?.grading_mode !== 'manual' 
                         ? 'Add multiple choice options below. Select the correct answer.'
-                        : 'Add multiple choice options below.'}
+                        : 'Add multiple choice options below. Correct answer will be set during grading.'}
                     </FormDescription>
                     {questionForm.watch('options')?.map((_, index) => (
                       <div key={index} className="flex gap-2 items-center">
-                        {currentExam?.grading_mode !== 'manual' && (
-                          <div
-                            className={`w-5 h-5 rounded-full flex items-center justify-center border cursor-pointer ${
-                              questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) 
-                                ? 'bg-green-100 border-green-500 text-green-700' 
-                                : 'border-gray-300'
-                            }`}
-                            onClick={() => {
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center border ${
+                            currentExam?.grading_mode !== 'manual' ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
+                          } ${
+                            questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) 
+                              ? 'bg-green-100 border-green-500 text-green-700' 
+                              : 'border-gray-300'
+                          }`}
+                          onClick={() => {
+                            if (currentExam?.grading_mode !== 'manual') {
                               const option = questionForm.watch(`options.${index}`);
                               if (option) questionForm.setValue('correctAnswer', option);
-                            }}
-                          >
-                            {questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) && (
-                              <Check className="h-3 w-3" />
-                            )}
-                          </div>
-                        )}
+                            }
+                          }}
+                        >
+                          {questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) && (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </div>
                         <Input
                           value={questionForm.watch(`options.${index}`) || ''}
                           onChange={(e) => {
@@ -943,7 +951,7 @@ export default function ExamManagement() {
                   </div>
                 )}
                 
-                {questionForm.watch('type') === 'true_false' && currentExam?.grading_mode !== 'manual' && (
+                {questionForm.watch('type') === 'true_false' && (
                   <FormField
                     control={questionForm.control}
                     name="correctAnswer"
@@ -953,6 +961,7 @@ export default function ExamManagement() {
                         <Select
                           value={field.value}
                           onValueChange={field.onChange}
+                          disabled={currentExam?.grading_mode === 'manual'}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -964,13 +973,18 @@ export default function ExamManagement() {
                             <SelectItem value="false">False</SelectItem>
                           </SelectContent>
                         </Select>
+                        {currentExam?.grading_mode === 'manual' && (
+                          <FormDescription>
+                            Correct answer will be set during grading
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
                 
-                {['short_answer', 'essay'].includes(questionForm.watch('type')) && currentExam?.grading_mode !== 'manual' && (
+                {['short_answer', 'essay'].includes(questionForm.watch('type')) && (
                   <FormField
                     control={questionForm.control}
                     name="correctAnswer"
@@ -978,29 +992,46 @@ export default function ExamManagement() {
                       <FormItem>
                         <FormLabel>Correct Answer</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Enter the correct answer" {...field} />
+                          <Textarea 
+                            placeholder="Enter the correct answer" 
+                            {...field} 
+                            disabled={currentExam?.grading_mode === 'manual'}
+                          />
                         </FormControl>
+                        {currentExam?.grading_mode === 'manual' && (
+                          <FormDescription>
+                            Correct answer will be evaluated during grading
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
                 
-                {currentExam?.grading_mode !== 'manual' && (
-                  <FormField
-                    control={questionForm.control}
-                    name="points"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Points</FormLabel>
-                        <FormControl>
-                          <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                <FormField
+                  control={questionForm.control}
+                  name="points"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Points</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          {...field} 
+                          onChange={e => field.onChange(parseInt(e.target.value) || 1)} 
+                          disabled={currentExam?.grading_mode === 'manual'}
+                        />
+                      </FormControl>
+                      {currentExam?.grading_mode === 'manual' && (
+                        <FormDescription>
+                          Points will be assigned during grading
+                        </FormDescription>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 
                 <FormField
                   control={questionForm.control}
