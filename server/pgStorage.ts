@@ -728,24 +728,68 @@ export class PgStorage implements IStorage {
 
   // Exam Question operations
   async getExamQuestion(id: number): Promise<ExamQuestion | undefined> {
-    const result = await db.select().from(examQuestions).where(eq(examQuestions.id, id));
-    return result[0];
+    try {
+      // Use direct SQL query to avoid schema mismatch issues
+      const { pool } = require('./db');
+      const result = await pool.query(
+        'SELECT * FROM exam_questions WHERE id = $1',
+        [id]
+      );
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      const row = result.rows[0];
+      
+      // Transform database result to match our API format
+      return {
+        id: row.id,
+        examId: row.exam_id,
+        question: row.question_text,
+        type: row.question_type,
+        options: Array.isArray(row.options) ? row.options : [],
+        correctAnswer: row.correct_answer,
+        points: row.points,
+        order: row.sort_order,
+        explanation: row.explanation
+      };
+    } catch (error) {
+      console.error("Error fetching exam question:", error);
+      return undefined;
+    }
   }
 
   async getExamQuestionsByExam(examId: number): Promise<ExamQuestion[]> {
     console.log(`Fetching questions for exam ID: ${examId}`);
     try {
-      // Match column names to DB column names
-      const result = await db.select()
-        .from(examQuestions)
-        .where(eq(examQuestions.examId, examId))
-        .orderBy(examQuestions.order);
+      // Use direct SQL query to avoid schema mismatch issues
+      const { pool } = require('./db');
+      const result = await pool.query(
+        `SELECT * FROM exam_questions 
+         WHERE exam_id = $1
+         ORDER BY sort_order ASC`,
+        [examId]
+      );
       
-      console.log(`Successfully retrieved ${result.length} questions`);
-      return result;
+      // Transform database result to match our API format
+      const questions = result.rows.map(row => ({
+        id: row.id,
+        examId: row.exam_id,
+        question: row.question_text,
+        type: row.question_type,
+        options: Array.isArray(row.options) ? row.options : [],
+        correctAnswer: row.correct_answer,
+        points: row.points,
+        order: row.sort_order,
+        explanation: row.explanation
+      }));
+      
+      console.log(`Successfully retrieved ${questions.length} questions`);
+      return questions;
     } catch (error) {
       console.error("Error fetching exam questions:", error);
-      throw error;
+      return [];
     }
   }
 
@@ -759,35 +803,54 @@ export class PgStorage implements IStorage {
         correctAnswer = ''; // Use empty string if not provided for these types
       }
       
-      // Since schema.ts defines options as array but DB column is JSONB,
-      // we need to handle the conversion carefully
-      let optionsForDB;
-      
+      // Handle options field correctly
+      let options: string[] = [];
       if (Array.isArray(question.options) && question.options.length > 0) {
-        // Keep the array as is - the PostgreSQL driver will convert it to JSON
-        optionsForDB = question.options;
-      } else {
-        // If null or empty, use empty array (PostgreSQL will handle this correctly)
-        optionsForDB = [];
+        options = question.options;
       }
       
-      // Map the field names to match the database column names
-      const mappedQuestion = {
-        exam_id: question.examId,
-        question_text: question.question,
-        question_type: question.type,
-        options: optionsForDB, // Use array format since schema expects array
-        correct_answer: correctAnswer,
-        points: question.points || 1,
-        sort_order: question.order || 1,
-        explanation: question.explanation || null,
+      // Use direct SQL to avoid schema mismatch issues
+      const { pool } = require('./db');
+      
+      // Insert using direct SQL query
+      const result = await pool.query(
+        `INSERT INTO exam_questions 
+         (exam_id, question_text, question_type, options, correct_answer, points, sort_order, explanation)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [
+          question.examId,
+          question.question,
+          question.type,
+          JSON.stringify(options),
+          correctAnswer,
+          question.points || 1,
+          question.order || 1,
+          question.explanation || null
+        ]
+      );
+      
+      if (result.rows.length === 0) {
+        throw new Error("Failed to create exam question");
+      }
+      
+      const row = result.rows[0];
+      
+      // Transform the database result to match our API format
+      const createdQuestion: ExamQuestion = {
+        id: row.id,
+        examId: row.exam_id,
+        question: row.question_text,
+        type: row.question_type,
+        options: Array.isArray(row.options) ? row.options : [],
+        correctAnswer: row.correct_answer,
+        points: row.points,
+        order: row.sort_order,
+        explanation: row.explanation
       };
       
-      console.log(`Mapped question data:`, JSON.stringify(mappedQuestion, null, 2));
-      
-      const result = await db.insert(examQuestions).values(mappedQuestion).returning();
-      console.log(`Created question with ID: ${result[0].id}`);
-      return result[0];
+      console.log(`Created question with ID: ${createdQuestion.id}`);
+      return createdQuestion;
     } catch (error) {
       console.error("Error creating exam question:", error);
       throw error;
@@ -798,52 +861,117 @@ export class PgStorage implements IStorage {
     try {
       console.log(`Updating exam question ${id} with data:`, JSON.stringify(questionData, null, 2));
       
-      // Map the field names to match the database column names
-      const mappedData: any = {};
-      
-      if (questionData.examId !== undefined) mappedData.exam_id = questionData.examId;
-      if (questionData.question !== undefined) mappedData.question_text = questionData.question;
-      if (questionData.type !== undefined) mappedData.question_type = questionData.type;
-      
-      // For short_answer and essay questions, correctAnswer can be empty
-      if (questionData.correctAnswer !== undefined) {
-        if (questionData.type === 'short_answer' || questionData.type === 'essay') {
-          // Make correctAnswer optional for these types
-          mappedData.correct_answer = questionData.correctAnswer || '';
-        } else {
-          mappedData.correct_answer = questionData.correctAnswer;
-        }
-      }
-      
-      // Handle options field formatting
-      if (questionData.options !== undefined) {
-        if (Array.isArray(questionData.options) && questionData.options.length > 0) {
-          // Leave the array as is - the PostgreSQL driver will handle it
-          mappedData.options = questionData.options;
-        } else {
-          // Empty array if options is null or undefined
-          mappedData.options = [];
-        }
-      }
-      
-      if (questionData.points !== undefined) mappedData.points = questionData.points;
-      if (questionData.order !== undefined) mappedData.sort_order = questionData.order;
-      if (questionData.explanation !== undefined) mappedData.explanation = questionData.explanation;
-      
-      console.log(`Mapped data for update:`, JSON.stringify(mappedData, null, 2));
-      
-      const result = await db.update(examQuestions)
-        .set(mappedData)
-        .where(eq(examQuestions.id, id))
-        .returning();
-        
-      if (result.length === 0) {
+      // First get the current question to merge with updates
+      const currentQuestion = await this.getExamQuestion(id);
+      if (!currentQuestion) {
         console.log(`No question found with ID: ${id}`);
         return undefined;
       }
       
-      console.log(`Updated question with ID: ${result[0].id}`);
-      return result[0];
+      // Extract and prepare data for the SQL query
+      const updates: string[] = [];
+      const values: any[] = [];
+      let paramCount = 1;
+      
+      // Create SET clause parts and collect values
+      if (questionData.examId !== undefined) {
+        updates.push(`exam_id = $${paramCount++}`);
+        values.push(questionData.examId);
+      }
+      
+      if (questionData.question !== undefined) {
+        updates.push(`question_text = $${paramCount++}`);
+        values.push(questionData.question);
+      }
+      
+      if (questionData.type !== undefined) {
+        updates.push(`question_type = $${paramCount++}`);
+        values.push(questionData.type);
+      }
+      
+      // For short_answer and essay questions, handle correctAnswer appropriately
+      if (questionData.correctAnswer !== undefined) {
+        updates.push(`correct_answer = $${paramCount++}`);
+        
+        if ((questionData.type === 'short_answer' || questionData.type === 'essay' || 
+             currentQuestion.type === 'short_answer' || currentQuestion.type === 'essay') && 
+            !questionData.correctAnswer) {
+          values.push('');
+        } else {
+          values.push(questionData.correctAnswer);
+        }
+      }
+      
+      // Handle options field
+      if (questionData.options !== undefined) {
+        updates.push(`options = $${paramCount++}`);
+        
+        if (Array.isArray(questionData.options) && questionData.options.length > 0) {
+          values.push(JSON.stringify(questionData.options));
+        } else {
+          values.push('[]');
+        }
+      }
+      
+      if (questionData.points !== undefined) {
+        updates.push(`points = $${paramCount++}`);
+        values.push(questionData.points);
+      }
+      
+      if (questionData.order !== undefined) {
+        updates.push(`sort_order = $${paramCount++}`);
+        values.push(questionData.order);
+      }
+      
+      if (questionData.explanation !== undefined) {
+        updates.push(`explanation = $${paramCount++}`);
+        values.push(questionData.explanation);
+      }
+      
+      // If no updates, return the current question
+      if (updates.length === 0) {
+        return currentQuestion;
+      }
+      
+      // Add ID to values array for the WHERE clause
+      values.push(id);
+      
+      // Use direct SQL to avoid schema mismatch issues
+      const { pool } = require('./db');
+      
+      // Build and execute the SQL query
+      const query = `
+        UPDATE exam_questions 
+        SET ${updates.join(', ')} 
+        WHERE id = $${paramCount} 
+        RETURNING *
+      `;
+      
+      console.log(`Executing SQL: ${query}`, values);
+      
+      const result = await pool.query(query, values);
+      
+      if (result.rows.length === 0) {
+        return undefined;
+      }
+      
+      const row = result.rows[0];
+      
+      // Transform the database result to match our API format
+      const updatedQuestion: ExamQuestion = {
+        id: row.id,
+        examId: row.exam_id,
+        question: row.question_text,
+        type: row.question_type,
+        options: Array.isArray(row.options) ? row.options : [],
+        correctAnswer: row.correct_answer,
+        points: row.points,
+        order: row.sort_order,
+        explanation: row.explanation
+      };
+      
+      console.log(`Updated question with ID: ${updatedQuestion.id}`);
+      return updatedQuestion;
     } catch (error) {
       console.error("Error updating exam question:", error);
       return undefined;
@@ -852,11 +980,15 @@ export class PgStorage implements IStorage {
 
   async deleteExamQuestion(id: number): Promise<boolean> {
     try {
-      const result = await db.delete(examQuestions)
-        .where(eq(examQuestions.id, id))
-        .returning({ id: examQuestions.id });
-        
-      return result.length > 0;
+      // Use direct SQL to avoid schema mismatch issues
+      const { pool } = require('./db');
+      
+      const result = await pool.query(
+        'DELETE FROM exam_questions WHERE id = $1 RETURNING id',
+        [id]
+      );
+      
+      return result.rows.length > 0;
     } catch (error) {
       console.error('Error deleting exam question:', error);
       return false;

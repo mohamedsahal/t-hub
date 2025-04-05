@@ -2821,19 +2821,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Use camelCase properties to match the Drizzle schema, handling both camelCase and snake_case
-      const questionData = {
-        examId: examId,
-        question: formData.question,
-        type: formData.type,
-        options: Array.isArray(formData.options) ? formData.options : [], // Ensure options is always an array
-        correctAnswer: formData.correct_answer || formData.correctAnswer || "", // Optional for short_answer/essay
-        points: formData.points || 1,  // Default to 1 point if not specified
-        order: formData.order || 0,  // Will be updated below
-        explanation: formData.explanation || null
-      };
+      // Let's try direct SQL insertion since we're having schema issues
+      const correctAnswer = formData.correct_answer || formData.correctAnswer || "";
+      const points = formData.points || 1;
+      const sortOrder = formData.order || 1;
+      const explanation = formData.explanation || null;
       
-      console.log("Processed question data:", JSON.stringify(questionData, null, 2));
+      // Format options correctly - must be a JSONB array
+      let optionsJsonb = '[]'; // Default empty array as JSON string
+      if (Array.isArray(formData.options) && formData.options.length > 0) {
+        optionsJsonb = JSON.stringify(formData.options);
+      }
       
       // Get the current highest order value and add 1
       console.log(`Fetching existing questions for exam ID: ${examId}`);
@@ -2844,16 +2842,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? Math.max(...existingQuestions.map(q => q.order)) 
         : 0;
       
-      questionData.order = questionData.order || maxOrder + 1;
+      const finalSortOrder = sortOrder || maxOrder + 1;
       
-      console.log(`Creating new question with order: ${questionData.order}`);
-      const question = await storage.createExamQuestion(questionData);
-      console.log(`Created new question with ID: ${question.id}`);
+      // Create question directly with SQL
+      const { pool } = require('../server/db');
       
-      res.status(201).json(question);
+      const insertQuery = `
+        INSERT INTO exam_questions(
+          exam_id, 
+          question_text, 
+          question_type, 
+          options, 
+          correct_answer, 
+          points, 
+          sort_order, 
+          explanation
+        ) 
+        VALUES($1, $2, $3, $4::jsonb, $5, $6, $7, $8) 
+        RETURNING *
+      `;
+      
+      const values = [
+        examId, 
+        formData.question, 
+        formData.type, 
+        optionsJsonb, 
+        correctAnswer,
+        points,
+        finalSortOrder,
+        explanation
+      ];
+      
+      console.log('SQL Query:', insertQuery);
+      console.log('Values:', JSON.stringify(values));
+      
+      const result = await pool.query(insertQuery, values);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Failed to insert new question');
+      }
+      
+      const newQuestion = result.rows[0];
+      console.log(`Created new question with ID: ${newQuestion.id}`);
+      
+      // Transform the result to match our API format
+      const apiResponse = {
+        id: newQuestion.id,
+        examId: newQuestion.exam_id,
+        question: newQuestion.question_text,
+        type: newQuestion.question_type,
+        options: Array.isArray(newQuestion.options) ? newQuestion.options : [],
+        correctAnswer: newQuestion.correct_answer,
+        points: newQuestion.points,
+        order: newQuestion.sort_order,
+        explanation: newQuestion.explanation
+      };
+      
+      res.status(201).json(apiResponse);
     } catch (error) {
       console.error("Error creating exam question:", error);
-      handleZodError(error, res);
+      res.status(500).json({ message: "Internal server error", details: error.message });
     }
   });
   
@@ -2874,15 +2922,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Exam not found" });
       }
       
-      const question = await storage.getExamQuestion(questionId);
-      if (!question) {
+      // Use direct SQL to get the question since we have schema issues
+      const { pool } = require('../server/db');
+      const questionResult = await pool.query(
+        'SELECT * FROM exam_questions WHERE id = $1',
+        [questionId]
+      );
+      
+      if (questionResult.rows.length === 0) {
         console.log(`Question with ID ${questionId} not found`);
         return res.status(404).json({ message: "Question not found" });
       }
       
+      const question = questionResult.rows[0];
+      
       // Verify the question belongs to the specified exam
-      if (question.examId !== examId) {
-        console.log(`Question ${questionId} does not belong to exam ${examId}. It belongs to ${question.examId}`);
+      if (question.exam_id !== examId) {
+        console.log(`Question ${questionId} does not belong to exam ${examId}. It belongs to ${question.exam_id}`);
         return res.status(400).json({ message: "Question does not belong to the specified exam" });
       }
       
@@ -2900,49 +2956,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data may be wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Create a new object with only the properties that are present in the request
-      const questionData: any = {};
+      // Build update SQL parts
+      const updateFields = [];
+      const values = [questionId]; // First parameter is the question ID
+      let paramCounter = 2; // Start with $2 since $1 is the question ID
       
-      // Only update properties that are provided in the request
+      // Handle exam_id update
       if (formData.examId !== undefined || formData.exam_id !== undefined) {
-        questionData.examId = formData.examId || formData.exam_id;
+        const newExamId = formData.examId || formData.exam_id;
+        updateFields.push(`exam_id = $${paramCounter}`);
+        values.push(newExamId);
+        paramCounter++;
       }
       
+      // Handle question text update
       if (formData.question !== undefined) {
-        questionData.question = formData.question;
+        updateFields.push(`question_text = $${paramCounter}`);
+        values.push(formData.question);
+        paramCounter++;
       }
       
       // Handle question type update
       if (formData.type !== undefined) {
-        questionData.type = formData.type;
-        
-        // If changing to a type that requires correct answer, check if it's provided
         const newType = formData.type;
         const isCorrectAnswerRequired = (newType === 'multiple_choice' || newType === 'true_false');
         
+        // For types requiring a correct answer, ensure it's present or use existing
         if (isCorrectAnswerRequired) {
-          // For types requiring a correct answer, ensure it's present or use existing
           const correctAnswer = formData.correct_answer || formData.correctAnswer;
-          if (correctAnswer === undefined && question.correctAnswer === null) {
+          if (correctAnswer === undefined && question.correct_answer === null) {
             return res.status(400).json({
               message: `Correct answer is required for ${newType} questions`
             });
           }
         }
+        
+        updateFields.push(`question_type = $${paramCounter}`);
+        values.push(newType);
+        paramCounter++;
       }
       
+      // Handle options update
       if (formData.options !== undefined) {
-        // Ensure options is always an array, never null
-        questionData.options = Array.isArray(formData.options) ? formData.options : [];
+        // Format options for JSONB - always use an array format
+        let optionsJsonb = '[]'; // Default empty array as JSON string
+        if (Array.isArray(formData.options) && formData.options.length > 0) {
+          optionsJsonb = JSON.stringify(formData.options);
+        }
+        
+        updateFields.push(`options = $${paramCounter}::jsonb`);
+        values.push(optionsJsonb);
+        paramCounter++;
       }
       
-      // Handle correct answer updates - consider type context
+      // Handle correct answer update
       if (formData.correct_answer !== undefined || formData.correctAnswer !== undefined) {
-        const correctAnswer = formData.correct_answer || formData.correctAnswer;
-        questionData.correctAnswer = correctAnswer;
+        const correctAnswer = formData.correct_answer || formData.correctAnswer || "";
         
         // Type-safe check (use existing type if type not being updated)
-        const questionType = formData.type || question.type;
+        const questionType = formData.type || question.question_type;
         const isCorrectAnswerRequired = (questionType === 'multiple_choice' || questionType === 'true_false');
         
         if (isCorrectAnswerRequired && !correctAnswer && correctAnswer !== "") {
@@ -2950,37 +3022,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `Correct answer is required for ${questionType} questions`
           });
         }
+        
+        updateFields.push(`correct_answer = $${paramCounter}`);
+        values.push(correctAnswer);
+        paramCounter++;
       }
       
+      // Handle points update
       if (formData.points !== undefined) {
-        questionData.points = formData.points;
+        updateFields.push(`points = $${paramCounter}`);
+        values.push(formData.points);
+        paramCounter++;
       }
       
+      // Handle order update
       if (formData.order !== undefined) {
-        questionData.order = formData.order;
+        updateFields.push(`sort_order = $${paramCounter}`);
+        values.push(formData.order);
+        paramCounter++;
       }
       
+      // Handle explanation update
       if (formData.explanation !== undefined) {
-        questionData.explanation = formData.explanation;
+        updateFields.push(`explanation = $${paramCounter}`);
+        values.push(formData.explanation);
+        paramCounter++;
       }
       
-      console.log("Question data for update:", JSON.stringify(questionData, null, 2));
-      
-      if (Object.keys(questionData).length === 0) {
+      // Ensure there's something to update
+      if (updateFields.length === 0) {
         return res.status(400).json({ message: "No valid fields provided for update" });
       }
       
-      const updatedQuestion = await storage.updateExamQuestion(questionId, questionData);
+      console.log("Update fields:", updateFields);
+      console.log("Update values:", values);
       
-      if (!updatedQuestion) {
+      // Build and execute the SQL query
+      const updateQuery = `
+        UPDATE exam_questions 
+        SET ${updateFields.join(', ')} 
+        WHERE id = $1 
+        RETURNING *
+      `;
+      
+      console.log("SQL Update Query:", updateQuery);
+      
+      const updateResult = await pool.query(updateQuery, values);
+      
+      if (updateResult.rows.length === 0) {
         return res.status(500).json({ message: "Failed to update question" });
       }
       
+      const updatedQuestion = updateResult.rows[0];
+      
+      // Transform to API format
+      const apiResponse = {
+        id: updatedQuestion.id,
+        examId: updatedQuestion.exam_id,
+        question: updatedQuestion.question_text,
+        type: updatedQuestion.question_type,
+        options: Array.isArray(updatedQuestion.options) ? updatedQuestion.options : [],
+        correctAnswer: updatedQuestion.correct_answer,
+        points: updatedQuestion.points,
+        order: updatedQuestion.sort_order,
+        explanation: updatedQuestion.explanation
+      };
+      
       console.log(`Successfully updated question ${questionId}`);
-      res.json(updatedQuestion);
+      res.json(apiResponse);
     } catch (error) {
       console.error("Error updating question:", error);
-      handleZodError(error, res);
+      res.status(500).json({ message: "Internal server error", details: error.message });
     }
   });
   
@@ -2994,13 +3106,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Exam not found" });
       }
       
-      const question = await storage.getExamQuestion(questionId);
-      if (!question) {
+      // Use direct SQL to get the question
+      const { pool } = require('../server/db');
+      const questionResult = await pool.query(
+        'SELECT * FROM exam_questions WHERE id = $1',
+        [questionId]
+      );
+      
+      if (questionResult.rows.length === 0) {
         return res.status(404).json({ message: "Question not found" });
       }
       
+      const question = questionResult.rows[0];
+      
       // Verify the question belongs to the specified exam
-      if (question.examId !== examId) {
+      if (question.exam_id !== examId) {
         return res.status(400).json({ message: "Question does not belong to the specified exam" });
       }
       
@@ -3013,10 +3133,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      await storage.deleteExamQuestion(questionId);
+      // Delete directly with SQL
+      const deleteResult = await pool.query(
+        'DELETE FROM exam_questions WHERE id = $1 RETURNING id',
+        [questionId]
+      );
+      
+      if (deleteResult.rows.length === 0) {
+        return res.status(500).json({ message: "Failed to delete question" });
+      }
+      
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ message: "Error deleting exam question" });
+      console.error("Error deleting exam question:", error);
+      res.status(500).json({ message: "Error deleting exam question", details: error.message });
     }
   });
   
@@ -3045,17 +3175,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid request body - questions array required" });
       }
       
-      // Update the order of each question
+      // Update the order of each question directly with SQL
+      const { pool } = require('../server/db');
       const questions = req.body.questions;
+      
       for (const question of questions) {
-        await storage.updateExamQuestion(question.id, { order: question.order });
+        await pool.query(
+          'UPDATE exam_questions SET sort_order = $1 WHERE id = $2',
+          [question.order, question.id]
+        );
       }
       
-      // Return the updated questions
-      const updatedQuestions = await storage.getExamQuestionsByExam(examId);
+      // Fetch the updated questions with direct SQL
+      const questionResult = await pool.query(
+        `SELECT * FROM exam_questions 
+         WHERE exam_id = $1 
+         ORDER BY sort_order ASC`,
+        [examId]
+      );
+      
+      // Transform to API format
+      const updatedQuestions = questionResult.rows.map(q => ({
+        id: q.id,
+        examId: q.exam_id,
+        question: q.question_text,
+        type: q.question_type,
+        options: Array.isArray(q.options) ? q.options : [],
+        correctAnswer: q.correct_answer,
+        points: q.points,
+        order: q.sort_order,
+        explanation: q.explanation
+      }));
+      
       res.json(updatedQuestions);
     } catch (error) {
-      res.status(500).json({ message: "Error reordering exam questions" });
+      console.error("Error reordering exam questions:", error);
+      res.status(500).json({ message: "Error reordering exam questions", details: error.message });
     }
   });
   
