@@ -307,29 +307,28 @@ export default function ExamManagement() {
   // Mutations
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues) => {
-      // Transform the data to match the expected API format
-      // Creating a clean object without the original camelCase properties
+      // Transform the data to match the expected API format - using snake_case for the backend
       const transformedData = {
         title: data.title,
         description: data.description,
         type: data.type,
         status: data.status,
-        // Required backend fields with correct casing
-        courseId: data.courseId,
-        maxScore: data.maxScore,
-        passingScore: data.passingScore,
-        timeLimit: data.timeLimit,
+        // Required backend fields with correct backend-expected snake_case
+        course_id: data.courseId,
+        max_score: data.maxScore,
+        passing_score: data.passingScore,
+        time_limit: data.timeLimit,
         // Optional fields that might be undefined
-        sectionId: data.sectionId || null,
-        semesterId: data.semesterId || null,
+        section_id: data.sectionId || null,
+        semester_id: data.semesterId || null,
         // Grade thresholds
-        gradeAThreshold: data.gradeAThreshold || 90,
-        gradeBThreshold: data.gradeBThreshold || 80, 
-        gradeCThreshold: data.gradeCThreshold || 70,
-        gradeDThreshold: data.gradeDThreshold || 60,
+        grade_a_threshold: data.gradeAThreshold || 90,
+        grade_b_threshold: data.gradeBThreshold || 80, 
+        grade_c_threshold: data.gradeCThreshold || 70,
+        grade_d_threshold: data.gradeDThreshold || 60,
         // Date ranges if provided
-        availableFrom: data.availableFrom || null,
-        availableTo: data.availableTo || null
+        available_from: data.availableFrom || null,
+        available_to: data.availableTo || null
       };
       
       console.log("Sending exam data:", transformedData);
@@ -361,29 +360,28 @@ export default function ExamManagement() {
     mutationFn: async (data: ExamFormValues & { id: number }) => {
       const { id, ...formData } = data;
       
-      // Transform the data to match the expected API format
-      // Creating a clean object without the original camelCase properties
+      // Transform the data to match the expected API format - using snake_case for the backend
       const transformedData = {
         title: formData.title,
         description: formData.description,
         type: formData.type,
         status: formData.status,
-        // Required backend fields with correct casing
-        courseId: formData.courseId,
-        maxScore: formData.maxScore,
-        passingScore: formData.passingScore,
-        timeLimit: formData.timeLimit,
+        // Required backend fields with correct backend-expected snake_case
+        course_id: formData.courseId,
+        max_score: formData.maxScore,
+        passing_score: formData.passingScore,
+        time_limit: formData.timeLimit,
         // Optional fields that might be undefined
-        sectionId: formData.sectionId || null,
-        semesterId: formData.semesterId || null,
+        section_id: formData.sectionId || null,
+        semester_id: formData.semesterId || null,
         // Grade thresholds
-        gradeAThreshold: formData.gradeAThreshold || 90,
-        gradeBThreshold: formData.gradeBThreshold || 80, 
-        gradeCThreshold: formData.gradeCThreshold || 70,
-        gradeDThreshold: formData.gradeDThreshold || 60,
+        grade_a_threshold: formData.gradeAThreshold || 90,
+        grade_b_threshold: formData.gradeBThreshold || 80, 
+        grade_c_threshold: formData.gradeCThreshold || 70,
+        grade_d_threshold: formData.gradeDThreshold || 60,
         // Date ranges if provided
-        availableFrom: formData.availableFrom || null,
-        availableTo: formData.availableTo || null
+        available_from: formData.availableFrom || null,
+        available_to: formData.availableTo || null
       };
       
       console.log("Sending updated exam data:", transformedData);
