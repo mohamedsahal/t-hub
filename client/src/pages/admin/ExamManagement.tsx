@@ -24,7 +24,8 @@ import {
   convertKeysToSnakeCase, 
   convertKeysToCamelCase,
   mapExamToFormData,
-  mapFormDataToExam
+  mapFormDataToExam,
+  mapQuestionFormDataForApi
 } from '@/lib/dataUtils';
 import { insertExamSchema } from '@shared/schema';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -404,9 +405,9 @@ export default function ExamManagement() {
       const { examId, ...questionData } = data;
       console.log("Question data before submission:", questionData);
       
-      // Convert question data to snake_case format
-      const transformedData = convertKeysToSnakeCase(questionData);
-      console.log("Sending question data (in snake_case):", transformedData);
+      // Use the specialized function to map question data with correct field conversions
+      const transformedData = mapQuestionFormDataForApi(questionData);
+      console.log("Sending question data with proper field conversions:", transformedData);
       
       return await apiRequest(`/api/admin/exams/${examId}/questions`, {
         method: 'POST',
@@ -444,9 +445,9 @@ export default function ExamManagement() {
       const { examId, id, ...questionData } = data;
       console.log("Question data before update:", questionData);
       
-      // Convert question data to snake_case format
-      const transformedData = convertKeysToSnakeCase(questionData);
-      console.log("Sending updated question data (in snake_case):", transformedData);
+      // Use the specialized function to map question data with correct field conversions
+      const transformedData = mapQuestionFormDataForApi(questionData);
+      console.log("Sending updated question data with proper field conversions:", transformedData);
       
       return await apiRequest(`/api/admin/exams/${examId}/questions/${id}`, {
         method: 'PATCH',
@@ -996,8 +997,13 @@ export default function ExamManagement() {
                   <Button type="button" variant="outline" onClick={() => setIsQuestionModalOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={questionForm.formState.isSubmitting}>
-                    {currentQuestion ? "Update Question" : "Add Question"}
+                  <Button type="submit" disabled={questionForm.formState.isSubmitting || createQuestionMutation.isPending || updateQuestionMutation.isPending}>
+                    {questionForm.formState.isSubmitting || createQuestionMutation.isPending || updateQuestionMutation.isPending ? (
+                      <><span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                      {currentQuestion ? "Updating..." : "Adding..."}</>
+                    ) : (
+                      currentQuestion ? "Update Question" : "Add Question"
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
@@ -1676,8 +1682,13 @@ export default function ExamManagement() {
                 <Button type="button" variant="outline" onClick={() => setIsExamModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={examForm.formState.isSubmitting}>
-                  {currentExam ? "Update Exam" : "Create Exam"}
+                <Button type="submit" disabled={examForm.formState.isSubmitting || createExamMutation.isPending || updateExamMutation.isPending}>
+                  {examForm.formState.isSubmitting || createExamMutation.isPending || updateExamMutation.isPending ? (
+                    <><span className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
+                    {currentExam ? "Updating..." : "Creating..."}</>
+                  ) : (
+                    currentExam ? "Update Exam" : "Create Exam"
+                  )}
                 </Button>
               </DialogFooter>
             </form>

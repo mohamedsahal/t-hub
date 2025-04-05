@@ -50,40 +50,44 @@ export const convertKeysToCamelCase = (obj: Record<string, any>): Record<string,
 
 /**
  * Map an exam for form usage
- * Takes an exam object and returns with all expected form fields
+ * Takes an exam object with snake_case keys and returns with camelCase keys for form fields
  */
 export const mapExamToFormData = (exam: any) => {
-  // Return the mapped object with all the expected form fields
-  // Using consistent field names without conversion between camelCase and snake_case
+  // Ensure we're working with the right field names from backend to frontend
   return {
     title: exam.title || '',
     description: exam.description || '',
     type: exam.type,
     status: exam.status || 'active',
-    courseId: exam.courseId,
-    maxScore: exam.maxScore,
-    passingScore: exam.passingScore,
-    timeLimit: exam.timeLimit,
-    sectionId: exam.sectionId,
-    semesterId: exam.semesterId,
-    gradeAThreshold: exam.gradeAThreshold || 90,
-    gradeBThreshold: exam.gradeBThreshold || 80,
-    gradeCThreshold: exam.gradeCThreshold || 70,
-    gradeDThreshold: exam.gradeDThreshold || 60,
-    availableFrom: exam.availableFrom,
-    availableTo: exam.availableTo
+    // Convert snake_case fields to camelCase for form usage
+    courseId: exam.course_id,
+    maxScore: exam.max_score,
+    passingScore: exam.passing_score,
+    timeLimit: exam.time_limit,
+    sectionId: exam.section_id,
+    semesterId: exam.semester_id,
+    gradeAThreshold: exam.grade_a_threshold || 90,
+    gradeBThreshold: exam.grade_b_threshold || 80,
+    gradeCThreshold: exam.grade_c_threshold || 70,
+    gradeDThreshold: exam.grade_d_threshold || 60,
+    availableFrom: exam.available_from,
+    availableTo: exam.available_to
   };
 }
 
 /**
- * Map form data for API usage without conversion
- * We're removing the camelCase to snake_case conversion to use consistent naming
+ * Map form data for API usage with camelCase to snake_case conversion
+ * We need this conversion because backend expects snake_case
  */
 export const mapFormDataToExam = (formData: any) => {
   // Handle null/undefined values before sending
   const {
     sectionId = null, 
     semesterId = null,
+    courseId, // Explicitly extract courseId
+    maxScore, // Extract maxScore (previously totalPoints)
+    passingScore, // Extract passingScore (previously passingPoints)
+    timeLimit, // Extract timeLimit (previously duration)
     gradeAThreshold = 90,
     gradeBThreshold = 80,
     gradeCThreshold = 70,
@@ -93,17 +97,36 @@ export const mapFormDataToExam = (formData: any) => {
     ...restData
   } = formData;
   
-  // Create a combined data object with all fields
-  // No longer converting to snake_case to maintain consistency
+  // Create a combined data object with proper snake_case field names for backend
   return {
     ...restData,
-    sectionId,
-    semesterId,
-    gradeAThreshold,
-    gradeBThreshold,
-    gradeCThreshold,
-    gradeDThreshold,
-    availableFrom,
-    availableTo
+    course_id: courseId, // Convert courseId to course_id
+    section_id: sectionId,
+    semester_id: semesterId,
+    max_score: maxScore, // Convert maxScore to max_score
+    passing_score: passingScore, // Convert passingScore to passing_score
+    time_limit: timeLimit, // Convert timeLimit to time_limit
+    grade_a_threshold: gradeAThreshold,
+    grade_b_threshold: gradeBThreshold,
+    grade_c_threshold: gradeCThreshold,
+    grade_d_threshold: gradeDThreshold,
+    available_from: availableFrom,
+    available_to: availableTo
+  };
+}
+
+/**
+ * Map question form data for API usage with proper field name conversion
+ */
+export const mapQuestionFormDataForApi = (questionData: any) => {
+  const {
+    correctAnswer, // Extract correctAnswer
+    ...restData
+  } = questionData;
+  
+  // Create a properly formatted question data object for the API
+  return {
+    ...restData,
+    correct_answer: correctAnswer // Convert correctAnswer to correct_answer
   };
 }

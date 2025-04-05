@@ -2771,13 +2771,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data may be wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Use camelCase properties to match the Drizzle schema
+      // Use camelCase properties to match the Drizzle schema, handling both camelCase and snake_case
       const questionData = {
         examId: examId,
         question: formData.question,
         type: formData.type,
         options: formData.options || [],
-        correctAnswer: formData.correctAnswer,
+        correctAnswer: formData.correct_answer || formData.correctAnswer, // Handle both formats
         points: formData.points,
         order: formData.order,
         explanation: formData.explanation || null
@@ -2834,13 +2834,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data may be wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Use camelCase properties to match the Drizzle schema
+      // Use camelCase properties to match the Drizzle schema, handling both camelCase and snake_case
       const questionData = {
-        examId: formData.examId || examId,
+        examId: formData.examId || formData.exam_id || examId,
         question: formData.question,
         type: formData.type,
         options: formData.options,
-        correctAnswer: formData.correctAnswer,
+        correctAnswer: formData.correct_answer || formData.correctAnswer, // Handle both formats
         points: formData.points,
         order: formData.order,
         explanation: formData.explanation
