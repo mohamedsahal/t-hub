@@ -6,6 +6,11 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
  * @throws Error with response status and text
  */
 async function throwIfResNotOk(res: Response) {
+  // 204 No Content is a success response, though it has no content
+  if (res.status === 204) {
+    return;
+  }
+  
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
     throw new Error(`${res.status}: ${text}`);
@@ -82,6 +87,12 @@ export async function apiRequest<T = any>(
     });
 
     await throwIfResNotOk(res);
+    
+    // If status is 204 No Content, return null as there's no body to parse
+    if (res.status === 204) {
+      return null as T;
+    }
+    
     return await res.json();
   } finally {
     clearTimeout(timeoutId);
@@ -116,6 +127,12 @@ export const getQueryFn: <T>(options: {
       }
 
       await throwIfResNotOk(res);
+      
+      // If status is 204 No Content, return null as there's no body to parse
+      if (res.status === 204) {
+        return null as T;
+      }
+      
       return await res.json();
     } finally {
       clearTimeout(timeoutId);
