@@ -849,18 +849,12 @@ export default function ExamManagement() {
                         <SelectContent>
                           <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                           <SelectItem value="true_false">True/False</SelectItem>
-                          <SelectItem 
-                            value="short_answer" 
-                            disabled={currentExam?.grading_mode === 'auto'}
-                          >
-                            Short Answer {currentExam?.grading_mode === 'auto' && "(requires manual grading)"}
-                          </SelectItem>
-                          <SelectItem 
-                            value="essay" 
-                            disabled={currentExam?.grading_mode === 'auto'}
-                          >
-                            Essay {currentExam?.grading_mode === 'auto' && "(requires manual grading)"}
-                          </SelectItem>
+                          {currentExam?.grading_mode !== 'auto' && (
+                            <>
+                              <SelectItem value="short_answer">Short Answer</SelectItem>
+                              <SelectItem value="essay">Essay</SelectItem>
+                            </>
+                          )}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -872,25 +866,29 @@ export default function ExamManagement() {
                   <div className="space-y-4">
                     <FormLabel>Options</FormLabel>
                     <FormDescription>
-                      Add multiple choice options below. Select the correct answer.
+                      {currentExam?.grading_mode !== 'manual' 
+                        ? 'Add multiple choice options below. Select the correct answer.'
+                        : 'Add multiple choice options below.'}
                     </FormDescription>
                     {questionForm.watch('options')?.map((_, index) => (
                       <div key={index} className="flex gap-2 items-center">
-                        <div
-                          className={`w-5 h-5 rounded-full flex items-center justify-center border cursor-pointer ${
-                            questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) 
-                              ? 'bg-green-100 border-green-500 text-green-700' 
-                              : 'border-gray-300'
-                          }`}
-                          onClick={() => {
-                            const option = questionForm.watch(`options.${index}`);
-                            if (option) questionForm.setValue('correctAnswer', option);
-                          }}
-                        >
-                          {questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) && (
-                            <Check className="h-3 w-3" />
-                          )}
-                        </div>
+                        {currentExam?.grading_mode !== 'manual' && (
+                          <div
+                            className={`w-5 h-5 rounded-full flex items-center justify-center border cursor-pointer ${
+                              questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) 
+                                ? 'bg-green-100 border-green-500 text-green-700' 
+                                : 'border-gray-300'
+                            }`}
+                            onClick={() => {
+                              const option = questionForm.watch(`options.${index}`);
+                              if (option) questionForm.setValue('correctAnswer', option);
+                            }}
+                          >
+                            {questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`) && (
+                              <Check className="h-3 w-3" />
+                            )}
+                          </div>
+                        )}
                         <Input
                           value={questionForm.watch(`options.${index}`) || ''}
                           onChange={(e) => {
@@ -898,8 +896,9 @@ export default function ExamManagement() {
                             newOptions[index] = e.target.value;
                             questionForm.setValue('options', newOptions);
                             
-                            // If this was the correct answer, update it
-                            if (questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`)) {
+                            // If this was the correct answer and not manual grading, update it
+                            if (currentExam?.grading_mode !== 'manual' && 
+                                questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`)) {
                               questionForm.setValue('correctAnswer', e.target.value);
                             }
                           }}
@@ -915,8 +914,9 @@ export default function ExamManagement() {
                               newOptions.splice(index, 1);
                               questionForm.setValue('options', newOptions);
                               
-                              // If this was the correct answer, reset it
-                              if (questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`)) {
+                              // If this was the correct answer and not manual grading, reset it
+                              if (currentExam?.grading_mode !== 'manual' &&
+                                  questionForm.watch('correctAnswer') === questionForm.watch(`options.${index}`)) {
                                 questionForm.setValue('correctAnswer', '');
                               }
                             }}
@@ -943,7 +943,7 @@ export default function ExamManagement() {
                   </div>
                 )}
                 
-                {questionForm.watch('type') === 'true_false' && (
+                {questionForm.watch('type') === 'true_false' && currentExam?.grading_mode !== 'manual' && (
                   <FormField
                     control={questionForm.control}
                     name="correctAnswer"
@@ -970,7 +970,7 @@ export default function ExamManagement() {
                   />
                 )}
                 
-                {['short_answer', 'essay'].includes(questionForm.watch('type')) && (
+                {['short_answer', 'essay'].includes(questionForm.watch('type')) && currentExam?.grading_mode !== 'manual' && (
                   <FormField
                     control={questionForm.control}
                     name="correctAnswer"
@@ -986,19 +986,21 @@ export default function ExamManagement() {
                   />
                 )}
                 
-                <FormField
-                  control={questionForm.control}
-                  name="points"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Points</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {currentExam?.grading_mode !== 'manual' && (
+                  <FormField
+                    control={questionForm.control}
+                    name="points"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Points</FormLabel>
+                        <FormControl>
+                          <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 1)} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 
                 <FormField
                   control={questionForm.control}
