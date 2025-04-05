@@ -733,27 +733,83 @@ export class PgStorage implements IStorage {
   }
 
   async getExamQuestionsByExam(examId: number): Promise<ExamQuestion[]> {
-    return await db.select()
-      .from(examQuestions)
-      .where(eq(examQuestions.examId, examId))
-      .orderBy(examQuestions.order);
+    console.log(`Fetching questions for exam ID: ${examId}`);
+    try {
+      // Match column names to DB column names
+      const result = await db.select()
+        .from(examQuestions)
+        .where(eq(examQuestions.examId, examId))
+        .orderBy(examQuestions.order);
+      
+      console.log(`Successfully retrieved ${result.length} questions`);
+      return result;
+    } catch (error) {
+      console.error("Error fetching exam questions:", error);
+      throw error;
+    }
   }
 
   async createExamQuestion(question: InsertExamQuestion): Promise<ExamQuestion> {
-    const result = await db.insert(examQuestions).values({
-      ...question,
-      order: question.order || 1,
-      explanation: question.explanation || null,
-    }).returning();
-    return result[0];
+    try {
+      console.log(`Creating exam question with data:`, JSON.stringify(question, null, 2));
+      
+      // Map the field names to match the database column names
+      const mappedQuestion = {
+        exam_id: question.examId,
+        question_text: question.question,
+        question_type: question.type,
+        options: question.options || [],
+        correct_answer: question.correctAnswer,
+        points: question.points || 1,
+        sort_order: question.order || 1,
+        explanation: question.explanation || null,
+      };
+      
+      console.log(`Mapped question data:`, JSON.stringify(mappedQuestion, null, 2));
+      
+      const result = await db.insert(examQuestions).values(mappedQuestion).returning();
+      console.log(`Created question with ID: ${result[0].id}`);
+      return result[0];
+    } catch (error) {
+      console.error("Error creating exam question:", error);
+      throw error;
+    }
   }
 
   async updateExamQuestion(id: number, questionData: Partial<ExamQuestion>): Promise<ExamQuestion | undefined> {
-    const result = await db.update(examQuestions)
-      .set(questionData)
-      .where(eq(examQuestions.id, id))
-      .returning();
-    return result[0];
+    try {
+      console.log(`Updating exam question ${id} with data:`, JSON.stringify(questionData, null, 2));
+      
+      // Map the field names to match the database column names
+      const mappedData: any = {};
+      
+      if (questionData.examId !== undefined) mappedData.exam_id = questionData.examId;
+      if (questionData.question !== undefined) mappedData.question_text = questionData.question;
+      if (questionData.type !== undefined) mappedData.question_type = questionData.type;
+      if (questionData.options !== undefined) mappedData.options = questionData.options;
+      if (questionData.correctAnswer !== undefined) mappedData.correct_answer = questionData.correctAnswer;
+      if (questionData.points !== undefined) mappedData.points = questionData.points;
+      if (questionData.order !== undefined) mappedData.sort_order = questionData.order;
+      if (questionData.explanation !== undefined) mappedData.explanation = questionData.explanation;
+      
+      console.log(`Mapped data for update:`, JSON.stringify(mappedData, null, 2));
+      
+      const result = await db.update(examQuestions)
+        .set(mappedData)
+        .where(eq(examQuestions.id, id))
+        .returning();
+        
+      if (result.length === 0) {
+        console.log(`No question found with ID: ${id}`);
+        return undefined;
+      }
+      
+      console.log(`Updated question with ID: ${result[0].id}`);
+      return result[0];
+    } catch (error) {
+      console.error("Error updating exam question:", error);
+      return undefined;
+    }
   }
 
   async deleteExamQuestion(id: number): Promise<boolean> {

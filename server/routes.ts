@@ -2703,8 +2703,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const examId = parseInt(req.params.id);
       const exam = await storage.getExam(examId);
       
+      // If exam doesn't exist, consider it a successful deletion
+      // This makes the endpoint idempotent - calling it multiple times has the same effect
       if (!exam) {
-        return res.status(404).json({ message: "Exam not found" });
+        console.log(`Exam with ID ${examId} already deleted or doesn't exist`);
+        return res.status(200).json({ message: "Exam already deleted" });
       }
       
       // Check if user is authorized to delete this exam
@@ -2716,9 +2719,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      await storage.deleteExam(examId);
-      res.status(204).send();
+      const deleted = await storage.deleteExam(examId);
+      if (deleted) {
+        console.log(`Successfully deleted exam with ID ${examId}`);
+        res.status(200).json({ message: "Exam successfully deleted" });
+      } else {
+        console.error(`Failed to delete exam with ID ${examId}`);
+        res.status(500).json({ message: "Failed to delete exam" });
+      }
     } catch (error) {
+      console.error("Error deleting exam:", error);
       res.status(500).json({ message: "Error deleting exam" });
     }
   });
@@ -2727,9 +2737,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/exams/:examId/questions", checkRole(["admin", "teacher"]), async (req, res) => {
     try {
       const examId = parseInt(req.params.examId);
+      
+      if (isNaN(examId)) {
+        return res.status(400).json({ message: "Invalid exam ID format" });
+      }
+      
+      console.log(`Fetching exam with ID: ${examId}`);
       const exam = await storage.getExam(examId);
       
       if (!exam) {
+        console.log(`Exam with ID ${examId} not found`);
         return res.status(404).json({ message: "Exam not found" });
       }
       
@@ -2742,9 +2759,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      console.log(`Fetching questions for exam with ID: ${examId}`);
       const questions = await storage.getExamQuestionsByExam(examId);
+      console.log(`Found ${questions.length} questions for exam ${examId}`);
+      
       res.json(questions);
     } catch (error) {
+      console.error("Error fetching exam questions:", error);
       res.status(500).json({ message: "Error fetching exam questions" });
     }
   });
@@ -2752,9 +2773,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/exams/:examId/questions", checkRole(["admin", "teacher"]), async (req, res) => {
     try {
       const examId = parseInt(req.params.examId);
+      
+      if (isNaN(examId)) {
+        return res.status(400).json({ message: "Invalid exam ID format" });
+      }
+      
+      console.log(`Creating question for exam ID: ${examId}`);
       const exam = await storage.getExam(examId);
       
       if (!exam) {
+        console.log(`Exam with ID ${examId} not found`);
         return res.status(404).json({ message: "Exam not found" });
       }
       
@@ -2772,31 +2800,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data may be wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
+      if (!formData.question) {
+        return res.status(400).json({ message: "Question text is required" });
+      }
+      
+      if (!formData.type) {
+        return res.status(400).json({ message: "Question type is required" });
+      }
+      
       // Use camelCase properties to match the Drizzle schema, handling both camelCase and snake_case
       const questionData = {
         examId: examId,
         question: formData.question,
         type: formData.type,
         options: formData.options || [],
-        correctAnswer: formData.correct_answer || formData.correctAnswer, // Handle both formats
-        points: formData.points,
-        order: formData.order,
+        correctAnswer: formData.correct_answer || formData.correctAnswer || "", // Handle both formats
+        points: formData.points || 1,  // Default to 1 point if not specified
+        order: formData.order || 0,  // Will be updated below
         explanation: formData.explanation || null
       };
       
-      console.log("Direct question data without schema validation:", JSON.stringify(questionData, null, 2));
+      console.log("Processed question data:", JSON.stringify(questionData, null, 2));
       
       // Get the current highest order value and add 1
+      console.log(`Fetching existing questions for exam ID: ${examId}`);
       const existingQuestions = await storage.getExamQuestionsByExam(examId);
+      console.log(`Found ${existingQuestions.length} existing questions`);
+      
       const maxOrder = existingQuestions.length > 0 
         ? Math.max(...existingQuestions.map(q => q.order)) 
         : 0;
       
       questionData.order = questionData.order || maxOrder + 1;
       
+      console.log(`Creating new question with order: ${questionData.order}`);
       const question = await storage.createExamQuestion(questionData);
+      console.log(`Created new question with ID: ${question.id}`);
+      
       res.status(201).json(question);
     } catch (error) {
+      console.error("Error creating exam question:", error);
       handleZodError(error, res);
     }
   });
@@ -2806,18 +2849,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const examId = parseInt(req.params.examId);
       const questionId = parseInt(req.params.questionId);
       
+      if (isNaN(examId) || isNaN(questionId)) {
+        return res.status(400).json({ message: "Invalid ID format" });
+      }
+      
+      console.log(`Updating question ${questionId} for exam ${examId}`);
+      
       const exam = await storage.getExam(examId);
       if (!exam) {
+        console.log(`Exam with ID ${examId} not found`);
         return res.status(404).json({ message: "Exam not found" });
       }
       
       const question = await storage.getExamQuestion(questionId);
       if (!question) {
+        console.log(`Question with ID ${questionId} not found`);
         return res.status(404).json({ message: "Question not found" });
       }
       
       // Verify the question belongs to the specified exam
       if (question.examId !== examId) {
+        console.log(`Question ${questionId} does not belong to exam ${examId}. It belongs to ${question.examId}`);
         return res.status(400).json({ message: "Question does not belong to the specified exam" });
       }
       
@@ -2835,23 +2887,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data may be wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Use camelCase properties to match the Drizzle schema, handling both camelCase and snake_case
-      const questionData = {
-        examId: formData.examId || formData.exam_id || examId,
-        question: formData.question,
-        type: formData.type,
-        options: formData.options,
-        correctAnswer: formData.correct_answer || formData.correctAnswer, // Handle both formats
-        points: formData.points,
-        order: formData.order,
-        explanation: formData.explanation
-      };
+      // Create a new object with only the properties that are present in the request
+      const questionData: any = {};
+      
+      // Only update properties that are provided in the request
+      if (formData.examId !== undefined || formData.exam_id !== undefined) {
+        questionData.examId = formData.examId || formData.exam_id;
+      }
+      
+      if (formData.question !== undefined) {
+        questionData.question = formData.question;
+      }
+      
+      if (formData.type !== undefined) {
+        questionData.type = formData.type;
+      }
+      
+      if (formData.options !== undefined) {
+        questionData.options = formData.options;
+      }
+      
+      if (formData.correct_answer !== undefined || formData.correctAnswer !== undefined) {
+        questionData.correctAnswer = formData.correct_answer || formData.correctAnswer;
+      }
+      
+      if (formData.points !== undefined) {
+        questionData.points = formData.points;
+      }
+      
+      if (formData.order !== undefined) {
+        questionData.order = formData.order;
+      }
+      
+      if (formData.explanation !== undefined) {
+        questionData.explanation = formData.explanation;
+      }
       
       console.log("Question data for update:", JSON.stringify(questionData, null, 2));
+      
+      if (Object.keys(questionData).length === 0) {
+        return res.status(400).json({ message: "No valid fields provided for update" });
+      }
+      
       const updatedQuestion = await storage.updateExamQuestion(questionId, questionData);
       
+      if (!updatedQuestion) {
+        return res.status(500).json({ message: "Failed to update question" });
+      }
+      
+      console.log(`Successfully updated question ${questionId}`);
       res.json(updatedQuestion);
     } catch (error) {
+      console.error("Error updating question:", error);
       handleZodError(error, res);
     }
   });

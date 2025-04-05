@@ -135,12 +135,12 @@ export const exams = pgTable("exams", {
 export const examQuestions = pgTable("exam_questions", {
   id: serial("id").primaryKey(),
   examId: integer("exam_id").references(() => exams.id).notNull(),
-  question: text("question").notNull(),
-  type: questionTypeEnum("type").default('multiple_choice').notNull(),
-  options: text("options").array(), // Multiple choice options
+  question: text("question_text").notNull(), // Column name in DB is question_text
+  type: questionTypeEnum("question_type").default('multiple_choice').notNull(), // Column name in DB is question_type
+  options: text("options").array(), // Multiple choice options - actual column is jsonb, will need conversion
   correctAnswer: text("correct_answer").notNull(),
   points: integer("points").notNull().default(1),
-  order: integer("order").default(1).notNull(),
+  order: integer("sort_order").default(1).notNull(), // Column name in DB is sort_order
   explanation: text("explanation"), // Explanation for the correct answer
 });
 
