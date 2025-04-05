@@ -2566,25 +2566,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data is wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Simplified approach - directly create an object with expected database field names
-      // but using the values from the incoming request
+      // Simplified approach - directly create an object with field names that match the Drizzle schema
+      // We need to use camelCase keys here as that's what the Drizzle schema expects
       const examData = {
         title: formData.title,
         description: formData.description || null,
-        course_id: formData.courseId,
-        section_id: formData.sectionId || null,
-        semester_id: formData.semesterId || null,
+        courseId: formData.courseId, // Using camelCase to match schema
+        sectionId: formData.sectionId || null,
+        semesterId: formData.semesterId || null,
         type: formData.type,
-        max_score: formData.maxScore,
-        passing_score: formData.passingScore,
-        time_limit: formData.timeLimit,
+        maxScore: formData.maxScore, // Using camelCase to match schema
+        passingScore: formData.passingScore, // Using camelCase to match schema
+        timeLimit: formData.timeLimit, // Using camelCase to match schema
         status: formData.status || 'active',
-        grade_a_threshold: formData.gradeAThreshold || 90,
-        grade_b_threshold: formData.gradeBThreshold || 80,
-        grade_c_threshold: formData.gradeCThreshold || 70, 
-        grade_d_threshold: formData.gradeDThreshold || 60,
-        available_from: formData.availableFrom || null,
-        available_to: formData.availableTo || null
+        gradeAThreshold: formData.gradeAThreshold || 90, // Using camelCase to match schema
+        gradeBThreshold: formData.gradeBThreshold || 80, // Using camelCase to match schema
+        gradeCThreshold: formData.gradeCThreshold || 70, // Using camelCase to match schema
+        gradeDThreshold: formData.gradeDThreshold || 60, // Using camelCase to match schema
+        availableFrom: formData.availableFrom || null,
+        availableTo: formData.availableTo || null
       };
       
       console.log("Direct exam data without schema validation:", JSON.stringify(examData, null, 2));
@@ -2592,7 +2592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Skip schema validation for now and work directly with our data object
       
       // Verify the course exists
-      const course = await storage.getCourse(examData.course_id);
+      const course = await storage.getCourse(examData.courseId);
       if (!course) {
         return res.status(404).json({ message: "Course not found" });
       }
@@ -2603,15 +2603,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Not authorized to add exams to this course" });
       }
       
-      // If section_id is provided, verify the section exists
-      if (examData.section_id) {
-        const section = await storage.getCourseSection(examData.section_id);
+      // If sectionId is provided, verify the section exists
+      if (examData.sectionId) {
+        const section = await storage.getCourseSection(examData.sectionId);
         if (!section) {
           return res.status(404).json({ message: "Section not found" });
         }
         
         // Verify the section belongs to the specified course
-        if (section.courseId !== examData.course_id) {
+        if (section.courseId !== examData.courseId) {
           return res.status(400).json({ message: "Section does not belong to the specified course" });
         }
       }
@@ -2651,28 +2651,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data is wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Convert camelCase properties to snake_case before updating
-      const convertedBody = {
+      // Use camelCase properties to match the Drizzle schema
+      const examData = {
         title: formData.title,
         description: formData.description,
-        course_id: formData.courseId,
-        section_id: formData.sectionId,
-        semester_id: formData.semesterId,
+        courseId: formData.courseId,
+        sectionId: formData.sectionId,
+        semesterId: formData.semesterId,
         type: formData.type,
-        max_score: formData.maxScore,
-        passing_score: formData.passingScore,
-        time_limit: formData.timeLimit,
+        maxScore: formData.maxScore,
+        passingScore: formData.passingScore,
+        timeLimit: formData.timeLimit,
         status: formData.status,
-        grade_a_threshold: formData.gradeAThreshold,
-        grade_b_threshold: formData.gradeBThreshold,
-        grade_c_threshold: formData.gradeCThreshold,
-        grade_d_threshold: formData.gradeDThreshold,
-        available_from: formData.availableFrom,
-        available_to: formData.availableTo
+        gradeAThreshold: formData.gradeAThreshold,
+        gradeBThreshold: formData.gradeBThreshold,
+        gradeCThreshold: formData.gradeCThreshold,
+        gradeDThreshold: formData.gradeDThreshold,
+        availableFrom: formData.availableFrom,
+        availableTo: formData.availableTo
       };
       
-      console.log("Converted exam data for update:", JSON.stringify(convertedBody, null, 2));
-      const updatedExam = await storage.updateExam(examId, convertedBody);
+      console.log("Exam data for update:", JSON.stringify(examData, null, 2));
+      const updatedExam = await storage.updateExam(examId, examData);
       
       res.json(updatedExam);
     } catch (error) {
@@ -2754,13 +2754,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data may be wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Convert camelCase properties to snake_case before validation
+      // Use camelCase properties to match the Drizzle schema
       const questionData = {
-        exam_id: examId,
+        examId: examId,
         question: formData.question,
         type: formData.type,
         options: formData.options || [],
-        correct_answer: formData.correctAnswer,
+        correctAnswer: formData.correctAnswer,
         points: formData.points,
         order: formData.order,
         explanation: formData.explanation || null
@@ -2817,20 +2817,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // The request data may be wrapped in a 'data' property
       const formData = req.body.data || req.body;
       
-      // Convert camelCase properties to snake_case before updating
-      const convertedBody = {
-        exam_id: formData.examId || examId,
+      // Use camelCase properties to match the Drizzle schema
+      const questionData = {
+        examId: formData.examId || examId,
         question: formData.question,
         type: formData.type,
         options: formData.options,
-        correct_answer: formData.correctAnswer,
+        correctAnswer: formData.correctAnswer,
         points: formData.points,
         order: formData.order,
         explanation: formData.explanation
       };
       
-      console.log("Converted question data for update:", JSON.stringify(convertedBody, null, 2));
-      const updatedQuestion = await storage.updateExamQuestion(questionId, convertedBody);
+      console.log("Question data for update:", JSON.stringify(questionData, null, 2));
+      const updatedQuestion = await storage.updateExamQuestion(questionId, questionData);
       
       res.json(updatedQuestion);
     } catch (error) {
