@@ -2826,7 +2826,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         examId: examId,
         question: formData.question,
         type: formData.type,
-        options: formData.options || [],
+        options: Array.isArray(formData.options) ? formData.options : [], // Ensure options is always an array
         correctAnswer: formData.correct_answer || formData.correctAnswer || "", // Optional for short_answer/essay
         points: formData.points || 1,  // Default to 1 point if not specified
         order: formData.order || 0,  // Will be updated below
@@ -2932,7 +2932,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (formData.options !== undefined) {
-        questionData.options = formData.options;
+        // Ensure options is always an array, never null
+        questionData.options = Array.isArray(formData.options) ? formData.options : [];
       }
       
       // Handle correct answer updates - consider type context
