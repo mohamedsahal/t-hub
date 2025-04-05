@@ -281,7 +281,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     "flex items-center gap-3 px-3 py-2 rounded-md transition-colors hover:bg-gray-800/50 cursor-pointer",
                     (location === "/admin/exams" || 
                      location === "/admin/exam-types" || 
-                     location === "/admin/exam-create" || 
                      location === "/admin/exam-rules" || 
                      location === "/admin/exam-marks" ||
                      location === "/admin/exam-results") 
@@ -308,12 +307,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     >
                       Exam Types
                     </Link>
-                    <Link 
-                      href="/admin/exam-create" 
-                      className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"
-                    >
-                      Create Exam
-                    </Link>
+
                     <Link 
                       href="/admin/exam-rules" 
                       className="block px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white"

@@ -286,9 +286,27 @@ export default function ExamManagement() {
   // Mutations
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues) => {
+      // Transform the data to match the expected API format
+      const transformedData = {
+        ...data,
+        // Map frontend camelCase to backend snake_case
+        course_id: data.courseId,
+        section_id: data.sectionId,
+        semester_id: data.semesterId,
+        max_score: data.maxScore,
+        passing_score: data.passingScore,
+        time_limit: data.timeLimit,
+        grade_a_threshold: data.gradeAThreshold,
+        grade_b_threshold: data.gradeBThreshold,
+        grade_c_threshold: data.gradeCThreshold,
+        grade_d_threshold: data.gradeDThreshold,
+        available_from: data.availableFrom,
+        available_to: data.availableTo
+      };
+      
       return await apiRequest('/api/admin/exams', {
         method: 'POST',
-        data
+        data: transformedData
       });
     },
     onSuccess: () => {
@@ -311,10 +329,29 @@ export default function ExamManagement() {
 
   const updateExamMutation = useMutation({
     mutationFn: async (data: ExamFormValues & { id: number }) => {
-      const { id, ...examData } = data;
+      const { id, ...formData } = data;
+      
+      // Transform the data to match the expected API format
+      const transformedData = {
+        ...formData,
+        // Map frontend camelCase to backend snake_case
+        course_id: formData.courseId,
+        section_id: formData.sectionId,
+        semester_id: formData.semesterId,
+        max_score: formData.maxScore,
+        passing_score: formData.passingScore,
+        time_limit: formData.timeLimit,
+        grade_a_threshold: formData.gradeAThreshold,
+        grade_b_threshold: formData.gradeBThreshold,
+        grade_c_threshold: formData.gradeCThreshold,
+        grade_d_threshold: formData.gradeDThreshold,
+        available_from: formData.availableFrom,
+        available_to: formData.availableTo
+      };
+      
       return await apiRequest(`/api/admin/exams/${id}`, {
         method: 'PATCH',
-        data: examData
+        data: transformedData
       });
     },
     onSuccess: () => {
@@ -450,13 +487,19 @@ export default function ExamManagement() {
         title: exam.title,
         description: exam.description || "",
         type: exam.type as any, // Type assertion to handle string type from API
-        max_score: exam.max_score,
-        passing_score: exam.passing_score,
-        time_limit: exam.time_limit,
+        maxScore: exam.max_score,
+        passingScore: exam.passing_score,
+        timeLimit: exam.time_limit,
         status: exam.status,
-        course_id: exam.course_id,
-        section_id: exam.section_id,
-        semester_id: exam.semester_id
+        courseId: exam.course_id,
+        sectionId: exam.section_id,
+        semesterId: exam.semester_id,
+        gradeAThreshold: exam.grade_a_threshold,
+        gradeBThreshold: exam.grade_b_threshold,
+        gradeCThreshold: exam.grade_c_threshold,
+        gradeDThreshold: exam.grade_d_threshold,
+        availableFrom: exam.available_from,
+        availableTo: exam.available_to
       });
     } else {
       setCurrentExam(null);
@@ -464,11 +507,15 @@ export default function ExamManagement() {
         title: "",
         description: "",
         type: "quiz",
-        max_score: 100,
-        passing_score: 60,
-        time_limit: 60,
+        maxScore: 100,
+        passingScore: 60,
+        timeLimit: 60,
         status: "active",
-        course_id: undefined // Explicitly set course_id to undefined
+        courseId: undefined, // Explicitly set courseId to undefined
+        gradeAThreshold: 90,
+        gradeBThreshold: 80,
+        gradeCThreshold: 70,
+        gradeDThreshold: 60
       });
     }
     setIsExamModalOpen(true);
@@ -1263,7 +1310,7 @@ export default function ExamManagement() {
                   <div className="grid grid-cols-1 gap-4">
                     <FormField
                       control={examForm.control}
-                      name="course_id"
+                      name="courseId"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Course*</FormLabel>
@@ -1323,7 +1370,7 @@ export default function ExamManagement() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <FormField
                       control={examForm.control}
-                      name="max_score"
+                      name="maxScore"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Total Points*</FormLabel>
@@ -1341,7 +1388,7 @@ export default function ExamManagement() {
                     
                     <FormField
                       control={examForm.control}
-                      name="passing_score"
+                      name="passingScore"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Passing Points*</FormLabel>
@@ -1359,7 +1406,7 @@ export default function ExamManagement() {
                     
                     <FormField
                       control={examForm.control}
-                      name="time_limit"
+                      name="timeLimit"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Duration (minutes)*</FormLabel>
