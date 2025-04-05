@@ -414,7 +414,7 @@ export default function ExamResults() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All Exams</SelectItem>
+                        <SelectItem value="all">All Exams</SelectItem>
                         {sampleExams.map(exam => (
                           <SelectItem key={exam.id} value={exam.id.toString()}>
                             {exam.title}
@@ -442,7 +442,7 @@ export default function ExamResults() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All Courses</SelectItem>
+                        <SelectItem value="all">All Courses</SelectItem>
                         {sampleCourses.map(course => (
                           <SelectItem key={course.id} value={course.id.toString()}>
                             {course.title}
@@ -470,7 +470,7 @@ export default function ExamResults() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All Students</SelectItem>
+                        <SelectItem value="all">All Students</SelectItem>
                         {sampleStudents.map(student => (
                           <SelectItem key={student.id} value={student.id.toString()}>
                             {student.name}
@@ -498,7 +498,7 @@ export default function ExamResults() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">All Statuses</SelectItem>
+                        <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="completed">Completed</SelectItem>
                         <SelectItem value="in_progress">In Progress</SelectItem>
                         <SelectItem value="not_started">Not Started</SelectItem>

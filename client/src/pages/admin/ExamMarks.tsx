@@ -319,7 +319,7 @@ export default function ExamMarks() {
                         <SelectValue placeholder="All Exams" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Exams</SelectItem>
+                        <SelectItem value="all">All Exams</SelectItem>
                         {sampleExams.map(exam => (
                           <SelectItem key={exam.id} value={exam.id.toString()}>
                             {exam.title}
@@ -338,7 +338,7 @@ export default function ExamMarks() {
                         <SelectValue placeholder="All Courses" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Courses</SelectItem>
+                        <SelectItem value="all">All Courses</SelectItem>
                         {sampleCourses.map(course => (
                           <SelectItem key={course.id} value={course.id.toString()}>
                             {course.title}

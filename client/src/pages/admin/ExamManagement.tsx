@@ -1009,7 +1009,7 @@ export default function ExamManagement() {
                         <SelectValue placeholder="All Courses" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Courses</SelectItem>
+                        <SelectItem value="all">All Courses</SelectItem>
                         {courses.map((course) => (
                           <SelectItem key={course.id} value={course.id.toString()}>
                             {course.title}
@@ -1029,7 +1029,7 @@ export default function ExamManagement() {
                         <SelectValue placeholder="All Types" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Types</SelectItem>
+                        <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="quiz">Quiz</SelectItem>
                         <SelectItem value="midterm">Midterm</SelectItem>
                         <SelectItem value="final">Final Exam</SelectItem>
@@ -1425,7 +1425,7 @@ export default function ExamManagement() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">No specific section</SelectItem>
+                              <SelectItem value="none">No specific section</SelectItem>
                               {sections.map((section) => (
                                 <SelectItem key={section.id} value={section.id.toString()}>
                                   {section.title}
@@ -1458,7 +1458,7 @@ export default function ExamManagement() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">No specific semester</SelectItem>
+                              <SelectItem value="none">No specific semester</SelectItem>
                               {semesters.map((semester) => (
                                 <SelectItem key={semester.id} value={semester.id.toString()}>
                                   {semester.name}

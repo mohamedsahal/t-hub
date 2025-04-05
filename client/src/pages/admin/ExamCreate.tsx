@@ -105,12 +105,30 @@ export default function ExamCreate() {
   // Create exam mutation
   const createExam = useMutation({
     mutationFn: async (data: FormValues) => {
+      // Transform the data to match the expected API format
+      const transformedData = {
+        ...data,
+        // Map frontend camelCase to backend snake_case
+        course_id: data.courseId,
+        section_id: data.sectionId,
+        semester_id: data.semesterId,
+        max_score: data.maxScore,
+        passing_score: data.passingScore,
+        time_limit: data.timeLimit,
+        grade_a_threshold: data.gradeAThreshold,
+        grade_b_threshold: data.gradeBThreshold,
+        grade_c_threshold: data.gradeCThreshold,
+        grade_d_threshold: data.gradeDThreshold,
+        available_from: data.availableFrom,
+        available_to: data.availableTo
+      };
+      
       const response = await fetch('/api/admin/exams', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(transformedData)
       });
       
       if (!response.ok) {
