@@ -49,40 +49,38 @@ export const convertKeysToCamelCase = (obj: Record<string, any>): Record<string,
 }
 
 /**
- * Map an exam from snake_case to camelCase for form usage
- * Takes an exam object with snake_case keys and returns an object with camelCase keys
+ * Map an exam for form usage
+ * Takes an exam object and returns with all expected form fields
  */
 export const mapExamToFormData = (exam: any) => {
-  // Convert the exam object to camelCase
-  const camelCaseExam = convertKeysToCamelCase(exam);
-  
   // Return the mapped object with all the expected form fields
+  // Using consistent field names without conversion between camelCase and snake_case
   return {
     title: exam.title || '',
     description: exam.description || '',
     type: exam.type,
     status: exam.status || 'active',
-    maxScore: camelCaseExam.maxScore,
-    passingScore: camelCaseExam.passingScore,
-    timeLimit: camelCaseExam.timeLimit,
-    courseId: camelCaseExam.courseId,
-    sectionId: camelCaseExam.sectionId,
-    semesterId: camelCaseExam.semesterId,
-    gradeAThreshold: camelCaseExam.gradeAThreshold || 90,
-    gradeBThreshold: camelCaseExam.gradeBThreshold || 80,
-    gradeCThreshold: camelCaseExam.gradeCThreshold || 70,
-    gradeDThreshold: camelCaseExam.gradeDThreshold || 60,
-    availableFrom: camelCaseExam.availableFrom,
-    availableTo: camelCaseExam.availableTo
+    courseId: exam.courseId,
+    maxScore: exam.maxScore,
+    passingScore: exam.passingScore,
+    timeLimit: exam.timeLimit,
+    sectionId: exam.sectionId,
+    semesterId: exam.semesterId,
+    gradeAThreshold: exam.gradeAThreshold || 90,
+    gradeBThreshold: exam.gradeBThreshold || 80,
+    gradeCThreshold: exam.gradeCThreshold || 70,
+    gradeDThreshold: exam.gradeDThreshold || 60,
+    availableFrom: exam.availableFrom,
+    availableTo: exam.availableTo
   };
 }
 
 /**
- * Map form data to snake_case for API usage
- * Takes form data with camelCase keys and returns an object with snake_case keys
+ * Map form data for API usage without conversion
+ * We're removing the camelCase to snake_case conversion to use consistent naming
  */
 export const mapFormDataToExam = (formData: any) => {
-  // Handle null/undefined values before conversion
+  // Handle null/undefined values before sending
   const {
     sectionId = null, 
     semesterId = null,
@@ -96,7 +94,8 @@ export const mapFormDataToExam = (formData: any) => {
   } = formData;
   
   // Create a combined data object with all fields
-  const combinedData = {
+  // No longer converting to snake_case to maintain consistency
+  return {
     ...restData,
     sectionId,
     semesterId,
@@ -107,7 +106,4 @@ export const mapFormDataToExam = (formData: any) => {
     availableFrom,
     availableTo
   };
-  
-  // Convert to snake_case
-  return convertKeysToSnakeCase(combinedData);
 }

@@ -315,14 +315,14 @@ export default function ExamManagement() {
     mutationFn: async (data: ExamFormValues) => {
       console.log("Form data before submission:", data);
       
-      // Transform all keys from camelCase to snake_case automatically using utility
-      const transformedData = mapFormDataToExam(data);
+      // Map the form data but keep consistent camelCase naming
+      const examData = mapFormDataToExam(data);
       
-      console.log("Sending exam data (in snake_case):", transformedData);
+      console.log("Sending exam data:", examData);
       
       return await apiRequest('/api/admin/exams', {
         method: 'POST',
-        data: transformedData
+        data: examData
       });
     },
     onSuccess: () => {
@@ -348,14 +348,14 @@ export default function ExamManagement() {
       const { id, ...formData } = data;
       console.log("Form data before update:", formData);
       
-      // Transform all keys from camelCase to snake_case automatically using utility
-      const transformedData = mapFormDataToExam(formData);
+      // Map form data but keep consistent camelCase naming
+      const examData = mapFormDataToExam(formData);
       
-      console.log("Sending updated exam data (in snake_case):", transformedData);
+      console.log("Sending updated exam data:", examData);
       
       return await apiRequest(`/api/admin/exams/${id}`, {
         method: 'PATCH',
-        data: transformedData
+        data: examData
       });
     },
     onSuccess: () => {
@@ -498,7 +498,7 @@ export default function ExamManagement() {
   const openExamModal = (exam?: Exam) => {
     if (exam) {
       setCurrentExam(exam);
-      console.log("Original exam data (in snake_case):", exam);
+      console.log("Original exam data:", exam);
       
       // Use the utility function to map exam data to form values
       const formData = mapExamToFormData(exam);
