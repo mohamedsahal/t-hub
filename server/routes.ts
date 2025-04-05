@@ -3114,8 +3114,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         [questionId]
       );
       
+      // If question doesn't exist, consider it a successful deletion (idempotent)
       if (questionResult.rows.length === 0) {
-        return res.status(404).json({ message: "Question not found" });
+        console.log(`Question with ID ${questionId} already deleted or doesn't exist`);
+        return res.status(204).send();
       }
       
       const question = questionResult.rows[0];

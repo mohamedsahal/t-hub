@@ -104,6 +104,8 @@ export function QuizManagement() {
   const { data: questions = [] } = useQuery<ExamQuestion[]>({
     queryKey: ['/api/admin/exams', selectedExam?.id, 'questions'],
     enabled: !!selectedExam,
+    refetchOnWindowFocus: true,
+    refetchInterval: 5000, // Refresh every 5 seconds if window is focused
   });
 
   // Mutation for creating/updating an exam
@@ -228,7 +230,13 @@ export function QuizManagement() {
       });
     },
     onSuccess: () => {
+      // Force immediate cache invalidation to refresh questions list
       queryClient.invalidateQueries({ queryKey: ['/api/admin/exams', selectedExam?.id, 'questions'] });
+      queryClient.refetchQueries({ queryKey: ['/api/admin/exams', selectedExam?.id, 'questions'] });
+      
+      // Also refresh the exam list to update question counts
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/exams'] });
+      
       toast({
         title: 'Question deleted',
         description: 'The question was deleted successfully.',
@@ -441,7 +449,19 @@ export function QuizManagement() {
   // Handle deleting a question
   const handleDeleteQuestion = (question: ExamQuestion) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
-      deleteQuestionMutation.mutate(question.id);
+      console.log(`Deleting question with ID: ${question.id} from exam ID: ${selectedExam?.id}`);
+      try {
+        deleteQuestionMutation.mutate(question.id);
+      } catch (error) {
+        console.error('Error in handleDeleteQuestion:', error);
+      }
+      
+      // Manually force a refresh after a short delay to ensure UI is updated
+      setTimeout(() => {
+        console.log('Forcing refresh of questions list');
+        queryClient.invalidateQueries({ queryKey: ['/api/admin/exams', selectedExam?.id, 'questions'] });
+        queryClient.refetchQueries({ queryKey: ['/api/admin/exams', selectedExam?.id, 'questions'] });
+      }, 500);
     }
   };
 
