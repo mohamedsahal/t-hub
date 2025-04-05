@@ -124,12 +124,17 @@ export const mapFormDataToExam = (formData: any) => {
 export const mapQuestionFormDataForApi = (questionData: any) => {
   const {
     correctAnswer, // Extract correctAnswer
+    options, // Extract options array
     ...restData
   } = questionData;
   
   // Create a properly formatted question data object for the API
   return {
     ...restData,
-    correct_answer: correctAnswer // Convert correctAnswer to correct_answer
+    correct_answer: correctAnswer, // Convert correctAnswer to correct_answer
+    options: options, // Keep options as is - will be automatically converted to jsonb by the API
+    question_text: questionData.question, // Make sure we map question to question_text for DB
+    question_type: questionData.type, // Make sure we map type to question_type for DB
+    sort_order: questionData.order || 1 // Map order to sort_order for DB
   };
 }

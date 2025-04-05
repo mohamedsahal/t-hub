@@ -231,8 +231,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="pl-9 pr-2 py-1 space-y-1">
-                    <div 
-                      onClick={() => window.location.href = "/admin/courses"}
+                    <Link 
+                      href="/admin/courses"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/courses" 
@@ -241,9 +241,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       All Courses
-                    </div>
-                    <div 
-                      onClick={() => window.location.href = "/admin/courses/short"}
+                    </Link>
+                    <Link 
+                      href="/admin/courses/short"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/courses/short" 
@@ -252,9 +252,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       Short Courses
-                    </div>
-                    <div 
-                      onClick={() => window.location.href = "/admin/courses/specialist"}
+                    </Link>
+                    <Link 
+                      href="/admin/courses/specialist"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/courses/specialist" 
@@ -263,9 +263,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       Specialist Programs
-                    </div>
-                    <div 
-                      onClick={() => window.location.href = "/admin/courses/bootcamp"}
+                    </Link>
+                    <Link 
+                      href="/admin/courses/bootcamp"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/courses/bootcamp" 
@@ -274,9 +274,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       Bootcamps
-                    </div>
-                    <div 
-                      onClick={() => window.location.href = "/admin/courses/diploma"}
+                    </Link>
+                    <Link 
+                      href="/admin/courses/diploma"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/courses/diploma" 
@@ -285,7 +285,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       Diploma Programs
-                    </div>
+                    </Link>
                   </div>
                 </CollapsibleContent>
               </Collapsible>
@@ -346,8 +346,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="pl-9 pr-2 py-1 space-y-1">
-                    <div 
-                      onClick={() => window.location.href = "/admin/exams"}
+                    <Link 
+                      href="/admin/exams"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/exams" 
@@ -356,9 +356,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       All Exams
-                    </div>
-                    <div 
-                      onClick={() => window.location.href = "/admin/exam-marks"}
+                    </Link>
+                    <Link 
+                      href="/admin/exam-marks"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/exam-marks" 
@@ -367,9 +367,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       Grading
-                    </div>
-                    <div 
-                      onClick={() => window.location.href = "/admin/exam-results"}
+                    </Link>
+                    <Link 
+                      href="/admin/exam-results"
                       className={cn(
                         "block px-3 py-2 text-sm rounded-md transition-colors cursor-pointer",
                         location === "/admin/exam-results" 
@@ -378,7 +378,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       )}
                     >
                       Results
-                    </div>
+                    </Link>
                   </div>
                 </CollapsibleContent>
               </Collapsible>

@@ -818,6 +818,16 @@ export default function ExamManagement() {
                       <Select
                         value={field.value}
                         onValueChange={(value) => {
+                          // Check if we're trying to select a question type that requires manual grading
+                          if (['short_answer', 'essay'].includes(value) && currentExam?.grading_mode === 'auto') {
+                            toast({
+                              title: "Grading Mode Conflict",
+                              description: "Short answer and essay questions require manual grading. Please change the exam's grading mode to 'manual' first.",
+                              variant: "destructive",
+                            });
+                            return; // Don't allow this change
+                          }
+
                           field.onChange(value);
                           // Reset options when changing question type
                           if (value === 'multiple_choice') {
@@ -1506,7 +1516,24 @@ export default function ExamManagement() {
                         <FormLabel>Grading Mode</FormLabel>
                         <FormControl>
                           <RadioGroup
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              
+                              // If changing from manual to auto, show a warning if there are incompatible questions
+                              if (value === 'auto' && currentExam) {
+                                const incompatibleQuestions = questions.filter(
+                                  q => ['short_answer', 'essay'].includes(q.type)
+                                );
+                                
+                                if (incompatibleQuestions.length > 0) {
+                                  toast({
+                                    title: "Warning: Incompatible Questions",
+                                    description: `${incompatibleQuestions.length} question(s) are incompatible with auto-grading. These will need to be updated before the exam can be automatically graded.`,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }
+                            }}
                             value={field.value}
                             className="flex flex-col space-y-1"
                           >
@@ -1529,7 +1556,8 @@ export default function ExamManagement() {
                           </RadioGroup>
                         </FormControl>
                         <FormDescription>
-                          Auto-graded exams are scored automatically, while manually graded exams require teacher review.
+                          Auto-graded exams are scored automatically but only support multiple-choice and true/false questions. 
+                          Manually graded exams support all question types but require teacher review.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
