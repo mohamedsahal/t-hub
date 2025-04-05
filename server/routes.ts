@@ -2598,6 +2598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passingScore: formData.passing_score || formData.passingScore, // Check both formats
         timeLimit: formData.time_limit || formData.timeLimit, // Check both formats
         status: formData.status || 'active',
+        gradingMode: formData.grading_mode || formData.gradingMode || 'auto', // Add gradingMode field
         gradeAThreshold: formData.grade_a_threshold || formData.gradeAThreshold || 90, // Check both formats
         gradeBThreshold: formData.grade_b_threshold || formData.gradeBThreshold || 80, // Check both formats
         gradeCThreshold: formData.grade_c_threshold || formData.gradeCThreshold || 70, // Check both formats
@@ -2682,6 +2683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passingScore: formData.passing_score || formData.passingScore,
         timeLimit: formData.time_limit || formData.timeLimit,
         status: formData.status,
+        gradingMode: formData.grading_mode || formData.gradingMode, // Add gradingMode field
         gradeAThreshold: formData.grade_a_threshold || formData.gradeAThreshold,
         gradeBThreshold: formData.grade_b_threshold || formData.gradeBThreshold,
         gradeCThreshold: formData.grade_c_threshold || formData.gradeCThreshold,
@@ -2812,6 +2814,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Determine if correct answer is required
       const questionType = formData.type;
       const isCorrectAnswerRequired = (questionType === 'multiple_choice' || questionType === 'true_false');
+      
+      // Check for compatibility between question type and exam grading mode
+      if (exam.gradingMode === 'auto' && (questionType === 'short_answer' || questionType === 'essay')) {
+        return res.status(400).json({
+          message: `Cannot add ${questionType} questions to an auto-graded exam. Only multiple-choice and true/false questions are supported for auto-grading.`
+        });
+      }
       
       // Check if correct answer is provided when required
       if (isCorrectAnswerRequired && 
@@ -2981,6 +2990,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (formData.type !== undefined) {
         const newType = formData.type;
         const isCorrectAnswerRequired = (newType === 'multiple_choice' || newType === 'true_false');
+        
+        // Check for compatibility between question type and exam grading mode
+        if (exam.gradingMode === 'auto' && (newType === 'short_answer' || newType === 'essay')) {
+          return res.status(400).json({
+            message: `Cannot change to ${newType} question type on an auto-graded exam. Only multiple-choice and true/false questions are supported for auto-grading.`
+          });
+        }
         
         // For types requiring a correct answer, ensure it's present or use existing
         if (isCorrectAnswerRequired) {

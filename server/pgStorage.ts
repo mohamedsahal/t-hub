@@ -690,6 +690,7 @@ export class PgStorage implements IStorage {
       passingScore: exam.passingScore,
       timeLimit: exam.timeLimit,
       status: exam.status || 'active',
+      gradingMode: exam.gradingMode || 'auto', // Add gradingMode field
       availableFrom: exam.availableFrom ? new Date(exam.availableFrom) : null,
       availableTo: exam.availableTo ? new Date(exam.availableTo) : null,
       gradeAThreshold: exam.gradeAThreshold || 90,
