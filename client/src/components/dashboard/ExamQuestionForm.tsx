@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import {
   FormControl,
@@ -43,6 +43,20 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
   questionForm,
   currentExam,
 }) => {
+  // Initialize default values when question type changes
+  useEffect(() => {
+    const questionType = questionForm.watch('type');
+    
+    if (questionType === 'multiple_choice' && (!questionForm.watch('options') || questionForm.watch('options').length === 0)) {
+      questionForm.setValue('options', ['', '', '', '']);
+    }
+    
+    if (questionType === 'true_false') {
+      questionForm.setValue('correctAnswer', questionForm.watch('correctAnswer') || 'true');
+    }
+  }, [questionForm.watch('type')]);
+
+  // For AUTO-GRADED exams
   if (currentExam?.grading_mode === 'auto') {
     return (
       <>
@@ -62,12 +76,14 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
                   if (value !== 'multiple_choice') {
                     questionForm.setValue('options', []);
                   } else if (!questionForm.watch('options')?.length) {
-                    questionForm.setValue('options', ['', '']);
+                    questionForm.setValue('options', ['', '', '', '']);
                   }
                   
                   // Set default for true/false
-                  if (value === 'true_false' && !questionForm.watch('correctAnswer')) {
+                  if (value === 'true_false') {
                     questionForm.setValue('correctAnswer', 'true');
+                  } else if (value === 'multiple_choice') {
+                    questionForm.setValue('correctAnswer', '');
                   }
                 }}
               >
@@ -79,7 +95,6 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
                 <SelectContent>
                   <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                   <SelectItem value="true_false">True/False</SelectItem>
-                  {/* Only auto-gradable question types for auto-graded exams */}
                 </SelectContent>
               </Select>
               <FormMessage />
@@ -93,7 +108,7 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
             <FormDescription>
               Add multiple choice options below. Select the correct answer.
             </FormDescription>
-            {questionForm.watch('options')?.map((option, index) => (
+            {questionForm.watch('options')?.map((option: string, index: number) => (
               <div key={index} className="flex gap-2 items-center">
                 <div
                   className={`w-5 h-5 rounded-full flex items-center justify-center border cursor-pointer ${
@@ -206,6 +221,27 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
             </FormItem>
           )}
         />
+
+        <FormField
+          control={questionForm.control}
+          name="explanation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Explanation (Optional)</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Explain the correct answer" 
+                  {...field} 
+                  value={field.value || ''} 
+                />
+              </FormControl>
+              <FormDescription>
+                This will be shown to students after they submit their answer or complete the exam.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </>
     );
   } else {
@@ -228,13 +264,8 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
                   if (value !== 'multiple_choice') {
                     questionForm.setValue('options', []);
                   } else if (!questionForm.watch('options')?.length) {
-                    questionForm.setValue('options', ['', '']);
+                    questionForm.setValue('options', ['', '', '', '']);
                   }
-                  
-                  // For manual grading, we don't need correct answers
-                  questionForm.setValue('correctAnswer', '');
-                  // For manual grading, we don't assign points here
-                  questionForm.setValue('points', 0);
                 }}
               >
                 <FormControl>
@@ -260,7 +291,7 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
             <FormDescription>
               Add multiple choice options below. Answers will be evaluated manually during grading.
             </FormDescription>
-            {questionForm.watch('options')?.map((option, index) => (
+            {questionForm.watch('options')?.map((option: string, index: number) => (
               <div key={index} className="flex gap-2 items-center">
                 <Input
                   value={questionForm.watch(`options.${index}`) || ''}
@@ -303,6 +334,33 @@ export const ExamQuestionForm: React.FC<ExamQuestionFormProps> = ({
             )}
           </div>
         )}
+
+        {/* This hidden field ensures correct answers are stored but not visible */}
+        <input type="hidden" {...questionForm.register('correctAnswer')} value="" />
+        
+        {/* This hidden field ensures points are stored but not visible */}
+        <input type="hidden" {...questionForm.register('points')} value="0" />
+
+        <FormField
+          control={questionForm.control}
+          name="explanation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Explanation (Optional)</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Explain the question or provide additional context" 
+                  {...field} 
+                  value={field.value || ''} 
+                />
+              </FormControl>
+              <FormDescription>
+                This will be shown to students after they submit their answer or complete the exam.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <Alert>
           <AlertCircle className="h-4 w-4" />
