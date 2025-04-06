@@ -7,6 +7,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { sendPasswordResetEmail } from './services/emailService';
+import { rateLimitPasswordReset, formatTimeRemaining } from './services/rateLimiter';
 
 // Define additional session properties
 declare module 'express-session' {
@@ -228,13 +229,30 @@ export function setupAuth(app: Express) {
     });
   });
   
-  // Forgot password - request password reset
+  // Forgot password - request password reset with rate limiting
   app.post("/api/forgot-password", async (req, res) => {
     try {
       const { email } = req.body;
       
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Apply rate limiting based on email
+      // 3 requests per 15 minutes, with 1 minute cooldown between requests
+      const rateLimit = rateLimitPasswordReset(email);
+      
+      // If rate limited, return error with timing information
+      if (!rateLimit.allowed) {
+        const message = rateLimit.cooldownRemaining > 0
+          ? `Please wait ${formatTimeRemaining(rateLimit.cooldownRemaining)} before requesting another reset link.`
+          : `Too many password reset requests. Please try again in ${formatTimeRemaining(rateLimit.msBeforeNext)}.`;
+        
+        return res.status(429).json({ 
+          message,
+          cooldownRemaining: rateLimit.cooldownRemaining,
+          msBeforeNext: rateLimit.msBeforeNext
+        });
       }
       
       // Find user and create reset token
@@ -251,7 +269,10 @@ export function setupAuth(app: Express) {
       
       // Send reset email
       if (resetToken) {
-        await sendPasswordResetEmail(user, resetToken);
+        const emailSent = await sendPasswordResetEmail(user, resetToken);
+        if (!emailSent) {
+          console.error("Failed to send password reset email to:", email);
+        }
       }
       
       // Always return success, even if email sending fails (security)

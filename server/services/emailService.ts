@@ -132,31 +132,46 @@ const templates = {
     `,
   }),
   
-  passwordReset: (user: User, resetToken: string) => ({
-    subject: `[THUB] Password Reset Request`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <h1 style="color: #0080c9; margin: 0;">THUB</h1>
-          <p style="color: #3cb878; font-weight: bold;">Career Development Center</p>
+  passwordReset: (user: User, resetToken: string) => {
+    // Get the base URL from environment or use a default
+    const baseUrl = process.env.BASE_URL || (
+      process.env.NODE_ENV === 'production' 
+      ? 'https://thub-edu.replit.app' 
+      : 'http://localhost:5000'
+    );
+    
+    return {
+      subject: `[THUB] Password Reset Request`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #0080c9; margin: 0;">THUB</h1>
+            <p style="color: #3cb878; font-weight: bold;">Career Development Center</p>
+          </div>
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: #333;">Password Reset Request</h2>
+            <p>Hello ${user.name},</p>
+            <p>We received a request to reset your password for your THUB account.</p>
+            <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
+            <p>If you didn't request this, you can safely ignore this email. Your password will remain unchanged.</p>
+          </div>
+          <div style="text-align: center; margin-top: 30px;">
+            <a href="${baseUrl}/reset-password/${resetToken}" style="background: linear-gradient(to right, #3cb878, #0080c9); color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
+          </div>
+          <div style="margin-top: 15px; text-align: center;">
+            <p style="font-size: 12px; color: #666;">
+              If the button above doesn't work, copy and paste this link into your browser:<br/>
+              <a href="${baseUrl}/reset-password/${resetToken}" style="color: #0080c9;">${baseUrl}/reset-password/${resetToken}</a>
+            </p>
+          </div>
+          <div style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">
+            <p>THUB Innovation Center • Mogadishu, Somalia</p>
+            <p>Email: info@t-hub.so • WhatsApp: +2525251111</p>
+          </div>
         </div>
-        <div style="margin-bottom: 30px;">
-          <h2 style="color: #333;">Password Reset Request</h2>
-          <p>Hello ${user.name},</p>
-          <p>We received a request to reset your password for your THUB account.</p>
-          <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
-          <p>If you didn't request this, you can safely ignore this email. Your password will remain unchanged.</p>
-        </div>
-        <div style="text-align: center; margin-top: 30px;">
-          <a href="https://thub-edu.replit.app/reset-password/${resetToken}" style="background: linear-gradient(to right, #3cb878, #0080c9); color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
-        </div>
-        <div style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">
-          <p>THUB Innovation Center • Mogadishu, Somalia</p>
-          <p>Email: info@t-hub.so • WhatsApp: +2525251111</p>
-        </div>
-      </div>
-    `,
-  }),
+      `,
+    };
+  },
 };
 
 // Configuration for email service
@@ -201,6 +216,9 @@ export const initializeEmailService = async (): Promise<void> => {
         user: email,
         pass: password,
       },
+      // Debug SMTP communication
+      logger: true,
+      debug: process.env.NODE_ENV === 'development',
     });
 
     log('Email service initialized', 'email');
@@ -222,18 +240,45 @@ export const sendEmail = async (to: string, subject: string, html: string): Prom
   }
 
   try {
+    // Format the "from" field properly
+    const fromName = "THUB Innovation";
+    const fromEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    const from = `"${fromName}" <${fromEmail}>`;
+
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from,
       to,
       subject,
       html,
+      // Enable debug options
+      headers: {
+        'Priority': 'high'
+      }
     };
 
     await transporter.sendMail(mailOptions);
     log(`Email sent to ${to}`, 'email');
     return true;
-  } catch (error) {
-    log(`Failed to send email: ${error}`, 'email');
+  } catch (error: any) {
+    // Provide detailed error information
+    let errorDetails = error.message || String(error);
+    
+    // Try to extract more detailed SMTP error information
+    if (error.response) {
+      errorDetails += ` - SMTP Response: ${error.response}`;
+    }
+    
+    // Log if there's an issue with the recipient
+    if (errorDetails.includes('recipient') || errorDetails.includes('Invalid address')) {
+      log(`Invalid recipient address: ${to}`, 'email');
+    }
+    
+    // Log if there's an authentication issue
+    if (errorDetails.includes('auth') || errorDetails.includes('credentials')) {
+      log(`Email authentication error - Please check EMAIL_USER and EMAIL_PASSWORD secrets`, 'email');
+    }
+    
+    log(`Failed to send email: ${errorDetails}`, 'email');
     return false;
   }
 };
