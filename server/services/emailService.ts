@@ -131,6 +131,32 @@ const templates = {
       </div>
     `,
   }),
+  
+  passwordReset: (user: User, resetToken: string) => ({
+    subject: `[THUB] Password Reset Request`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+          <h1 style="color: #0080c9; margin: 0;">THUB</h1>
+          <p style="color: #3cb878; font-weight: bold;">Career Development Center</p>
+        </div>
+        <div style="margin-bottom: 30px;">
+          <h2 style="color: #333;">Password Reset Request</h2>
+          <p>Hello ${user.name},</p>
+          <p>We received a request to reset your password for your THUB account.</p>
+          <p>Click the button below to reset your password. This link will expire in 1 hour.</p>
+          <p>If you didn't request this, you can safely ignore this email. Your password will remain unchanged.</p>
+        </div>
+        <div style="text-align: center; margin-top: 30px;">
+          <a href="https://thub-edu.replit.app/reset-password/${resetToken}" style="background: linear-gradient(to right, #3cb878, #0080c9); color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Reset Password</a>
+        </div>
+        <div style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">
+          <p>THUB Innovation Center • Mogadishu, Somalia</p>
+          <p>Email: info@t-hub.so • WhatsApp: +2525251111</p>
+        </div>
+      </div>
+    `,
+  }),
 };
 
 // Configuration for email service
@@ -168,7 +194,9 @@ export const initializeEmailService = async (): Promise<void> => {
 
     // Create reusable transporter object using SMTP transport
     transporter = nodemailer.createTransport({
-      service: 'gmail', // or your SMTP service
+      host: process.env.EMAIL_HOST || 'mail.t-hub.so',
+      port: parseInt(process.env.EMAIL_PORT || '465'),
+      secure: true, // use SSL
       auth: {
         user: email,
         pass: password,
@@ -261,6 +289,16 @@ export const sendEnrollmentConfirmation = async (user: User, course: Course): Pr
   return sendEmail(user.email, subject, html);
 };
 
+/**
+ * Send a password reset email
+ * @param user User requesting password reset
+ * @param resetToken Token for password reset
+ */
+export const sendPasswordResetEmail = async (user: User, resetToken: string): Promise<boolean> => {
+  const { subject, html } = templates.passwordReset(user, resetToken);
+  return sendEmail(user.email, subject, html);
+};
+
 // Export the email service module
 export default {
   initializeEmailService,
@@ -270,4 +308,5 @@ export default {
   sendPaymentReminder,
   sendInstallmentReminder,
   sendEnrollmentConfirmation,
+  sendPasswordResetEmail,
 };

@@ -17,6 +17,8 @@ import Courses from "@/pages/Courses";
 import Payment from "@/pages/Payment";
 import PaymentResult from "@/pages/PaymentResult";
 import VerifyCertificate from "@/pages/VerifyCertificate";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 
 // Admin Pages
 import AdminPage from "@/pages/admin";
@@ -64,6 +66,8 @@ function Router() {
       <Route path="/courses" component={Courses} />
       <Route path="/courses/:id" component={CourseDetail} />
       <Route path="/verify-certificate" component={VerifyCertificate} />
+      <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/reset-password/:token" component={ResetPassword} />
       
       {/* Protected User Routes */}
       <ProtectedRoute path="/dashboard" component={Dashboard} />

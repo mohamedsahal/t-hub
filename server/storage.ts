@@ -33,6 +33,10 @@ export interface IStorage {
   updateUser(id: number, userData: Partial<User>): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
   getAllUsers(): Promise<User[]>;
+  // Password reset operations
+  createPasswordResetToken(email: string): Promise<string | null>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
+  resetPassword(token: string, newPassword: string): Promise<boolean>;
   
   // Course operations
   getCourse(id: number): Promise<Course | undefined>;
@@ -532,6 +536,69 @@ export class MemStorage implements IStorage {
   
   async getAllUsers(): Promise<User[]> {
     return Array.from(this.users.values());
+  }
+  
+  async createPasswordResetToken(email: string): Promise<string | null> {
+    const user = await this.getUserByEmail(email);
+    if (!user) {
+      return null;
+    }
+    
+    // Generate a random token
+    const resetToken = require('crypto').randomBytes(32).toString('hex');
+    
+    // Set expiry to 1 hour from now
+    const resetTokenExpiry = new Date();
+    resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1);
+    
+    // Update the user with the reset token
+    const updatedUser = {
+      ...user, 
+      resetToken, 
+      resetTokenExpiry
+    };
+    
+    this.users.set(user.id, updatedUser);
+    return resetToken;
+  }
+  
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const now = new Date();
+    
+    // Find the user with the matching token and valid expiry
+    for (const user of this.users.values()) {
+      if (
+        user.resetToken === token && 
+        user.resetTokenExpiry && 
+        user.resetTokenExpiry > now
+      ) {
+        return user;
+      }
+    }
+    
+    return undefined;
+  }
+  
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    const user = await this.getUserByResetToken(token);
+    if (!user) {
+      return false;
+    }
+    
+    // Hash the new password
+    const { hashPassword } = require('./auth');
+    const hashedPassword = await hashPassword(newPassword);
+    
+    // Update the user password and clear the reset token
+    const updatedUser = {
+      ...user,
+      password: hashedPassword,
+      resetToken: null,
+      resetTokenExpiry: null
+    };
+    
+    this.users.set(user.id, updatedUser);
+    return true;
   }
 
   // Course operations

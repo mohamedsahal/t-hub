@@ -6,6 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import { sendPasswordResetEmail } from './services/emailService';
 
 // Define additional session properties
 declare module 'express-session' {
@@ -29,10 +30,18 @@ export async function hashPassword(password: string) {
 }
 
 export async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  // Check if the password is hashed (contains a '.' separator for hash.salt)
+  if (stored.includes('.')) {
+    // Handle hashed password
+    const [hashed, salt] = stored.split(".");
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } else {
+    // Handle plain text password (direct comparison for existing legacy accounts)
+    // Note: This is less secure and should be upgraded when users log in
+    return supplied === stored;
+  }
 }
 
 export function setupAuth(app: Express) {
@@ -68,6 +77,18 @@ export function setupAuth(app: Express) {
         if (!user || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Incorrect email or password" });
         } else {
+          // Upgrade plain text passwords to hashed passwords on login
+          if (!user.password.includes('.')) {
+            try {
+              // Hash the plain text password for better security
+              const hashedPassword = await hashPassword(password);
+              await storage.updateUser(user.id, { password: hashedPassword });
+              console.log(`Upgraded password hash for user: ${user.email}`);
+            } catch (err) {
+              console.error('Failed to upgrade password hash:', err);
+              // Continue login even if upgrade fails
+            }
+          }
           return done(null, user);
         }
       }
@@ -205,5 +226,97 @@ export function setupAuth(app: Express) {
       email: user.email,
       role: user.role
     });
+  });
+  
+  // Forgot password - request password reset
+  app.post("/api/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      // Find user and create reset token
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // For security reasons, don't reveal that the email doesn't exist
+        return res.status(200).json({ 
+          message: "If your email exists in our system, you will receive a password reset link." 
+        });
+      }
+      
+      // Generate reset token and save to user
+      const resetToken = await storage.createPasswordResetToken(email);
+      
+      // Send reset email
+      if (resetToken) {
+        await sendPasswordResetEmail(user, resetToken);
+      }
+      
+      // Always return success, even if email sending fails (security)
+      return res.status(200).json({ 
+        message: "If your email exists in our system, you will receive a password reset link." 
+      });
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      res.status(500).json({ message: "Password reset request failed" });
+    }
+  });
+  
+  // Verify token when user clicks on reset link
+  app.get("/api/verify-reset-token/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      // Check if token exists and is valid
+      const user = await storage.getUserByResetToken(token);
+      
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired reset token" });
+      }
+      
+      return res.status(200).json({ 
+        valid: true, 
+        message: "Token is valid"
+      });
+    } catch (error) {
+      console.error("Token verification error:", error);
+      res.status(500).json({ message: "Token verification failed" });
+    }
+  });
+  
+  // Reset password with token
+  app.post("/api/reset-password/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { password } = req.body;
+      
+      if (!password) {
+        return res.status(400).json({ message: "New password is required" });
+      }
+      
+      // Validate password strength
+      if (password.length < 8) {
+        return res.status(400).json({ 
+          message: "Password must be at least 8 characters long" 
+        });
+      }
+      
+      // Reset password
+      const success = await storage.resetPassword(token, password);
+      
+      if (!success) {
+        return res.status(400).json({ message: "Password reset failed. Token may be invalid or expired." });
+      }
+      
+      return res.status(200).json({ 
+        success: true, 
+        message: "Password has been reset successfully" 
+      });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      res.status(500).json({ message: "Password reset failed" });
+    }
   });
 }

@@ -35,6 +35,8 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").notNull().default('student'),
   phone: text("phone"),
   preferredCourse: courseTypeEnum("preferred_course"),
+  resetToken: text("reset_token"), // Password reset token
+  resetTokenExpiry: timestamp("reset_token_expiry"), // Token expiration
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

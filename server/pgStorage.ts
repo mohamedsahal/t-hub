@@ -18,6 +18,8 @@ import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
 import connectPg from 'connect-pg-simple';
 import { pool } from './db';
+import { randomBytes } from 'crypto';
+import { hashPassword } from './auth';
 
 export class PgStorage implements IStorage {
   public sessionStore: session.Store;
@@ -118,6 +120,78 @@ export class PgStorage implements IStorage {
   
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);
+  }
+  
+  async createPasswordResetToken(email: string): Promise<string | null> {
+    try {
+      // Find user by email
+      const user = await this.getUserByEmail(email);
+      if (!user) {
+        return null;
+      }
+
+      // Generate a secure random token
+      const resetToken = randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date();
+      resetTokenExpiry.setHours(resetTokenExpiry.getHours() + 1); // Token valid for 1 hour
+
+      // Save token to user record
+      await db.update(users)
+        .set({
+          resetToken,
+          resetTokenExpiry
+        })
+        .where(eq(users.id, user.id));
+
+      return resetToken;
+    } catch (error) {
+      console.error("Error creating password reset token:", error);
+      return null;
+    }
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    try {
+      const now = new Date();
+      const result = await db.select().from(users)
+        .where(
+          and(
+            eq(users.resetToken, token),
+            gte(users.resetTokenExpiry, now)
+          )
+        );
+      return result[0];
+    } catch (error) {
+      console.error("Error finding user by reset token:", error);
+      return undefined;
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<boolean> {
+    try {
+      // Find user with valid token
+      const user = await this.getUserByResetToken(token);
+      if (!user) {
+        return false;
+      }
+
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+
+      // Update user password and clear reset token
+      await db.update(users)
+        .set({
+          password: hashedPassword,
+          resetToken: null,
+          resetTokenExpiry: null
+        })
+        .where(eq(users.id, user.id));
+
+      return true;
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      return false;
+    }
   }
 
   // Course operations
