@@ -7,6 +7,13 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
+// Define additional session properties
+declare module 'express-session' {
+  interface SessionData {
+    rememberMe?: boolean;
+  }
+}
+
 declare global {
   namespace Express {
     interface User extends SelectUser {}
@@ -29,21 +36,26 @@ export async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // Use a stronger secret with multiple values for better security
+  const secret = process.env.SESSION_SECRET || 
+                "thub-innovation-secret-" + randomBytes(16).toString('hex');
+  
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "thub-innovation-secret",
-    resave: true,
-    saveUninitialized: true,
+    secret: secret,
+    resave: false, // Only save session if it was modified
+    saveUninitialized: false, // Don't create session until something is stored
     store: storage.sessionStore,
     cookie: {
-      // Set a default maxAge of 1 hour to prevent immediate session expiration
-      maxAge: 60 * 60 * 1000, // 1 hour
-      secure: false, // Set to false for development
-      httpOnly: true,
-      sameSite: 'lax'
+      // Set a longer default session for better user experience
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      secure: process.env.NODE_ENV === 'production', // Use secure in production
+      httpOnly: true, // Prevent client-side JS from accessing the cookie
+      sameSite: 'lax', // Better CSRF protection while allowing some cross-site requests
+      path: '/' // Ensures the cookie is sent with every request
     }
   };
 
-  app.set("trust proxy", 1);
+  app.set("trust proxy", 1); // Trust first proxy
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
@@ -110,33 +122,77 @@ export function setupAuth(app: Express) {
   app.post("/api/login", passport.authenticate("local"), (req, res) => {
     const user = req.user as SelectUser;
     
+    // Store the rememberMe setting in the session
+    req.session.rememberMe = !!req.body.rememberMe;
+    
     // If rememberMe is true, set a longer session
     if (req.body.rememberMe) {
       // Set cookie to expire in 30 days
       if (req.session.cookie) {
         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
       }
+    } else {
+      // For non-remembered sessions, use a shorter expiry time
+      if (req.session.cookie) {
+        req.session.cookie.maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      }
     }
     
-    // Explicitly save the session to ensure changes are persisted
-    req.session.save((err) => {
-      if (err) {
-        console.error("Session save error:", err);
+    // Regenerate the session ID to prevent session fixation attacks
+    req.session.regenerate((regenerateErr) => {
+      if (regenerateErr) {
+        console.error("Session regeneration error:", regenerateErr);
+        return res.status(500).json({ message: "Session error" });
       }
       
-      res.status(200).json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
+      // Re-login user after session regeneration
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("Re-login error:", loginErr);
+          return res.status(500).json({ message: "Authentication error" });
+        }
+        
+        // Explicitly save the session to ensure changes are persisted
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("Session save error:", saveErr);
+          }
+          
+          // Add rememberMe to response so client knows the setting was applied
+          res.status(200).json({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            rememberMe: !!req.body.rememberMe
+          });
+        });
       });
     });
   });
 
   app.post("/api/logout", (req, res, next) => {
+    // First, call logout to clear auth state
     req.logout((err) => {
       if (err) return next(err);
-      res.sendStatus(200);
+      
+      // Then destroy the session completely
+      req.session.destroy((destroyErr) => {
+        if (destroyErr) {
+          console.error("Session destruction error:", destroyErr);
+          return res.status(500).json({ message: "Logout failed" });
+        }
+        
+        // Clear the session cookie from the client
+        res.clearCookie('connect.sid', {
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax'
+        });
+        
+        res.status(200).json({ success: true });
+      });
     });
   });
 

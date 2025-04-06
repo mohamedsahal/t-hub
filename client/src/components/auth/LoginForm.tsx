@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import { getRememberedUser, saveRememberedUser, clearRememberedUser } from "@/lib/localStorage";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -30,7 +31,9 @@ const LoginForm = () => {
   const [, setLocation] = useLocation();
   const search = useSearch();
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberedEmail, setRememberedEmail] = useState<string | null>(null);
 
+  // Setup form with potential remembered email
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -40,8 +43,26 @@ const LoginForm = () => {
     },
   });
 
+  // Check for remembered user on component mount
+  useEffect(() => {
+    const email = getRememberedUser();
+    if (email) {
+      setRememberedEmail(email);
+      // Update the form with remembered email
+      form.setValue("email", email);
+      form.setValue("rememberMe", true);
+    }
+  }, [form]);
+
   const onSubmit = async (data: LoginFormValues) => {
     try {
+      // Handle remembered user storage
+      if (data.rememberMe) {
+        saveRememberedUser(data.email);
+      } else {
+        clearRememberedUser();
+      }
+      
       const user = await loginMutation.mutateAsync({
         email: data.email,
         password: data.password,
