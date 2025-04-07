@@ -55,6 +55,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -80,6 +81,7 @@ import {
   Info,
   Eye
 } from "lucide-react";
+import ExamSelector from "../courses/ExamSelector";
 
 // Schema for validating module form inputs
 const moduleSchema = z.object({
@@ -102,7 +104,8 @@ const sectionSchema = z.object({
   content: z.string().optional().or(z.literal('')),
   contentType: z.enum(["text", "video"]).default("text").optional(),
   isPublished: z.boolean().default(true),
-  type: z.enum(["lesson", "quiz", "exam"]).default("lesson")
+  type: z.enum(["lesson", "quiz", "exam"]).default("lesson"),
+  examId: z.number().optional()
 });
 
 type ModuleFormValues = z.infer<typeof moduleSchema>;
@@ -1615,15 +1618,50 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                 </TabsContent>
                 
                 <TabsContent value="exam" className="space-y-4 mt-0">
+                  <Alert className="mb-4 bg-blue-50 border-blue-200 text-blue-800">
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Using Existing Exams</AlertTitle>
+                    <AlertDescription>
+                      Select an existing exam from the exam management system, or create a new one.
+                    </AlertDescription>
+                  </Alert>
+                  
+                  <div className="mb-4">
+                    <Label className="mb-2 block">Select Existing Exam</Label>
+                    <ExamSelector 
+                      courseId={courseId}
+                      onExamSelect={(exam) => {
+                        if (exam) {
+                          // Pre-fill the form with exam data
+                          addSectionForm.setValue("title", `${exam.title} (${exam.type})`);
+                          addSectionForm.setValue("description", exam.description || "");
+                          // Store the exam ID in a hidden field
+                          addSectionForm.setValue("examId", exam.id);
+                        }
+                      }}
+                      showCreateOption={true}
+                      onCreateExam={() => {
+                        // Open exam creation page in a new tab
+                        window.open('/admin/exam-create', '_blank');
+                      }}
+                      placeholder="Search and select an exam"
+                    />
+                  </div>
+                  
+                  <Separator className="my-4" />
+                  
                   <FormField
                     control={addSectionForm.control}
                     name="title"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Exam Title</FormLabel>
+                        <FormLabel>Section Title</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Enter exam title" />
+                          <Input {...field} placeholder="Enter a title for this exam section" />
                         </FormControl>
+                        <FormDescription>
+                          This is the title displayed in the course outline
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -1633,11 +1671,11 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                     name="description"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Description</FormLabel>
+                        <FormLabel>Section Description</FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
-                            placeholder="Enter exam description" 
+                            placeholder="Enter a description for this exam section" 
                             rows={3}
                           />
                         </FormControl>
