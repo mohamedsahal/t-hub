@@ -46,6 +46,7 @@ import AlertsAdminPage from "@/pages/admin/Alerts";
 
 import { ProtectedRoute } from "./lib/protected-route";
 import { AdminProtectedRoute } from "./lib/admin-protected-route";
+import AuthVerificationWrapper from "@/lib/auth-verification-wrapper";
 import { AuthProvider } from "@/hooks/use-auth";
 import Header from "./components/layout/Header";
 import Footer from "./components/layout/Footer";
@@ -170,7 +171,9 @@ function App() {
           {/* Render header and footer only for non-admin pages */}
           {!isAdminPage && <Header />}
           <main className={`flex-grow ${!isAdminPage ? "" : "h-screen"}`}>
-            <Router />
+            <AuthVerificationWrapper>
+              <Router />
+            </AuthVerificationWrapper>
           </main>
           {!isAdminPage && <Footer />}
         </div>

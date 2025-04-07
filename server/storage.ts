@@ -43,11 +43,6 @@ export interface IStorage {
   verifyEmail(userId: number, code: string): Promise<boolean>;
   getUserByVerificationCode(code: string): Promise<User | undefined>;
   
-  // Email verification operations
-  createVerificationCode(userId: number): Promise<string>;
-  verifyEmail(userId: number, code: string): Promise<boolean>;
-  getUserByVerificationCode(code: string): Promise<User | undefined>;
-  
   // Course operations
   getCourse(id: number): Promise<Course | undefined>;
   getCoursesByType(type: string): Promise<Course[]>;

@@ -18,7 +18,7 @@ export async function addVerificationFieldsToUsers() {
     `);
     
     // If column exists, skip migration
-    if (checkTableResult.length > 0) {
+    if (checkTableResult.rows && checkTableResult.rows.length > 0) {
       log('migration', 'Email verification fields already exist');
       return;
     }
@@ -44,15 +44,13 @@ export async function addVerificationFieldsToUsers() {
   }
 }
 
-// Run migration when this file is executed directly
-if (require.main === module) {
-  addVerificationFieldsToUsers()
-    .then(() => {
-      log('migration', 'Verification fields migration completed successfully');
-      process.exit(0);
-    })
-    .catch(error => {
-      log('migration', `Migration failed: ${error}`);
-      process.exit(1);
-    });
+// For direct execution (not used in this project setup)
+export async function runMigration() {
+  try {
+    await addVerificationFieldsToUsers();
+    log('migration', 'Verification fields migration completed successfully');
+  } catch (error) {
+    log('migration', `Migration failed: ${error}`);
+    throw error;
+  }
 }
