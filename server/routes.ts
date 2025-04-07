@@ -12,7 +12,8 @@ import {
   insertEventSchema, insertLandingContentSchema, insertCourseSectionSchema,
   insertCourseModuleSchema, insertExamSchema, insertExamQuestionSchema,
   insertExamResultSchema, insertSemesterSchema, insertCohortSchema,
-  insertCohortEnrollmentSchema, insertAlertSchema
+  insertCohortEnrollmentSchema, insertAlertSchema, insertSpecialistProgramSchema,
+  insertSpecialistProgramCourseSchema, insertSpecialistProgramEnrollmentSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { fromZodError } from "zod-validation-error";
@@ -4434,6 +4435,302 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error revoking user sessions:', error);
       res.status(500).json({ message: "Failed to revoke user sessions" });
+    }
+  });
+
+  // Specialist Program routes
+  app.get("/api/specialist-programs", async (req, res) => {
+    try {
+      const active = req.query.active === 'true';
+      let programs;
+      
+      if (active) {
+        programs = await storage.getActiveSpecialistPrograms();
+      } else {
+        programs = await storage.getAllSpecialistPrograms();
+      }
+      
+      res.json(programs);
+    } catch (error) {
+      console.error("Error fetching specialist programs:", error);
+      res.status(500).json({ message: "Error fetching specialist programs" });
+    }
+  });
+
+  app.get("/api/specialist-programs/:id", async (req, res) => {
+    try {
+      const programId = parseInt(req.params.id);
+      const program = await storage.getSpecialistProgram(programId);
+      
+      if (!program) {
+        return res.status(404).json({ message: "Specialist program not found" });
+      }
+      
+      res.json(program);
+    } catch (error) {
+      console.error("Error fetching specialist program:", error);
+      res.status(500).json({ message: "Error fetching specialist program" });
+    }
+  });
+
+  app.get("/api/specialist-programs/code/:code", async (req, res) => {
+    try {
+      const programCode = req.params.code;
+      const program = await storage.getSpecialistProgramByCode(programCode);
+      
+      if (!program) {
+        return res.status(404).json({ message: "Specialist program not found" });
+      }
+      
+      res.json(program);
+    } catch (error) {
+      console.error("Error fetching specialist program by code:", error);
+      res.status(500).json({ message: "Error fetching specialist program" });
+    }
+  });
+
+  app.post("/api/specialist-programs", checkRole(["admin"]), async (req, res) => {
+    try {
+      const programData = insertSpecialistProgramSchema.parse(req.body);
+      const program = await storage.createSpecialistProgram(programData);
+      
+      res.status(201).json(program);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/specialist-programs/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const programId = parseInt(req.params.id);
+      const program = await storage.getSpecialistProgram(programId);
+      
+      if (!program) {
+        return res.status(404).json({ message: "Specialist program not found" });
+      }
+      
+      const programData = req.body;
+      const updatedProgram = await storage.updateSpecialistProgram(programId, programData);
+      
+      res.json(updatedProgram);
+    } catch (error) {
+      console.error("Error updating specialist program:", error);
+      res.status(500).json({ message: "Error updating specialist program" });
+    }
+  });
+
+  app.delete("/api/specialist-programs/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const programId = parseInt(req.params.id);
+      const program = await storage.getSpecialistProgram(programId);
+      
+      if (!program) {
+        return res.status(404).json({ message: "Specialist program not found" });
+      }
+      
+      const success = await storage.deleteSpecialistProgram(programId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete specialist program" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting specialist program:", error);
+      res.status(500).json({ message: "Error deleting specialist program" });
+    }
+  });
+
+  // Specialist Program Course routes
+  app.get("/api/specialist-programs/:programId/courses", async (req, res) => {
+    try {
+      const programId = parseInt(req.params.programId);
+      const programCourses = await storage.getSpecialistProgramCoursesByProgram(programId);
+      
+      // For each program course, get the course details
+      const coursesWithDetails = await Promise.all(
+        programCourses.map(async (programCourse) => {
+          const course = await storage.getCourse(programCourse.courseId);
+          return {
+            ...programCourse,
+            course
+          };
+        })
+      );
+      
+      res.json(coursesWithDetails);
+    } catch (error) {
+      console.error("Error fetching specialist program courses:", error);
+      res.status(500).json({ message: "Error fetching specialist program courses" });
+    }
+  });
+
+  app.post("/api/specialist-program-courses", checkRole(["admin"]), async (req, res) => {
+    try {
+      const programCourseData = insertSpecialistProgramCourseSchema.parse(req.body);
+      const programCourse = await storage.createSpecialistProgramCourse(programCourseData);
+      
+      res.status(201).json(programCourse);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/specialist-program-courses/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const programCourseId = parseInt(req.params.id);
+      const programCourse = await storage.getSpecialistProgramCourse(programCourseId);
+      
+      if (!programCourse) {
+        return res.status(404).json({ message: "Specialist program course not found" });
+      }
+      
+      const programCourseData = req.body;
+      const updatedProgramCourse = await storage.updateSpecialistProgramCourse(programCourseId, programCourseData);
+      
+      res.json(updatedProgramCourse);
+    } catch (error) {
+      console.error("Error updating specialist program course:", error);
+      res.status(500).json({ message: "Error updating specialist program course" });
+    }
+  });
+
+  app.delete("/api/specialist-program-courses/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const programCourseId = parseInt(req.params.id);
+      const programCourse = await storage.getSpecialistProgramCourse(programCourseId);
+      
+      if (!programCourse) {
+        return res.status(404).json({ message: "Specialist program course not found" });
+      }
+      
+      const success = await storage.deleteSpecialistProgramCourse(programCourseId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete specialist program course" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting specialist program course:", error);
+      res.status(500).json({ message: "Error deleting specialist program course" });
+    }
+  });
+
+  // Specialist Program Enrollment routes
+  app.get("/api/specialist-program-enrollments", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      let enrollments;
+      
+      if (user.role === "student") {
+        enrollments = await storage.getSpecialistProgramEnrollmentsByUser(user.id);
+      } else if (user.role === "admin") {
+        // For admin, get all enrollments
+        const allPrograms = await storage.getAllSpecialistPrograms();
+        
+        enrollments = [];
+        for (const program of allPrograms) {
+          const programEnrollments = await storage.getSpecialistProgramEnrollmentsByProgram(program.id);
+          enrollments.push(...programEnrollments);
+        }
+      }
+      
+      res.json(enrollments);
+    } catch (error) {
+      console.error("Error fetching specialist program enrollments:", error);
+      res.status(500).json({ message: "Error fetching specialist program enrollments" });
+    }
+  });
+
+  app.get("/api/specialist-programs/:programId/enrollments", checkRole(["admin"]), async (req, res) => {
+    try {
+      const programId = parseInt(req.params.programId);
+      const enrollments = await storage.getSpecialistProgramEnrollmentsByProgram(programId);
+      
+      // Get user details for each enrollment
+      const enrollmentsWithDetails = await Promise.all(
+        enrollments.map(async (enrollment) => {
+          const user = await storage.getUser(enrollment.userId);
+          return {
+            ...enrollment,
+            user: user ? { 
+              id: user.id, 
+              name: user.name, 
+              email: user.email 
+            } : null
+          };
+        })
+      );
+      
+      res.json(enrollmentsWithDetails);
+    } catch (error) {
+      console.error("Error fetching specialist program enrollments by program:", error);
+      res.status(500).json({ message: "Error fetching specialist program enrollments" });
+    }
+  });
+
+  app.post("/api/specialist-program-enrollments", isAuthenticated, async (req, res) => {
+    try {
+      const enrollmentData = insertSpecialistProgramEnrollmentSchema.parse(req.body);
+      const user = req.user as any;
+      
+      // Students can only enroll themselves
+      if (user.role === "student" && enrollmentData.userId !== user.id) {
+        return res.status(403).json({ message: "You can only enroll yourself" });
+      }
+      
+      const enrollment = await storage.createSpecialistProgramEnrollment(enrollmentData);
+      res.status(201).json(enrollment);
+    } catch (error) {
+      handleZodError(error, res);
+    }
+  });
+
+  app.put("/api/specialist-program-enrollments/:id", isAuthenticated, async (req, res) => {
+    try {
+      const enrollmentId = parseInt(req.params.id);
+      const enrollment = await storage.getSpecialistProgramEnrollment(enrollmentId);
+      
+      if (!enrollment) {
+        return res.status(404).json({ message: "Specialist program enrollment not found" });
+      }
+      
+      const user = req.user as any;
+      // Students can only update their own enrollments
+      if (user.role === "student" && enrollment.userId !== user.id) {
+        return res.status(403).json({ message: "Not authorized to update this enrollment" });
+      }
+      
+      const enrollmentData = req.body;
+      const updatedEnrollment = await storage.updateSpecialistProgramEnrollment(enrollmentId, enrollmentData);
+      
+      res.json(updatedEnrollment);
+    } catch (error) {
+      console.error("Error updating specialist program enrollment:", error);
+      res.status(500).json({ message: "Error updating specialist program enrollment" });
+    }
+  });
+
+  app.delete("/api/specialist-program-enrollments/:id", checkRole(["admin"]), async (req, res) => {
+    try {
+      const enrollmentId = parseInt(req.params.id);
+      const enrollment = await storage.getSpecialistProgramEnrollment(enrollmentId);
+      
+      if (!enrollment) {
+        return res.status(404).json({ message: "Specialist program enrollment not found" });
+      }
+      
+      const success = await storage.deleteSpecialistProgramEnrollment(enrollmentId);
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to delete specialist program enrollment" });
+      }
+      
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting specialist program enrollment:", error);
+      res.status(500).json({ message: "Error deleting specialist program enrollment" });
     }
   });
 

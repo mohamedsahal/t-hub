@@ -20,7 +20,8 @@ export const questionTypeEnum = pgEnum('question_type', ['multiple_choice', 'tru
 export const productTypeEnum = pgEnum('product_type', [
   'restaurant', 'school', 'laundry', 'inventory', 
   'task', 'hotel', 'hospital', 'dental', 
-  'realestate', 'travel', 'shop', 'custom'
+  'realestate', 'travel', 'shop', 'custom',
+  'specialist_program'
 ]);
 export const contentTypeEnum = pgEnum('content_type', ['hero', 'about', 'feature', 'testimonial', 'event', 'partner', 'contact']);
 export const cohortStatusEnum = pgEnum('cohort_status', ['active', 'completed', 'upcoming']);
@@ -316,6 +317,45 @@ export const cohortEnrollments = pgTable("cohort_enrollments", {
   studentId: text("student_id"), // Custom student ID in the format PREFIX-YEAR-NUMBER
 });
 
+// Specialist Programs table
+export const specialistPrograms = pgTable("specialist_programs", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(), // A short code for the program, e.g., "WEBDEV"
+  description: text("description").notNull(),
+  price: doublePrecision("price").notNull(), // Package price (usually less than sum of individual courses)
+  duration: integer("duration").notNull(), // in weeks
+  imageUrl: text("image_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  isVisible: boolean("is_visible").default(true).notNull(),
+  hasDiscounted: boolean("has_discounted").default(false),
+  discountedPrice: doublePrecision("discounted_price"),
+  discountExpiryDate: timestamp("discount_expiry_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Specialist Program Courses junction table
+export const specialistProgramCourses = pgTable("specialist_program_courses", {
+  id: serial("id").primaryKey(),
+  programId: integer("program_id").references(() => specialistPrograms.id).notNull(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  order: integer("order").default(1).notNull(), // The order in which courses should be taken
+  isRequired: boolean("is_required").default(true).notNull(), // Whether this course is required for program completion
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Specialist Program Enrollments
+export const specialistProgramEnrollments = pgTable("specialist_program_enrollments", {
+  id: serial("id").primaryKey(),
+  programId: integer("program_id").references(() => specialistPrograms.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  status: enrollmentStatusEnum("status").default('active').notNull(),
+  enrollmentDate: timestamp("enrollment_date").defaultNow().notNull(),
+  completionDate: timestamp("completion_date"),
+  paymentId: integer("payment_id"), // Optional link to a payment
+});
+
 // Alerts/Notifications table
 export const alerts = pgTable("alerts", {
   id: serial("id").primaryKey(),
@@ -402,6 +442,20 @@ export const insertCohortSchema = createInsertSchema(cohorts)
     endDate: z.string().or(z.date()),
   });
 export const insertCohortEnrollmentSchema = createInsertSchema(cohortEnrollments).omit({ id: true, enrollmentDate: true });
+
+// Specialist Program Schemas
+export const insertSpecialistProgramSchema = createInsertSchema(specialistPrograms)
+  .omit({ id: true, createdAt: true, updatedAt: true })
+  .extend({
+    discountExpiryDate: z.string().or(z.date()).optional().nullable(),
+  });
+
+export const insertSpecialistProgramCourseSchema = createInsertSchema(specialistProgramCourses)
+  .omit({ id: true, createdAt: true });
+
+export const insertSpecialistProgramEnrollmentSchema = createInsertSchema(specialistProgramEnrollments)
+  .omit({ id: true, enrollmentDate: true, completionDate: true });
+  
 export const insertAlertSchema = createInsertSchema(alerts).omit({ id: true, createdAt: true, updatedAt: true })
   .extend({
     startDate: z.string().or(z.date()).optional().nullable(),
@@ -470,6 +524,16 @@ export type InsertCohortEnrollment = z.infer<typeof insertCohortEnrollmentSchema
 
 export type Alert = typeof alerts.$inferSelect;
 export type InsertAlert = z.infer<typeof insertAlertSchema>;
+
+// Specialist Program Types
+export type SpecialistProgram = typeof specialistPrograms.$inferSelect;
+export type InsertSpecialistProgram = z.infer<typeof insertSpecialistProgramSchema>;
+
+export type SpecialistProgramCourse = typeof specialistProgramCourses.$inferSelect;
+export type InsertSpecialistProgramCourse = z.infer<typeof insertSpecialistProgramCourseSchema>;
+
+export type SpecialistProgramEnrollment = typeof specialistProgramEnrollments.$inferSelect;
+export type InsertSpecialistProgramEnrollment = z.infer<typeof insertSpecialistProgramEnrollmentSchema>;
 
 // User Sessions and Device Tracking
 export const userSessions = pgTable("user_sessions", {
@@ -546,6 +610,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   testimonials: many(testimonials),
   sessions: many(userSessions),
   locationHistory: many(userLocationHistory),
+  programEnrollments: many(specialistProgramEnrollments),
 }));
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
@@ -562,6 +627,7 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
   modules: many(courseModules),
   sections: many(courseSections),
   exams: many(exams),
+  specialistPrograms: many(specialistProgramCourses),
 }));
 
 export const paymentsRelations = relations(payments, ({ one, many }) => ({
@@ -705,6 +771,34 @@ export const cohortEnrollmentsRelations = relations(cohortEnrollments, ({ one })
   }),
   user: one(users, {
     fields: [cohortEnrollments.userId],
+    references: [users.id]
+  })
+}));
+
+// Specialist Program Relations
+export const specialistProgramsRelations = relations(specialistPrograms, ({ many }) => ({
+  courses: many(specialistProgramCourses),
+  enrollments: many(specialistProgramEnrollments)
+}));
+
+export const specialistProgramCoursesRelations = relations(specialistProgramCourses, ({ one }) => ({
+  program: one(specialistPrograms, {
+    fields: [specialistProgramCourses.programId],
+    references: [specialistPrograms.id]
+  }),
+  course: one(courses, {
+    fields: [specialistProgramCourses.courseId],
+    references: [courses.id]
+  })
+}));
+
+export const specialistProgramEnrollmentsRelations = relations(specialistProgramEnrollments, ({ one }) => ({
+  program: one(specialistPrograms, {
+    fields: [specialistProgramEnrollments.programId],
+    references: [specialistPrograms.id]
+  }),
+  user: one(users, {
+    fields: [specialistProgramEnrollments.userId],
     references: [users.id]
   })
 }));

@@ -20,7 +20,10 @@ import {
   cohortEnrollments, type CohortEnrollment, type InsertCohortEnrollment,
   alerts, type Alert, type InsertAlert,
   userSessions, type UserSession, type InsertUserSession,
-  userLocationHistory, type UserLocationHistory, type InsertUserLocationHistory
+  userLocationHistory, type UserLocationHistory, type InsertUserLocationHistory,
+  specialistPrograms, type SpecialistProgram, type InsertSpecialistProgram,
+  specialistProgramCourses, type SpecialistProgramCourse, type InsertSpecialistProgramCourse,
+  specialistProgramEnrollments, type SpecialistProgramEnrollment, type InsertSpecialistProgramEnrollment
 } from "@shared/schema";
 import session from "express-session";
 
@@ -233,6 +236,31 @@ export interface IStorage {
   updateAlert(id: number, alert: Partial<Alert>): Promise<Alert | undefined>;
   deleteAlert(id: number): Promise<boolean>;
   
+  // Specialist Program operations
+  getSpecialistProgram(id: number): Promise<SpecialistProgram | undefined>;
+  getSpecialistProgramByCode(code: string): Promise<SpecialistProgram | undefined>;
+  getAllSpecialistPrograms(): Promise<SpecialistProgram[]>;
+  getActiveSpecialistPrograms(): Promise<SpecialistProgram[]>;
+  createSpecialistProgram(program: InsertSpecialistProgram): Promise<SpecialistProgram>;
+  updateSpecialistProgram(id: number, program: Partial<SpecialistProgram>): Promise<SpecialistProgram | undefined>;
+  deleteSpecialistProgram(id: number): Promise<boolean>;
+  
+  // Specialist Program Course operations
+  getSpecialistProgramCourse(id: number): Promise<SpecialistProgramCourse | undefined>;
+  getSpecialistProgramCoursesByProgram(programId: number): Promise<SpecialistProgramCourse[]>;
+  getSpecialistProgramCoursesByCourse(courseId: number): Promise<SpecialistProgramCourse[]>;
+  createSpecialistProgramCourse(programCourse: InsertSpecialistProgramCourse): Promise<SpecialistProgramCourse>;
+  updateSpecialistProgramCourse(id: number, programCourse: Partial<SpecialistProgramCourse>): Promise<SpecialistProgramCourse | undefined>;
+  deleteSpecialistProgramCourse(id: number): Promise<boolean>;
+  
+  // Specialist Program Enrollment operations
+  getSpecialistProgramEnrollment(id: number): Promise<SpecialistProgramEnrollment | undefined>;
+  getSpecialistProgramEnrollmentsByProgram(programId: number): Promise<SpecialistProgramEnrollment[]>;
+  getSpecialistProgramEnrollmentsByUser(userId: number): Promise<SpecialistProgramEnrollment[]>;
+  createSpecialistProgramEnrollment(enrollment: InsertSpecialistProgramEnrollment): Promise<SpecialistProgramEnrollment>;
+  updateSpecialistProgramEnrollment(id: number, enrollment: Partial<SpecialistProgramEnrollment>): Promise<SpecialistProgramEnrollment | undefined>;
+  deleteSpecialistProgramEnrollment(id: number): Promise<boolean>;
+  
   // User Session operations
   getUserSession(id: number): Promise<UserSession | undefined>;
   getUserSessionBySessionId(sessionId: string): Promise<UserSession | undefined>;
@@ -278,6 +306,9 @@ export class MemStorage implements IStorage {
   public alerts: Map<number, Alert>;
   public userSessions: Map<number, UserSession>;
   public userLocationHistory: Map<number, UserLocationHistory>;
+  public specialistPrograms: Map<number, SpecialistProgram>;
+  public specialistProgramCourses: Map<number, SpecialistProgramCourse>;
+  public specialistProgramEnrollments: Map<number, SpecialistProgramEnrollment>;
   
   // Making counters public for session tracking methods
   public userIdCounter: number;
@@ -302,6 +333,9 @@ export class MemStorage implements IStorage {
   public alertIdCounter: number;
   public userSessionIdCounter: number;
   public userLocationHistoryIdCounter: number;
+  public specialistProgramIdCounter: number;
+  public specialistProgramCourseIdCounter: number;
+  public specialistProgramEnrollmentIdCounter: number;
   
   public sessionStore: session.Store;
 
@@ -328,6 +362,9 @@ export class MemStorage implements IStorage {
     this.alerts = new Map();
     this.userSessions = new Map();
     this.userLocationHistory = new Map();
+    this.specialistPrograms = new Map();
+    this.specialistProgramCourses = new Map();
+    this.specialistProgramEnrollments = new Map();
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
@@ -351,6 +388,9 @@ export class MemStorage implements IStorage {
     this.alertIdCounter = 1;
     this.userSessionIdCounter = 1;
     this.userLocationHistoryIdCounter = 1;
+    this.specialistProgramIdCounter = 1;
+    this.specialistProgramCourseIdCounter = 1;
+    this.specialistProgramEnrollmentIdCounter = 1;
     
     // Create the memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -560,6 +600,97 @@ export class MemStorage implements IStorage {
       imageUrl: "https://example.com/certificates.jpg",
       isActive: true,
       sortOrder: 3
+    });
+
+    // Create specialist programs
+    const webDevelopmentProgram = this.createSpecialistProgram({
+      name: "Web Development Specialist",
+      description: "Comprehensive program covering frontend and backend web development technologies",
+      code: "WD-SPEC-2025",
+      price: 1200,
+      duration: 6, // months
+      discountPercentage: 10,
+      imageUrl: "https://example.com/web-dev.jpg",
+      isActive: true,
+      level: "intermediate",
+      outcomes: "Build full-stack web applications, Implement responsive designs, Work with APIs",
+      prerequisites: "Basic computer knowledge, Introduction to programming",
+      isFeatured: true
+    });
+
+    const dataAnalyticsProgram = this.createSpecialistProgram({
+      name: "Data Analytics Specialist",
+      description: "Master data collection, analysis, and visualization techniques for informed decision-making",
+      code: "DA-SPEC-2025",
+      price: 1500,
+      duration: 8, // months
+      discountPercentage: 5,
+      imageUrl: "https://example.com/data-analytics.jpg",
+      isActive: true,
+      level: "advanced",
+      outcomes: "Analyze large datasets, Create effective data visualizations, Make data-driven recommendations",
+      prerequisites: "Basic statistics, Experience with spreadsheets",
+      isFeatured: true
+    });
+
+    const cybersecurityProgram = this.createSpecialistProgram({
+      name: "Cybersecurity Specialist",
+      description: "Learn to protect systems and networks from digital attacks and implement security measures",
+      code: "CS-SPEC-2025",
+      price: 1800,
+      duration: 9, // months
+      discountPercentage: 0,
+      imageUrl: "https://example.com/cybersecurity.jpg",
+      startDate: new Date(2025, 4, 15), // May 15, 2025
+      endDate: new Date(2026, 1, 15), // February 15, 2026
+      isActive: true,
+      level: "advanced",
+      outcomes: "Perform security assessments, Implement security controls, Respond to security incidents",
+      prerequisites: "Networking fundamentals, Basic systems administration",
+      totalSeats: 25,
+      availableSeats: 25,
+      isFeatured: true
+    });
+
+    // Link courses to specialist programs
+    // For Web Development program
+    const frontendCourse = this.courses.get(1); // Assuming first course is related to frontend
+    const backendCourse = this.courses.get(2); // Assuming second course is related to backend
+    
+    if (frontendCourse) {
+      this.createSpecialistProgramCourse({
+        programId: webDevelopmentProgram.id,
+        courseId: frontendCourse.id,
+        order: 1
+      });
+    }
+    
+    if (backendCourse) {
+      this.createSpecialistProgramCourse({
+        programId: webDevelopmentProgram.id,
+        courseId: backendCourse.id,
+        order: 2
+      });
+    }
+
+    // For Data Analytics program
+    const analyticsCourse = this.courses.get(3); // Assuming third course is related to analytics
+    
+    if (analyticsCourse) {
+      this.createSpecialistProgramCourse({
+        programId: dataAnalyticsProgram.id,
+        courseId: analyticsCourse.id,
+        order: 1
+      });
+    }
+
+    // Create sample enrollments
+    this.createSpecialistProgramEnrollment({
+      userId: 3, // Assuming student user is ID 3
+      programId: webDevelopmentProgram.id,
+      status: "active",
+      startDate: new Date(2025, 2, 1), // March 1, 2025
+      completionPercentage: 25
     });
   }
 
@@ -2145,6 +2276,168 @@ export class MemStorage implements IStorage {
     }
     
     return true;
+  }
+
+  // Specialist Program operations
+  async getSpecialistProgram(id: number): Promise<SpecialistProgram | undefined> {
+    return this.specialistPrograms.get(id);
+  }
+
+  async getSpecialistProgramByCode(code: string): Promise<SpecialistProgram | undefined> {
+    return Array.from(this.specialistPrograms.values()).find(program => program.code === code);
+  }
+
+  async getAllSpecialistPrograms(): Promise<SpecialistProgram[]> {
+    return Array.from(this.specialistPrograms.values());
+  }
+
+  async getActiveSpecialistPrograms(): Promise<SpecialistProgram[]> {
+    return Array.from(this.specialistPrograms.values()).filter(program => program.isActive);
+  }
+
+  async createSpecialistProgram(program: InsertSpecialistProgram): Promise<SpecialistProgram> {
+    const id = this.specialistProgramIdCounter++;
+    const newProgram: SpecialistProgram = {
+      id,
+      name: program.name,
+      description: program.description || null,
+      code: program.code,
+      price: program.price,
+      duration: program.duration,
+      discountPercentage: program.discountPercentage || 0,
+      imageUrl: program.imageUrl || null,
+      startDate: program.startDate || null,
+      endDate: program.endDate || null,
+      isActive: program.isActive !== undefined ? program.isActive : true,
+      createdAt: new Date(),
+      totalSeats: program.totalSeats || null,
+      availableSeats: program.availableSeats || null,
+      prerequisites: program.prerequisites || null,
+      outcomes: program.outcomes || null,
+      level: program.level || "beginner",
+      isFeatured: program.isFeatured || false
+    };
+    this.specialistPrograms.set(id, newProgram);
+    return newProgram;
+  }
+
+  async updateSpecialistProgram(id: number, programData: Partial<SpecialistProgram>): Promise<SpecialistProgram | undefined> {
+    const program = this.specialistPrograms.get(id);
+    if (!program) return undefined;
+    
+    const updatedProgram = { ...program, ...programData };
+    this.specialistPrograms.set(id, updatedProgram);
+    return updatedProgram;
+  }
+
+  async deleteSpecialistProgram(id: number): Promise<boolean> {
+    if (!this.specialistPrograms.has(id)) return false;
+    
+    // Delete related program courses and enrollments
+    const programCourses = await this.getSpecialistProgramCoursesByProgram(id);
+    for (const programCourse of programCourses) {
+      await this.deleteSpecialistProgramCourse(programCourse.id);
+    }
+    
+    const programEnrollments = await this.getSpecialistProgramEnrollmentsByProgram(id);
+    for (const enrollment of programEnrollments) {
+      await this.deleteSpecialistProgramEnrollment(enrollment.id);
+    }
+    
+    return this.specialistPrograms.delete(id);
+  }
+
+  // Specialist Program Course operations
+  async getSpecialistProgramCourse(id: number): Promise<SpecialistProgramCourse | undefined> {
+    return this.specialistProgramCourses.get(id);
+  }
+
+  async getSpecialistProgramCoursesByProgram(programId: number): Promise<SpecialistProgramCourse[]> {
+    return Array.from(this.specialistProgramCourses.values()).filter(
+      programCourse => programCourse.programId === programId
+    );
+  }
+
+  async getSpecialistProgramCoursesByCourse(courseId: number): Promise<SpecialistProgramCourse[]> {
+    return Array.from(this.specialistProgramCourses.values()).filter(
+      programCourse => programCourse.courseId === courseId
+    );
+  }
+
+  async createSpecialistProgramCourse(programCourse: InsertSpecialistProgramCourse): Promise<SpecialistProgramCourse> {
+    const id = this.specialistProgramCourseIdCounter++;
+    const newProgramCourse: SpecialistProgramCourse = {
+      id,
+      programId: programCourse.programId,
+      courseId: programCourse.courseId,
+      order: programCourse.order || 0,
+      createdAt: new Date()
+    };
+    this.specialistProgramCourses.set(id, newProgramCourse);
+    return newProgramCourse;
+  }
+
+  async updateSpecialistProgramCourse(id: number, programCourseData: Partial<SpecialistProgramCourse>): Promise<SpecialistProgramCourse | undefined> {
+    const programCourse = this.specialistProgramCourses.get(id);
+    if (!programCourse) return undefined;
+    
+    const updatedProgramCourse = { ...programCourse, ...programCourseData };
+    this.specialistProgramCourses.set(id, updatedProgramCourse);
+    return updatedProgramCourse;
+  }
+
+  async deleteSpecialistProgramCourse(id: number): Promise<boolean> {
+    if (!this.specialistProgramCourses.has(id)) return false;
+    return this.specialistProgramCourses.delete(id);
+  }
+
+  // Specialist Program Enrollment operations
+  async getSpecialistProgramEnrollment(id: number): Promise<SpecialistProgramEnrollment | undefined> {
+    return this.specialistProgramEnrollments.get(id);
+  }
+
+  async getSpecialistProgramEnrollmentsByProgram(programId: number): Promise<SpecialistProgramEnrollment[]> {
+    return Array.from(this.specialistProgramEnrollments.values()).filter(
+      enrollment => enrollment.programId === programId
+    );
+  }
+
+  async getSpecialistProgramEnrollmentsByUser(userId: number): Promise<SpecialistProgramEnrollment[]> {
+    return Array.from(this.specialistProgramEnrollments.values()).filter(
+      enrollment => enrollment.userId === userId
+    );
+  }
+
+  async createSpecialistProgramEnrollment(enrollment: InsertSpecialistProgramEnrollment): Promise<SpecialistProgramEnrollment> {
+    const id = this.specialistProgramEnrollmentIdCounter++;
+    const newEnrollment: SpecialistProgramEnrollment = {
+      id,
+      userId: enrollment.userId,
+      programId: enrollment.programId,
+      paymentId: enrollment.paymentId || null,
+      status: enrollment.status || "active",
+      startDate: enrollment.startDate || new Date(),
+      endDate: enrollment.endDate || null,
+      createdAt: new Date(),
+      completionPercentage: enrollment.completionPercentage || 0,
+      notes: enrollment.notes || null
+    };
+    this.specialistProgramEnrollments.set(id, newEnrollment);
+    return newEnrollment;
+  }
+
+  async updateSpecialistProgramEnrollment(id: number, enrollmentData: Partial<SpecialistProgramEnrollment>): Promise<SpecialistProgramEnrollment | undefined> {
+    const enrollment = this.specialistProgramEnrollments.get(id);
+    if (!enrollment) return undefined;
+    
+    const updatedEnrollment = { ...enrollment, ...enrollmentData };
+    this.specialistProgramEnrollments.set(id, updatedEnrollment);
+    return updatedEnrollment;
+  }
+
+  async deleteSpecialistProgramEnrollment(id: number): Promise<boolean> {
+    if (!this.specialistProgramEnrollments.has(id)) return false;
+    return this.specialistProgramEnrollments.delete(id);
   }
 }
 
