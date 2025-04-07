@@ -57,7 +57,7 @@ export default function SessionManagement() {
     queryKey: ['/api/admin/sessions'],
     queryFn: async () => {
       const response = await apiRequest('/api/admin/sessions');
-      return response.data as UserSession[];
+      return response as UserSession[];
     }
   });
 
@@ -66,7 +66,7 @@ export default function SessionManagement() {
     queryKey: ['/api/admin/sessions/suspicious'],
     queryFn: async () => {
       const response = await apiRequest('/api/admin/sessions/suspicious');
-      return response.data as UserSession[];
+      return response as UserSession[];
     }
   });
 
@@ -76,7 +76,7 @@ export default function SessionManagement() {
     queryFn: async () => {
       if (!selectedUserId) return [];
       const response = await apiRequest(`/api/admin/users/${selectedUserId}/sessions`);
-      return response.data as UserSession[];
+      return response as UserSession[];
     },
     enabled: !!selectedUserId
   });

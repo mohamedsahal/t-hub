@@ -4201,7 +4201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      res.json({ data: sessionsWithUserInfo });
+      res.json(sessionsWithUserInfo);
     } catch (error) {
       console.error('Error fetching sessions:', error);
       res.status(500).json({ message: "Failed to fetch sessions" });
@@ -4226,7 +4226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      res.json({ data: sessionsWithUserInfo });
+      res.json(sessionsWithUserInfo);
     } catch (error) {
       console.error('Error fetching suspicious sessions:', error);
       res.status(500).json({ message: "Failed to fetch suspicious sessions" });
@@ -4257,7 +4257,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userEmail: user.email
       }));
       
-      res.json({ data: sessionsWithUserInfo });
+      res.json(sessionsWithUserInfo);
     } catch (error) {
       console.error('Error fetching user sessions:', error);
       res.status(500).json({ message: "Failed to fetch user sessions" });
