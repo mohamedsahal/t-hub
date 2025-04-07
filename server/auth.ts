@@ -483,13 +483,30 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/logout", async (req, res, next) => {
+    // Remember user info before destroying session
+    const isAuthenticated = req.isAuthenticated();
+    const sessionID = req.sessionID;
+    const user = req.user as SelectUser | undefined;
+    
+    // First respond to the client immediately for a faster logout experience
+    // Clear the session cookie from the client
+    res.clearCookie('connect.sid', {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax'
+    });
+    
+    // Send success response immediately
+    res.status(200).json({ success: true });
+    
+    // Then handle the server-side cleanup asynchronously
     try {
-      // If user is authenticated, update their session status in the database
-      if (req.isAuthenticated() && req.sessionID) {
-        const user = req.user as SelectUser;
+      // If user was authenticated, update their session status in the database
+      if (isAuthenticated && sessionID && user) {
         try {
           // Mark session as inactive in the database
-          const session = await storage.getUserSessionBySessionId(req.sessionID);
+          const session = await storage.getUserSessionBySessionId(sessionID);
           if (session) {
             await storage.updateUserSession(session.id, { 
               status: 'inactive' as const,
@@ -509,25 +526,19 @@ export function setupAuth(app: Express) {
 
     // Call logout to clear auth state
     req.logout((err) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("Logout error:", err);
+        return;
+      }
       
       // Then destroy the session completely
-      req.session.destroy((destroyErr) => {
-        if (destroyErr) {
-          console.error("Session destruction error:", destroyErr);
-          return res.status(500).json({ message: "Logout failed" });
-        }
-        
-        // Clear the session cookie from the client
-        res.clearCookie('connect.sid', {
-          path: '/',
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax'
+      if (req.session) {
+        req.session.destroy((destroyErr) => {
+          if (destroyErr) {
+            console.error("Session destruction error:", destroyErr);
+          }
         });
-        
-        res.status(200).json({ success: true });
-      });
+      }
     });
   });
 
