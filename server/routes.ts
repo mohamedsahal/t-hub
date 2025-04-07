@@ -4232,6 +4232,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch suspicious sessions" });
     }
   });
+  
+  // Get session statistics for admin dashboard
+  app.get("/api/admin/sessions/stats", checkRole(["admin"]), async (req, res) => {
+    try {
+      const allSessions = await storage.getAllUserSessions();
+      const activeSessions = allSessions.filter(session => session.status === 'active');
+      const suspiciousSessions = await storage.getSuspiciousSessions();
+      const distinctUsers = new Set(allSessions.map(session => session.userId)).size;
+      
+      // Get session location data for chart
+      const locationMap: Record<string, number> = {};
+      for (const session of allSessions) {
+        if (session.location) {
+          if (locationMap[session.location]) {
+            locationMap[session.location]++;
+          } else {
+            locationMap[session.location] = 1;
+          }
+        }
+      }
+      
+      // Convert to array for charts
+      const locationData = Object.keys(locationMap).map(location => ({
+        location,
+        count: locationMap[location]
+      })).sort((a, b) => b.count - a.count).slice(0, 5);
+      
+      // Get browser data
+      const browserMap: Record<string, number> = {};
+      for (const session of allSessions) {
+        if (session.browserName) {
+          if (browserMap[session.browserName]) {
+            browserMap[session.browserName]++;
+          } else {
+            browserMap[session.browserName] = 1;
+          }
+        }
+      }
+      
+      // Convert to array for charts
+      const browserData = Object.keys(browserMap).map(browser => ({
+        browser,
+        count: browserMap[browser]
+      })).sort((a, b) => b.count - a.count);
+      
+      // Get OS data
+      const osMap: Record<string, number> = {};
+      for (const session of allSessions) {
+        if (session.osName) {
+          if (osMap[session.osName]) {
+            osMap[session.osName]++;
+          } else {
+            osMap[session.osName] = 1;
+          }
+        }
+      }
+      
+      // Convert to array for charts
+      const osData = Object.keys(osMap).map(os => ({
+        os,
+        count: osMap[os]
+      })).sort((a, b) => b.count - a.count);
+      
+      // Get device type data
+      const mobileCount = allSessions.filter(session => session.isMobile).length;
+      const desktopCount = allSessions.filter(session => session.isMobile === false).length;
+      const unknownDeviceCount = allSessions.filter(session => session.isMobile === null).length;
+      
+      res.json({
+        totalSessions: allSessions.length,
+        activeSessions: activeSessions.length,
+        suspiciousSessions: suspiciousSessions.length,
+        distinctUsers,
+        locationData,
+        browserData,
+        osData,
+        deviceTypeData: [
+          { type: 'Mobile', count: mobileCount },
+          { type: 'Desktop', count: desktopCount },
+          { type: 'Unknown', count: unknownDeviceCount }
+        ]
+      });
+    } catch (error) {
+      console.error('Error fetching session stats:', error);
+      res.status(500).json({ message: "Failed to fetch session statistics" });
+    }
+  });
 
   // Get sessions for a specific user (for admin)
   app.get("/api/admin/users/:userId/sessions", checkRole(["admin"]), async (req, res) => {

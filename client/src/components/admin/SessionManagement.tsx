@@ -15,8 +15,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, Clock, Info, Shield, ShieldAlert, Terminal, User } from 'lucide-react';
+import { AlertTriangle, Clock, Info, Shield, ShieldAlert, Terminal, User, Users, Globe, Computer, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+  Legend, PieChart, Pie, Cell, ResponsiveContainer 
+} from 'recharts';
 
 interface UserSession {
   id: number;
@@ -69,6 +73,24 @@ export default function SessionManagement() {
       return response as UserSession[];
     }
   });
+  
+  // Fetch session statistics
+  const { data: sessionStats, isLoading: isLoadingStats, error: errorStats } = useQuery({
+    queryKey: ['/api/admin/sessions/stats'],
+    queryFn: async () => {
+      const response = await apiRequest('/api/admin/sessions/stats');
+      return response as {
+        totalSessions: number;
+        activeSessions: number;
+        suspiciousSessions: number;
+        distinctUsers: number;
+        locationData: { location: string; count: number }[];
+        browserData: { browser: string; count: number }[];
+        osData: { os: string; count: number }[];
+        deviceTypeData: { type: string; count: number }[];
+      };
+    }
+  });
 
   // Get user sessions if a user is selected
   const { data: userSessions = [], isLoading: isLoadingUser } = useQuery({
@@ -96,6 +118,7 @@ export default function SessionManagement() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions/suspicious'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions/stats'] });
       if (selectedUserId) {
         queryClient.invalidateQueries({ queryKey: ['/api/admin/users', selectedUserId, 'sessions'] });
       }
@@ -124,6 +147,7 @@ export default function SessionManagement() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions/suspicious'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions/stats'] });
       if (selectedUserId) {
         queryClient.invalidateQueries({ queryKey: ['/api/admin/users', selectedUserId, 'sessions'] });
       }
@@ -151,6 +175,7 @@ export default function SessionManagement() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions/suspicious'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/sessions/stats'] });
       if (selectedUserId) {
         queryClient.invalidateQueries({ queryKey: ['/api/admin/users', selectedUserId, 'sessions'] });
       }
@@ -271,11 +296,11 @@ export default function SessionManagement() {
     }
   };
 
-  if (isLoadingAll || isLoadingSuspicious || (activeTab === 'user' && isLoadingUser)) {
+  if (isLoadingAll || isLoadingSuspicious || isLoadingStats || (activeTab === 'user' && isLoadingUser)) {
     return <div className="flex justify-center items-center h-96">Loading session data...</div>;
   }
 
-  if (errorAll || errorSuspicious) {
+  if (errorAll || errorSuspicious || errorStats) {
     return (
       <Alert variant="destructive">
         <AlertTriangle className="h-4 w-4" />
@@ -287,9 +312,11 @@ export default function SessionManagement() {
     );
   }
 
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d'];
+
   return (
     <div className="container mx-auto py-10">
-      <div className="flex flex-col space-y-4">
+      <div className="flex flex-col space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-3xl font-bold">Session Management</h2>
           <div className="flex items-center space-x-2">
@@ -312,6 +339,147 @@ export default function SessionManagement() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* Analytics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-blue-800 flex items-center">
+                <Users className="h-5 w-5 mr-2 text-blue-600" />
+                Active Users
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-700">{sessionStats?.distinctUsers || 0}</div>
+              <p className="text-sm text-blue-600 mt-1">Unique users with active sessions</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-green-800 flex items-center">
+                <Terminal className="h-5 w-5 mr-2 text-green-600" />
+                Active Sessions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-700">{sessionStats?.activeSessions || 0}</div>
+              <p className="text-sm text-green-600 mt-1">Total active sessions across all users</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-yellow-800 flex items-center">
+                <ShieldAlert className="h-5 w-5 mr-2 text-yellow-600" />
+                Suspicious Sessions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-yellow-700">{sessionStats?.suspiciousSessions || 0}</div>
+              <p className="text-sm text-yellow-600 mt-1">Sessions flagged as suspicious</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg text-purple-800 flex items-center">
+                <Globe className="h-5 w-5 mr-2 text-purple-600" />
+                Locations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-700">
+                {sessionStats?.locationData?.length || 0}
+              </div>
+              <p className="text-sm text-purple-600 mt-1">Unique locations with active sessions</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+          {/* Location Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Globe className="h-5 w-5 mr-2" />
+                Session Locations
+              </CardTitle>
+              <CardDescription>
+                Geographic distribution of user sessions
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-72">
+              {sessionStats?.locationData && sessionStats.locationData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={sessionStats.locationData}
+                    margin={{ top: 5, right: 30, left: 20, bottom: 70 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="location" 
+                      angle={-45} 
+                      textAnchor="end" 
+                      height={70}
+                      tick={{ fontSize: 12 }}
+                    />
+                    <YAxis />
+                    <RechartsTooltip />
+                    <Bar dataKey="count" fill="#8884d8" name="Sessions" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-muted-foreground">No location data available</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Device Type Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center">
+                <Smartphone className="h-5 w-5 mr-2" />
+                Device Types
+              </CardTitle>
+              <CardDescription>
+                Distribution of sessions by device type
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-72">
+              {sessionStats?.deviceTypeData && sessionStats.deviceTypeData.some(item => item.count > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={sessionStats.deviceTypeData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={true}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="count"
+                      nameKey="type"
+                      label={({ type, count }) => `${type}: ${count}`}
+                    >
+                      {sessionStats.deviceTypeData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-muted-foreground">No device data available</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         {suspiciousSessions.length > 0 && (
@@ -484,6 +652,12 @@ function SessionsTable({
   getStatusColor,
   hideUserColumns = false
 }: SessionsTableProps) {
+  const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
+  
+  const handleRowClick = (sessionId: number) => {
+    setSelectedSessionId(sessionId === selectedSessionId ? null : sessionId);
+  };
+  
   return (
     <Card>
       <CardContent className="p-0">
@@ -516,113 +690,258 @@ function SessionsTable({
                 </TableRow>
               ) : (
                 sessions.map((session) => (
-                  <TableRow key={session.id} className={session.status === 'suspicious' ? 'bg-amber-50' : ''}>
-                    <TableCell>
-                      {session.status === 'suspicious' && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger>
-                              <AlertTriangle className="h-5 w-5 text-amber-500" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Suspicious activity detected</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    </TableCell>
-                    
-                    {!hideUserColumns && (
-                      <>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-8 w-8">
-                              <AvatarFallback>
-                                {session.userName?.charAt(0) || 'U'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span 
-                              className="cursor-pointer hover:underline"
-                              onClick={() => onViewUser(session.userId, session.userName || `User #${session.userId}`)}
-                            >
-                              {session.userName || `User #${session.userId}`}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>{session.userEmail}</TableCell>
-                      </>
-                    )}
-                    
-                    <TableCell>{session.deviceInfo || 'Unknown'}</TableCell>
-                    <TableCell>{session.location || 'Unknown'}</TableCell>
-                    <TableCell>
-                      {session.browserName ? 
-                        `${session.browserName} ${session.browserVersion || ''}` : 
-                        'Unknown'
-                      }
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={`${getStatusColor(session.status)} text-white`}>
-                        {session.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger className="cursor-help">
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{getTimeElapsed(session.createdAt)}</span>
+                  <React.Fragment key={session.id}>
+                    <TableRow 
+                      className={`${session.status === 'suspicious' ? 'bg-amber-50' : ''} ${selectedSessionId === session.id ? 'bg-muted' : ''} cursor-pointer hover:bg-muted/50`}
+                      onClick={() => handleRowClick(session.id)}
+                    >
+                      <TableCell>
+                        {session.status === 'suspicious' && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Suspicious activity detected</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </TableCell>
+                      
+                      {!hideUserColumns && (
+                        <>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>
+                                  {session.userName?.charAt(0) || 'U'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span 
+                                className="cursor-pointer hover:underline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onViewUser(session.userId, session.userName || `User #${session.userId}`);
+                                }}
+                              >
+                                {session.userName || `User #${session.userId}`}
+                              </span>
                             </div>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{formatDate(session.createdAt)}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                    <TableCell>
-                      {session.lastActivity ? (
+                          </TableCell>
+                          <TableCell>{session.userEmail}</TableCell>
+                        </>
+                      )}
+                      
+                      <TableCell>{session.deviceInfo || 'Unknown'}</TableCell>
+                      <TableCell>{session.location || 'Unknown'}</TableCell>
+                      <TableCell>
+                        {session.browserName ? 
+                          `${session.browserName} ${session.browserVersion || ''}` : 
+                          'Unknown'
+                        }
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${getStatusColor(session.status)} text-white`}>
+                          {session.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger className="cursor-help">
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                <span>{getTimeElapsed(session.lastActivity)}</span>
+                                <span>{getTimeElapsed(session.createdAt)}</span>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{formatDate(session.lastActivity)}</p>
+                              <p>{formatDate(session.createdAt)}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
-                      ) : (
-                        'N/A'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {session.status !== 'suspicious' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => onMarkSuspicious(session)}
-                          >
-                            <ShieldAlert className="h-4 w-4 mr-1" />
-                            Mark Suspicious
-                          </Button>
+                      </TableCell>
+                      <TableCell>
+                        {session.lastActivity ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger className="cursor-help">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  <span>{getTimeElapsed(session.lastActivity)}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{formatDate(session.lastActivity)}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          'N/A'
                         )}
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => onRevoke(session)}
-                          disabled={session.status === 'revoked'}
-                        >
-                          Revoke
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {session.status !== 'suspicious' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onMarkSuspicious(session);
+                              }}
+                            >
+                              <ShieldAlert className="h-4 w-4 mr-1" />
+                              Mark
+                            </Button>
+                          )}
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRevoke(session);
+                            }}
+                            disabled={session.status === 'revoked'}
+                          >
+                            Revoke
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                    
+                    {selectedSessionId === session.id && (
+                      <TableRow>
+                        <TableCell colSpan={hideUserColumns ? 7 : 9} className="bg-muted/30 p-0">
+                          <div className="p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">User Information</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Name:</span>
+                                      <span className="font-medium">{session.userName || 'Unknown'}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Email:</span>
+                                      <span className="font-medium">{session.userEmail || 'Unknown'}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">User ID:</span>
+                                      <span className="font-medium">{session.userId}</span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                              
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">Device Information</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Device:</span>
+                                      <span className="font-medium">{session.deviceInfo || 'Unknown'}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Browser:</span>
+                                      <span className="font-medium">
+                                        {session.browserName ? `${session.browserName} ${session.browserVersion || ''}` : 'Unknown'}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">OS:</span>
+                                      <span className="font-medium">
+                                        {session.osName ? `${session.osName} ${session.osVersion || ''}` : 'Unknown'}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Device Type:</span>
+                                      <span className="font-medium">
+                                        {session.isMobile !== null 
+                                          ? (session.isMobile ? 'Mobile' : 'Desktop') 
+                                          : 'Unknown'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                              
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">Location Information</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Location:</span>
+                                      <span className="font-medium">{session.location || 'Unknown'}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">IP Address:</span>
+                                      <span className="font-medium">{session.ipAddress || 'Unknown'}</span>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                              
+                              <Card>
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">Session Information</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Session ID:</span>
+                                      <span className="font-medium truncate max-w-[180px]">{session.sessionId}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Status:</span>
+                                      <Badge className={`${getStatusColor(session.status)} text-white`}>
+                                        {session.status}
+                                      </Badge>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Created:</span>
+                                      <span className="font-medium">{formatDate(session.createdAt)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-muted-foreground">Last Activity:</span>
+                                      <span className="font-medium">
+                                        {session.lastActivity ? formatDate(session.lastActivity) : 'N/A'}
+                                      </span>
+                                    </div>
+                                    {session.expiresAt && (
+                                      <div className="flex justify-between text-sm">
+                                        <span className="text-muted-foreground">Expires:</span>
+                                        <span className="font-medium">{formatDate(session.expiresAt)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </div>
+                            
+                            {session.status === 'revoked' && session.revocationReason && (
+                              <Card className="mt-4">
+                                <CardHeader className="pb-2">
+                                  <CardTitle className="text-sm font-medium">Revocation Information</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <p className="text-sm">{session.revocationReason}</p>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
                 ))
               )}
             </TableBody>
