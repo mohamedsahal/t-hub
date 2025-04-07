@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { pool } from "./db";
 import { addPasswordResetFieldsToUsers } from "./password-reset-migration";
 import { addVerificationFieldsToUsers } from "./verification-migration";
+import { createSessionTrackingTables } from "./session-tracking-migration";
 import { 
   insertUserSchema, insertCourseSchema, insertPaymentSchema, 
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
@@ -30,6 +31,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Add email verification fields to users table
     await addVerificationFieldsToUsers();
+    
+    // Create tables for user session tracking (anti-account sharing)
+    await createSessionTrackingTables();
   } catch (error) {
     console.error("Failed to run migrations:", error);
   }

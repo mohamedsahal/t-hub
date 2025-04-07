@@ -18,7 +18,9 @@ import {
   semesters, type Semester, type InsertSemester,
   cohorts, type Cohort, type InsertCohort,
   cohortEnrollments, type CohortEnrollment, type InsertCohortEnrollment,
-  alerts, type Alert, type InsertAlert
+  alerts, type Alert, type InsertAlert,
+  userSessions, type UserSession, type InsertUserSession,
+  userLocationHistory, type UserLocationHistory, type InsertUserLocationHistory
 } from "@shared/schema";
 import session from "express-session";
 
@@ -42,6 +44,26 @@ export interface IStorage {
   createVerificationCode(userId: number): Promise<string>;
   verifyEmail(userId: number, code: string): Promise<boolean>;
   getUserByVerificationCode(code: string): Promise<User | undefined>;
+  
+  // User Session operations
+  getUserSession(id: number): Promise<UserSession | undefined>;
+  getUserSessionBySessionId(sessionId: string): Promise<UserSession | undefined>;
+  getUserSessions(userId: number): Promise<UserSession[]>;
+  createUserSession(session: InsertUserSession): Promise<UserSession>;
+  updateUserSession(id: number, sessionData: Partial<UserSession>): Promise<UserSession | undefined>;
+  updateUserSessionActivity(sessionId: string): Promise<boolean>;
+  revokeUserSession(id: number, reason?: string): Promise<boolean>;
+  revokeAllUserSessions(userId: number, exceptSessionId?: string): Promise<boolean>;
+  getActiveSessions(userId: number): Promise<UserSession[]>;
+  getSuspiciousSessions(): Promise<UserSession[]>;
+  
+  // User Location History operations
+  getUserLocationHistory(id: number): Promise<UserLocationHistory | undefined>;
+  getUserLocationsByUser(userId: number): Promise<UserLocationHistory[]>;
+  getUserLocationsBySession(sessionId: number): Promise<UserLocationHistory[]>;
+  createUserLocation(location: InsertUserLocationHistory): Promise<UserLocationHistory>;
+  getSuspiciousLocations(): Promise<UserLocationHistory[]>;
+  markLocationAsSuspicious(id: number): Promise<boolean>;
   
   // Course operations
   getCourse(id: number): Promise<Course | undefined>;
@@ -195,50 +217,76 @@ export interface IStorage {
   createAlert(alert: InsertAlert): Promise<Alert>;
   updateAlert(id: number, alert: Partial<Alert>): Promise<Alert | undefined>;
   deleteAlert(id: number): Promise<boolean>;
+  
+  // User Session operations
+  getUserSession(id: number): Promise<UserSession | undefined>;
+  getUserSessionBySessionId(sessionId: string): Promise<UserSession | undefined>;
+  getUserSessions(userId: number): Promise<UserSession[]>;
+  createUserSession(session: InsertUserSession): Promise<UserSession>;
+  updateUserSession(id: number, session: Partial<UserSession>): Promise<UserSession | undefined>;
+  updateUserSessionActivity(sessionId: string): Promise<boolean>;
+  revokeUserSession(id: number, reason?: string): Promise<boolean>;
+  revokeAllUserSessions(userId: number, exceptSessionId?: string): Promise<boolean>;
+  getActiveSessions(userId: number): Promise<UserSession[]>;
+  getSuspiciousSessions(): Promise<UserSession[]>;
+  
+  // User Location History operations
+  getUserLocationHistory(id: number): Promise<UserLocationHistory | undefined>;
+  getUserLocationsByUser(userId: number): Promise<UserLocationHistory[]>;
+  getUserLocationsBySession(sessionId: number): Promise<UserLocationHistory[]>;
+  createUserLocation(location: InsertUserLocationHistory): Promise<UserLocationHistory>;
+  getSuspiciousLocations(): Promise<UserLocationHistory[]>;
+  markLocationAsSuspicious(id: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private courses: Map<number, Course>;
-  private courseModules: Map<number, CourseModule>;
-  private courseSections: Map<number, CourseSection>;
-  private exams: Map<number, Exam>;
-  private examQuestions: Map<number, ExamQuestion>;
-  private examResults: Map<number, ExamResult>;
-  private payments: Map<number, Payment>;
-  private installments: Map<number, Installment>;
-  private enrollments: Map<number, Enrollment>;
-  private certificates: Map<number, Certificate>;
-  private testimonials: Map<number, Testimonial>;
-  private products: Map<number, Product>;
-  private partners: Map<number, Partner>;
-  private landingContents: Map<number, LandingContent>;
-  private events: Map<number, Event>;
-  private semesters: Map<number, Semester>;
-  private cohorts: Map<number, Cohort>;
-  private cohortEnrollments: Map<number, CohortEnrollment>;
-  private alerts: Map<number, Alert>;
+  // Making userSessions and userLocationHistory public for session tracking methods
+  public users: Map<number, User>;
+  public courses: Map<number, Course>;
+  public courseModules: Map<number, CourseModule>;
+  public courseSections: Map<number, CourseSection>;
+  public exams: Map<number, Exam>;
+  public examQuestions: Map<number, ExamQuestion>;
+  public examResults: Map<number, ExamResult>;
+  public payments: Map<number, Payment>;
+  public installments: Map<number, Installment>;
+  public enrollments: Map<number, Enrollment>;
+  public certificates: Map<number, Certificate>;
+  public testimonials: Map<number, Testimonial>;
+  public products: Map<number, Product>;
+  public partners: Map<number, Partner>;
+  public landingContents: Map<number, LandingContent>;
+  public events: Map<number, Event>;
+  public semesters: Map<number, Semester>;
+  public cohorts: Map<number, Cohort>;
+  public cohortEnrollments: Map<number, CohortEnrollment>;
+  public alerts: Map<number, Alert>;
+  public userSessions: Map<number, UserSession>;
+  public userLocationHistory: Map<number, UserLocationHistory>;
   
-  private userIdCounter: number;
-  private courseIdCounter: number;
-  private courseModuleIdCounter: number;
-  private courseSectionIdCounter: number;
-  private examIdCounter: number;
-  private examQuestionIdCounter: number;
-  private examResultIdCounter: number;
-  private paymentIdCounter: number;
-  private installmentIdCounter: number;
-  private enrollmentIdCounter: number;
-  private certificateIdCounter: number;
-  private testimonialIdCounter: number;
-  private productIdCounter: number;
-  private partnerIdCounter: number;
-  private landingContentIdCounter: number;
-  private eventIdCounter: number;
-  private semesterIdCounter: number;
-  private cohortIdCounter: number;
-  private cohortEnrollmentIdCounter: number;
-  private alertIdCounter: number;
+  // Making counters public for session tracking methods
+  public userIdCounter: number;
+  public courseIdCounter: number;
+  public courseModuleIdCounter: number;
+  public courseSectionIdCounter: number;
+  public examIdCounter: number;
+  public examQuestionIdCounter: number;
+  public examResultIdCounter: number;
+  public paymentIdCounter: number;
+  public installmentIdCounter: number;
+  public enrollmentIdCounter: number;
+  public certificateIdCounter: number;
+  public testimonialIdCounter: number;
+  public productIdCounter: number;
+  public partnerIdCounter: number;
+  public landingContentIdCounter: number;
+  public eventIdCounter: number;
+  public semesterIdCounter: number;
+  public cohortIdCounter: number;
+  public cohortEnrollmentIdCounter: number;
+  public alertIdCounter: number;
+  public userSessionIdCounter: number;
+  public userLocationHistoryIdCounter: number;
   
   public sessionStore: session.Store;
 
@@ -263,6 +311,8 @@ export class MemStorage implements IStorage {
     this.cohorts = new Map();
     this.cohortEnrollments = new Map();
     this.alerts = new Map();
+    this.userSessions = new Map();
+    this.userLocationHistory = new Map();
     
     this.userIdCounter = 1;
     this.courseIdCounter = 1;
@@ -284,6 +334,8 @@ export class MemStorage implements IStorage {
     this.cohortIdCounter = 1;
     this.cohortEnrollmentIdCounter = 1;
     this.alertIdCounter = 1;
+    this.userSessionIdCounter = 1;
+    this.userLocationHistoryIdCounter = 1;
     
     // Create the memory store for sessions
     const MemoryStore = require('memorystore')(session);
@@ -1748,7 +1800,154 @@ export class MemStorage implements IStorage {
     if (!this.alerts.has(id)) return false;
     return this.alerts.delete(id);
   }
+
+  // User Session operations
+  async getUserSession(id: number): Promise<UserSession | undefined> {
+    return this.userSessions.get(id);
+  }
+
+  async getUserSessionBySessionId(sessionId: string): Promise<UserSession | undefined> {
+    for (const session of this.userSessions.values()) {
+      if (session.sessionId === sessionId) {
+        return session;
+      }
+    }
+    return undefined;
+  }
+
+  async getUserSessions(userId: number): Promise<UserSession[]> {
+    return Array.from(this.userSessions.values()).filter(session => session.userId === userId);
+  }
+
+  async createUserSession(session: InsertUserSession): Promise<UserSession> {
+    const id = this.userSessionIdCounter++;
+    const newSession: UserSession = {
+      ...session,
+      id,
+      lastActivity: new Date(),
+      createdAt: new Date()
+    };
+    this.userSessions.set(id, newSession);
+    return newSession;
+  }
+
+  async updateUserSession(id: number, sessionData: Partial<UserSession>): Promise<UserSession | undefined> {
+    const session = this.userSessions.get(id);
+    if (!session) return undefined;
+    
+    const updatedSession = { ...session, ...sessionData };
+    this.userSessions.set(id, updatedSession);
+    return updatedSession;
+  }
+
+  async updateUserSessionActivity(sessionId: string): Promise<boolean> {
+    const session = await this.getUserSessionBySessionId(sessionId);
+    if (!session) return false;
+    
+    const updatedSession = { 
+      ...session, 
+      lastActivity: new Date() 
+    };
+    
+    this.userSessions.set(session.id, updatedSession);
+    return true;
+  }
+
+  async revokeUserSession(id: number, reason?: string): Promise<boolean> {
+    const session = this.userSessions.get(id);
+    if (!session) return false;
+    
+    const updatedSession = { 
+      ...session, 
+      status: 'revoked', 
+      revocationReason: reason || 'Manual revocation' 
+    };
+    
+    this.userSessions.set(id, updatedSession);
+    return true;
+  }
+
+  async revokeAllUserSessions(userId: number, exceptSessionId?: string): Promise<boolean> {
+    const userSessions = await this.getUserSessions(userId);
+    if (userSessions.length === 0) return false;
+    
+    let success = true;
+    for (const session of userSessions) {
+      // Skip the current session if exceptSessionId is provided
+      if (exceptSessionId && session.sessionId === exceptSessionId) {
+        continue;
+      }
+      
+      const result = await this.revokeUserSession(session.id, 'Revoked as part of revoking all sessions');
+      if (!result) success = false;
+    }
+    
+    return success;
+  }
+
+  async getActiveSessions(userId: number): Promise<UserSession[]> {
+    const sessions = await this.getUserSessions(userId);
+    return sessions.filter(session => session.status === 'active');
+  }
+
+  async getSuspiciousSessions(): Promise<UserSession[]> {
+    return Array.from(this.userSessions.values()).filter(session => session.status === 'suspicious');
+  }
+
+  // User Location History operations
+  async getUserLocationHistory(id: number): Promise<UserLocationHistory | undefined> {
+    return this.userLocationHistory.get(id);
+  }
+
+  async getUserLocationsByUser(userId: number): Promise<UserLocationHistory[]> {
+    return Array.from(this.userLocationHistory.values())
+      .filter(location => location.userId === userId);
+  }
+
+  async getUserLocationsBySession(sessionId: number): Promise<UserLocationHistory[]> {
+    return Array.from(this.userLocationHistory.values())
+      .filter(location => location.sessionId === sessionId);
+  }
+
+  async createUserLocation(location: InsertUserLocationHistory): Promise<UserLocationHistory> {
+    const id = this.userLocationHistoryIdCounter++;
+    const newLocation: UserLocationHistory = {
+      ...location,
+      id,
+      createdAt: new Date()
+    };
+    this.userLocationHistory.set(id, newLocation);
+    return newLocation;
+  }
+
+  async getSuspiciousLocations(): Promise<UserLocationHistory[]> {
+    return Array.from(this.userLocationHistory.values())
+      .filter(location => location.isSuspicious);
+  }
+
+  async markLocationAsSuspicious(id: number): Promise<boolean> {
+    const location = this.userLocationHistory.get(id);
+    if (!location) return false;
+    
+    const updatedLocation = { ...location, isSuspicious: true };
+    this.userLocationHistory.set(id, updatedLocation);
+    
+    // Also mark the associated session as suspicious
+    const session = this.userSessions.get(location.sessionId);
+    if (session) {
+      const updatedSession = { ...session, status: 'suspicious' };
+      this.userSessions.set(location.sessionId, updatedSession);
+    }
+    
+    return true;
+  }
 }
+
+// Import session tracking methods
+import { sessionTrackingMethods } from './user-session-methods';
+
+// Extend MemStorage class with session tracking methods
+Object.assign(MemStorage.prototype, sessionTrackingMethods);
 
 import { PgStorage } from './pgStorage';
 

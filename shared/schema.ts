@@ -25,6 +25,7 @@ export const productTypeEnum = pgEnum('product_type', [
 export const contentTypeEnum = pgEnum('content_type', ['hero', 'about', 'feature', 'testimonial', 'event', 'partner', 'contact']);
 export const cohortStatusEnum = pgEnum('cohort_status', ['active', 'completed', 'upcoming']);
 export const alertTypeEnum = pgEnum('alert_type', ['discount', 'registration', 'celebration', 'announcement', 'info']);
+export const sessionStatusEnum = pgEnum('session_status', ['active', 'inactive', 'revoked', 'suspicious']);
 
 // Users table
 export const users = pgTable("users", {
@@ -469,6 +470,72 @@ export type InsertCohortEnrollment = z.infer<typeof insertCohortEnrollmentSchema
 export type Alert = typeof alerts.$inferSelect;
 export type InsertAlert = z.infer<typeof insertAlertSchema>;
 
+// User Sessions and Device Tracking
+export const userSessions = pgTable("user_sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  sessionId: text("session_id").notNull().unique(), // Express session ID
+  deviceInfo: text("device_info"), // User agent, platform, etc.
+  ipAddress: text("ip_address"),
+  location: text("location"), // Geographic location based on IP
+  status: sessionStatusEnum("status").default('active').notNull(),
+  isMobile: boolean("is_mobile").default(false),
+  browserName: text("browser_name"),
+  browserVersion: text("browser_version"),
+  osName: text("os_name"),
+  osVersion: text("os_version"),
+  lastActivity: timestamp("last_activity").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"), // When the session expires
+  revocationReason: text("revocation_reason"), // Reason if status is 'revoked'
+});
+
+// Location tracking for suspicious activities
+export const userLocationHistory = pgTable("user_location_history", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  sessionId: integer("session_id").references(() => userSessions.id).notNull(),
+  ipAddress: text("ip_address").notNull(),
+  countryCode: text("country_code"),
+  countryName: text("country_name"),
+  regionName: text("region_name"),
+  city: text("city"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  isSuspicious: boolean("is_suspicious").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Relations for user sessions
+export const userSessionsRelations = relations(userSessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [userSessions.userId],
+    references: [users.id],
+  }),
+  locationHistory: many(userLocationHistory),
+}));
+
+// Relations for location history
+export const userLocationHistoryRelations = relations(userLocationHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [userLocationHistory.userId],
+    references: [users.id],
+  }),
+  session: one(userSessions, {
+    fields: [userLocationHistory.sessionId],
+    references: [userSessions.id],
+  }),
+}));
+
+// Types for user sessions
+export type UserSession = typeof userSessions.$inferSelect;
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({ id: true });
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+
+export type UserLocationHistory = typeof userLocationHistory.$inferSelect;
+export const insertUserLocationHistorySchema = createInsertSchema(userLocationHistory).omit({ id: true });
+export type InsertUserLocationHistory = z.infer<typeof insertUserLocationHistorySchema>;
+
 // Define relationships between tables
 export const usersRelations = relations(users, ({ many }) => ({
   courses: many(courses, { relationName: "teacher_courses" }),
@@ -476,6 +543,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   enrollments: many(enrollments),
   certificates: many(certificates),
   testimonials: many(testimonials),
+  sessions: many(userSessions),
+  locationHistory: many(userLocationHistory),
 }));
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({

@@ -8,10 +8,10 @@ import {
   Partner, InsertPartner, Event, InsertEvent, LandingContent, InsertLandingContent,
   Exam, InsertExam, ExamQuestion, InsertExamQuestion, ExamResult, InsertExamResult,
   Semester, InsertSemester, Cohort, InsertCohort, CohortEnrollment, InsertCohortEnrollment,
-  Alert, InsertAlert,
+  Alert, InsertAlert, UserSession, InsertUserSession, UserLocationHistory, InsertUserLocationHistory,
   users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
   products, partners, events, landingContent, exams, examQuestions, examResults,
-  semesters, cohorts, cohortEnrollments, alerts
+  semesters, cohorts, cohortEnrollments, alerts, userSessions, userLocationHistory
 } from '@shared/schema';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -1573,6 +1573,235 @@ export class PgStorage implements IStorage {
       return result.length > 0;
     } catch (error) {
       console.error('Error deleting alert:', error);
+      return false;
+    }
+  }
+
+  // User Session operations
+  async getUserSession(id: number): Promise<UserSession | undefined> {
+    try {
+      const result = await db.select().from(userSessions).where(eq(userSessions.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error getting user session:", error);
+      return undefined;
+    }
+  }
+
+  async getUserSessionBySessionId(sessionId: string): Promise<UserSession | undefined> {
+    try {
+      const result = await db.select().from(userSessions).where(eq(userSessions.sessionId, sessionId));
+      return result[0];
+    } catch (error) {
+      console.error("Error getting user session by session ID:", error);
+      return undefined;
+    }
+  }
+
+  async getUserSessions(userId: number): Promise<UserSession[]> {
+    try {
+      return await db.select().from(userSessions).where(eq(userSessions.userId, userId));
+    } catch (error) {
+      console.error("Error getting user sessions:", error);
+      return [];
+    }
+  }
+
+  async createUserSession(session: InsertUserSession): Promise<UserSession> {
+    try {
+      const newSession = {
+        ...session,
+        lastActivity: new Date(),
+        createdAt: new Date(),
+        status: session.status || 'active'
+      };
+      
+      const result = await db.insert(userSessions).values(newSession).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating user session:", error);
+      throw new Error("Failed to create user session");
+    }
+  }
+
+  async updateUserSession(id: number, sessionData: Partial<UserSession>): Promise<UserSession | undefined> {
+    try {
+      const result = await db.update(userSessions)
+        .set(sessionData)
+        .where(eq(userSessions.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error updating user session:", error);
+      return undefined;
+    }
+  }
+
+  async updateUserSessionActivity(sessionId: string): Promise<boolean> {
+    try {
+      const session = await this.getUserSessionBySessionId(sessionId);
+      if (!session) return false;
+      
+      await db.update(userSessions)
+        .set({ lastActivity: new Date() })
+        .where(eq(userSessions.id, session.id));
+      
+      return true;
+    } catch (error) {
+      console.error("Error updating user session activity:", error);
+      return false;
+    }
+  }
+
+  async revokeUserSession(id: number, reason?: string): Promise<boolean> {
+    try {
+      const session = await this.getUserSession(id);
+      if (!session) return false;
+      
+      await db.update(userSessions)
+        .set({ 
+          status: 'revoked',
+          revocationReason: reason || 'Manual revocation'
+        })
+        .where(eq(userSessions.id, id));
+      
+      return true;
+    } catch (error) {
+      console.error("Error revoking user session:", error);
+      return false;
+    }
+  }
+
+  async revokeAllUserSessions(userId: number, exceptSessionId?: string): Promise<boolean> {
+    try {
+      // Get all user sessions
+      const userSessions = await this.getUserSessions(userId);
+      if (userSessions.length === 0) return false;
+      
+      // Filter out the current session if exceptSessionId is provided
+      const sessionsToRevoke = exceptSessionId 
+        ? userSessions.filter(session => session.sessionId !== exceptSessionId)
+        : userSessions;
+      
+      if (sessionsToRevoke.length === 0) return true; // No sessions to revoke
+      
+      // Get session IDs to revoke
+      const sessionIds = sessionsToRevoke.map(session => session.id);
+      
+      // Revoke all sessions in one update
+      await db.update(userSessions)
+        .set({ 
+          status: 'revoked',
+          revocationReason: 'Revoked as part of revoking all sessions'
+        })
+        .where(inArray(userSessions.id, sessionIds));
+      
+      return true;
+    } catch (error) {
+      console.error("Error revoking all user sessions:", error);
+      return false;
+    }
+  }
+
+  async getActiveSessions(userId: number): Promise<UserSession[]> {
+    try {
+      return await db.select().from(userSessions)
+        .where(and(
+          eq(userSessions.userId, userId),
+          eq(userSessions.status, 'active')
+        ));
+    } catch (error) {
+      console.error("Error getting active sessions:", error);
+      return [];
+    }
+  }
+
+  async getSuspiciousSessions(): Promise<UserSession[]> {
+    try {
+      return await db.select().from(userSessions)
+        .where(eq(userSessions.status, 'suspicious'));
+    } catch (error) {
+      console.error("Error getting suspicious sessions:", error);
+      return [];
+    }
+  }
+
+  // User Location History operations
+  async getUserLocationHistory(id: number): Promise<UserLocationHistory | undefined> {
+    try {
+      const result = await db.select().from(userLocationHistory)
+        .where(eq(userLocationHistory.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error getting user location history:", error);
+      return undefined;
+    }
+  }
+
+  async getUserLocationsByUser(userId: number): Promise<UserLocationHistory[]> {
+    try {
+      return await db.select().from(userLocationHistory)
+        .where(eq(userLocationHistory.userId, userId));
+    } catch (error) {
+      console.error("Error getting user locations by user:", error);
+      return [];
+    }
+  }
+
+  async getUserLocationsBySession(sessionId: number): Promise<UserLocationHistory[]> {
+    try {
+      return await db.select().from(userLocationHistory)
+        .where(eq(userLocationHistory.sessionId, sessionId));
+    } catch (error) {
+      console.error("Error getting user locations by session:", error);
+      return [];
+    }
+  }
+
+  async createUserLocation(location: InsertUserLocationHistory): Promise<UserLocationHistory> {
+    try {
+      const newLocation = {
+        ...location,
+        createdAt: new Date(),
+        isSuspicious: location.isSuspicious || false,
+      };
+      
+      const result = await db.insert(userLocationHistory).values(newLocation).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating user location:", error);
+      throw new Error("Failed to create user location");
+    }
+  }
+
+  async getSuspiciousLocations(): Promise<UserLocationHistory[]> {
+    try {
+      return await db.select().from(userLocationHistory)
+        .where(eq(userLocationHistory.isSuspicious, true));
+    } catch (error) {
+      console.error("Error getting suspicious locations:", error);
+      return [];
+    }
+  }
+
+  async markLocationAsSuspicious(id: number): Promise<boolean> {
+    try {
+      const location = await this.getUserLocationHistory(id);
+      if (!location) return false;
+      
+      // Mark location as suspicious
+      await db.update(userLocationHistory)
+        .set({ isSuspicious: true })
+        .where(eq(userLocationHistory.id, id));
+      
+      // Also mark the associated session as suspicious
+      await db.update(userSessions)
+        .set({ status: 'suspicious' })
+        .where(eq(userSessions.id, location.sessionId));
+      
+      return true;
+    } catch (error) {
+      console.error("Error marking location as suspicious:", error);
       return false;
     }
   }

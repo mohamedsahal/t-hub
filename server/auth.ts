@@ -1,6 +1,6 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
@@ -8,6 +8,7 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { sendPasswordResetEmail, sendVerificationEmail } from './services/emailService';
 import { rateLimitPasswordReset, formatTimeRemaining, rateLimitVerificationCode } from './services/rateLimiter';
+import { InsertUserSession, InsertUserLocationHistory } from "@shared/schema";
 
 // Define additional session properties
 declare module 'express-session' {
@@ -42,6 +43,185 @@ export async function comparePasswords(supplied: string, stored: string) {
     // Handle plain text password (direct comparison for existing legacy accounts)
     // Note: This is less secure and should be upgraded when users log in
     return supplied === stored;
+  }
+}
+
+// Helper functions to extract device and location information
+function extractDeviceInfo(req: Request): { 
+  deviceInfo: string, 
+  isMobile: boolean,
+  browserName: string | null,
+  browserVersion: string | null,
+  osName: string | null,
+  osVersion: string | null
+} {
+  const userAgent = req.headers['user-agent'] || '';
+  
+  // Basic device detection
+  const isMobile = /mobile|android|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+  
+  // Extract browser information
+  let browserName: string | null = null;
+  let browserVersion: string | null = null;
+  if (userAgent.includes('Firefox/')) {
+    browserName = 'Firefox';
+    const match = userAgent.match(/Firefox\/([0-9.]+)/);
+    browserVersion = match ? match[1] : null;
+  } else if (userAgent.includes('Chrome/')) {
+    browserName = 'Chrome';
+    const match = userAgent.match(/Chrome\/([0-9.]+)/);
+    browserVersion = match ? match[1] : null;
+  } else if (userAgent.includes('Safari/') && !userAgent.includes('Chrome/')) {
+    browserName = 'Safari';
+    const match = userAgent.match(/Version\/([0-9.]+)/);
+    browserVersion = match ? match[1] : null;
+  } else if (userAgent.includes('Edge/') || userAgent.includes('Edg/')) {
+    browserName = 'Edge';
+    const match = userAgent.match(/Edge\/([0-9.]+)/) || userAgent.match(/Edg\/([0-9.]+)/);
+    browserVersion = match ? match[1] : null;
+  } else if (userAgent.includes('MSIE ') || userAgent.includes('Trident/')) {
+    browserName = 'Internet Explorer';
+    const match = userAgent.match(/MSIE ([0-9.]+)/) || userAgent.match(/rv:([0-9.]+)/);
+    browserVersion = match ? match[1] : null;
+  }
+  
+  // Extract operating system information
+  let osName: string | null = null;
+  let osVersion: string | null = null;
+  
+  if (userAgent.includes('Windows')) {
+    osName = 'Windows';
+    if (userAgent.includes('Windows NT 10.0')) osVersion = '10';
+    else if (userAgent.includes('Windows NT 6.3')) osVersion = '8.1';
+    else if (userAgent.includes('Windows NT 6.2')) osVersion = '8';
+    else if (userAgent.includes('Windows NT 6.1')) osVersion = '7';
+    else if (userAgent.includes('Windows NT 6.0')) osVersion = 'Vista';
+    else if (userAgent.includes('Windows NT 5.1')) osVersion = 'XP';
+  } else if (userAgent.includes('Mac OS X')) {
+    osName = 'macOS';
+    const match = userAgent.match(/Mac OS X ([0-9_.]+)/);
+    if (match) {
+      osVersion = match[1].replace(/_/g, '.');
+    }
+  } else if (userAgent.includes('Android')) {
+    osName = 'Android';
+    const match = userAgent.match(/Android ([0-9.]+)/);
+    osVersion = match ? match[1] : null;
+  } else if (userAgent.includes('iOS') || userAgent.includes('iPhone OS')) {
+    osName = 'iOS';
+    const match = userAgent.match(/OS ([0-9_]+)/);
+    if (match) {
+      osVersion = match[1].replace(/_/g, '.');
+    }
+  } else if (userAgent.includes('Linux')) {
+    osName = 'Linux';
+    osVersion = null; // Hard to determine specific Linux version from UA
+  }
+  
+  return {
+    deviceInfo: userAgent,
+    isMobile,
+    browserName,
+    browserVersion,
+    osName,
+    osVersion
+  };
+}
+
+function extractLocationInfo(req: Request): { ipAddress: string, location: string | null } {
+  // Get IP address, respecting proxy headers
+  const ipAddress = 
+    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
+    req.socket.remoteAddress || 
+    '';
+  
+  // In a real implementation, this would call a geolocation service
+  // For now, we'll just use the IP as a placeholder
+  const location = null; // This would normally come from a geolocation lookup
+  
+  return { ipAddress, location };
+}
+
+async function createUserSessionRecord(req: Request, userId: number): Promise<{sessionId?: number, isSuspicious?: boolean, reason?: string | null}> {
+  try {
+    // Extract info from the request
+    const deviceData = extractDeviceInfo(req);
+    const locationData = extractLocationInfo(req);
+    
+    // Get session expiry date
+    const expiryDate = req.session.cookie.expires;
+    
+    // Create session record with initial status as 'active'
+    const session = await storage.createUserSession({
+      userId,
+      sessionId: req.sessionID,
+      deviceInfo: deviceData.deviceInfo,
+      ipAddress: locationData.ipAddress,
+      location: locationData.location,
+      isMobile: deviceData.isMobile,
+      browserName: deviceData.browserName,
+      browserVersion: deviceData.browserVersion,
+      osName: deviceData.osName,
+      osVersion: deviceData.osVersion,
+      expiresAt: expiryDate,
+      status: 'active' as const
+    });
+    
+    // Create location record
+    let locationRecord;
+    if (session && locationData.ipAddress) {
+      locationRecord = await storage.createUserLocation({
+        userId,
+        sessionId: session.id,
+        ipAddress: locationData.ipAddress
+      });
+    }
+    
+    // If session was created, check for suspicious patterns
+    if (session) {
+      try {
+        // Run analysis to detect suspicious activity
+        const suspiciousCheck = await storage.detectSuspiciousActivity(
+          userId,
+          req.sessionID,
+          locationData.ipAddress,
+          locationData.location,
+          deviceData.deviceInfo
+        );
+        
+        // If activity is deemed suspicious, update the session
+        if (suspiciousCheck.isSuspicious) {
+          await storage.updateUserSession(session.id, { 
+            status: 'suspicious' as const 
+          });
+          
+          // Also mark the location record
+          if (locationRecord) {
+            await storage.markLocationAsSuspicious(locationRecord.id);
+          }
+          
+          // Run broader analysis to find patterns across all user's sessions
+          await storage.analyzeSuspiciousActivity(userId);
+          
+          // Log suspicious activity
+          console.warn(`Suspicious login detected for user ${userId}: ${suspiciousCheck.reason}`);
+          
+          return {
+            sessionId: session.id,
+            isSuspicious: true,
+            reason: suspiciousCheck.reason
+          };
+        }
+      } catch (analyzeError) {
+        console.error("Error analyzing suspicious activity:", analyzeError);
+        // Continue even if analysis fails
+      }
+    }
+    
+    return { sessionId: session?.id, isSuspicious: false };
+  } catch (error) {
+    console.error("Error creating user session record:", error);
+    return { isSuspicious: false };
   }
 }
 
@@ -161,14 +341,30 @@ export function setupAuth(app: Express) {
             console.error("Session save error:", saveErr);
           }
           
-          res.status(201).json({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            isVerified: user.isVerified,
-            requiresVerification: true
-          });
+          // Create user session record for tracking
+          createUserSessionRecord(req, user.id)
+            .then(() => {
+              res.status(201).json({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                isVerified: user.isVerified,
+                requiresVerification: true
+              });
+            })
+            .catch(sessionError => {
+              console.error("Error tracking user session during registration:", sessionError);
+              // Continue even if session tracking fails
+              res.status(201).json({
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                isVerified: user.isVerified,
+                requiresVerification: true
+              });
+            });
         });
       });
     } catch (error) {
@@ -211,28 +407,107 @@ export function setupAuth(app: Express) {
         }
         
         // Explicitly save the session to ensure changes are persisted
-        req.session.save((saveErr) => {
+        req.session.save(async (saveErr) => {
           if (saveErr) {
             console.error("Session save error:", saveErr);
           }
           
-          // Add verification status and rememberMe to response
-          res.status(200).json({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            isVerified: user.isVerified,
-            requiresVerification: !user.isVerified,
-            rememberMe: !!req.body.rememberMe
-          });
+          try {
+            // Check for existing sessions for this user
+            const existingSessions = await storage.getUserSessions(user.id);
+            const activeSessionsCount = existingSessions.filter(s => s.status === 'active').length;
+            
+            // Create session record for this login and check for suspicious activity
+            const sessionResult = await createUserSessionRecord(req, user.id);
+            
+            // If we should limit to one active session (anti-sharing),
+            // revoke all other sessions except the current one
+            if (process.env.LIMIT_ACTIVE_SESSIONS === 'true' && activeSessionsCount > 0 && sessionResult.sessionId) {
+              try {
+                await storage.revokeAllUserSessions(user.id, req.sessionID);
+                console.log(`Revoked previous sessions for user ${user.id} as part of anti-sharing measures`);
+              } catch (revokeError) {
+                console.error("Error revoking previous sessions:", revokeError);
+              }
+            }
+            
+            // Generate response with user data
+            const response = {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              isVerified: user.isVerified,
+              requiresVerification: !user.isVerified,
+              rememberMe: !!req.body.rememberMe
+            };
+            
+            // If suspicious activity was detected, add warning to response
+            if (sessionResult.isSuspicious) {
+              // Add suspicious flag to response
+              Object.assign(response, {
+                suspiciousActivity: true,
+                suspiciousReason: sessionResult.reason
+              });
+              
+              // Log suspicious activity
+              console.warn(`Suspicious login activity detected for user ${user.id}: ${sessionResult.reason}`);
+              
+              // For admins, we might want to send an email alert
+              if (user.role === 'admin') {
+                // In a real implementation, send an email to the admin
+                console.warn(`Suspicious admin login: ${sessionResult.reason}`);
+              }
+            }
+            
+            // Return the response
+            res.status(200).json(response);
+            
+          } catch (sessionError) {
+            console.error("Error tracking user session during login:", sessionError);
+            
+            // Continue even if session tracking fails
+            res.status(200).json({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              role: user.role,
+              isVerified: user.isVerified,
+              requiresVerification: !user.isVerified,
+              rememberMe: !!req.body.rememberMe
+            });
+          }
         });
       });
     });
   });
 
-  app.post("/api/logout", (req, res, next) => {
-    // First, call logout to clear auth state
+  app.post("/api/logout", async (req, res, next) => {
+    try {
+      // If user is authenticated, update their session status in the database
+      if (req.isAuthenticated() && req.sessionID) {
+        const user = req.user as SelectUser;
+        try {
+          // Mark session as inactive in the database
+          const session = await storage.getUserSessionBySessionId(req.sessionID);
+          if (session) {
+            await storage.updateUserSession(session.id, { 
+              status: 'inactive' as const,
+              lastActivity: new Date()
+            });
+            console.log(`User session ${session.id} marked as inactive during logout`);
+          }
+        } catch (sessionErr) {
+          console.error("Error updating session status during logout:", sessionErr);
+          // Continue with logout even if session update fails
+        }
+      }
+    } catch (preLogoutErr) {
+      console.error("Pre-logout error:", preLogoutErr);
+      // Continue with logout even if there was an error
+    }
+
+    // Call logout to clear auth state
     req.logout((err) => {
       if (err) return next(err);
       
@@ -267,6 +542,262 @@ export function setupAuth(app: Express) {
       isVerified: user.isVerified,
       requiresVerification: !user.isVerified
     });
+  });
+  
+  // Session tracking and management endpoints
+  
+  // Get current user's active sessions
+  app.get("/api/user/sessions", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      const sessions = await storage.getActiveSessions(user.id);
+      
+      // Filter sensitive info for regular users
+      const sanitizedSessions = sessions.map(session => ({
+        id: session.id,
+        lastActivity: session.lastActivity,
+        createdAt: session.createdAt,
+        deviceInfo: session.deviceInfo,
+        location: session.location,
+        isMobile: session.isMobile,
+        browserName: session.browserName,
+        osName: session.osName,
+        // Include a property to identify the current session
+        isCurrentSession: session.sessionId === req.sessionID
+      }));
+      
+      return res.json(sanitizedSessions);
+    } catch (error) {
+      console.error("Error fetching user sessions:", error);
+      return res.status(500).json({ message: "Failed to fetch sessions" });
+    }
+  });
+  
+  // Let users revoke their own sessions (except current one)
+  app.delete("/api/user/sessions/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      const sessionId = parseInt(req.params.id, 10);
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      // Check if the session belongs to the user
+      const session = await storage.getUserSession(sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      if (session.userId !== user.id) {
+        return res.status(403).json({ message: "You can only revoke your own sessions" });
+      }
+      
+      // Don't allow revoking the current session
+      if (session.sessionId === req.sessionID) {
+        return res.status(400).json({ message: "Cannot revoke your current session. Use logout instead." });
+      }
+      
+      const success = await storage.revokeUserSession(sessionId, "Revoked by user");
+      
+      if (!success) {
+        return res.status(500).json({ message: "Failed to revoke session" });
+      }
+      
+      return res.json({ success: true, message: "Session revoked successfully" });
+    } catch (error) {
+      console.error("Error revoking session:", error);
+      return res.status(500).json({ message: "Failed to revoke session" });
+    }
+  });
+  
+  // Admin endpoints for session management
+  
+  // Get all user sessions (admin only)
+  app.get("/api/admin/sessions", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can access this endpoint" });
+      }
+      
+      // Get all sessions
+      const sessions = Array.from(await storage.getSessions());
+      
+      // Get all user IDs from sessions
+      const userIds = [...new Set(sessions.map(session => session.userId))];
+      
+      // Get user details for each user ID
+      const userDetails: Record<number, {name: string, email: string}> = {};
+      for (const userId of userIds) {
+        const user = await storage.getUser(userId);
+        if (user) {
+          userDetails[userId] = {
+            name: user.name,
+            email: user.email
+          };
+        }
+      }
+      
+      // Add user details to each session
+      const sessionsWithUserDetails = sessions.map(session => ({
+        ...session,
+        userName: userDetails[session.userId]?.name || 'Unknown',
+        userEmail: userDetails[session.userId]?.email || 'Unknown'
+      }));
+      
+      return res.json(sessionsWithUserDetails);
+    } catch (error) {
+      console.error("Error fetching all sessions:", error);
+      return res.status(500).json({ message: "Failed to fetch sessions" });
+    }
+  });
+  
+  // Get suspicious sessions (admin only)
+  app.get("/api/admin/sessions/suspicious", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can access this endpoint" });
+      }
+      
+      const suspiciousSessions = await storage.getSuspiciousSessions();
+      
+      // Get user details for each suspicious session
+      const sessionsWithUserDetails = await Promise.all(
+        suspiciousSessions.map(async (session) => {
+          const user = await storage.getUser(session.userId);
+          return {
+            ...session,
+            userName: user?.name || 'Unknown',
+            userEmail: user?.email || 'Unknown'
+          };
+        })
+      );
+      
+      return res.json(sessionsWithUserDetails);
+    } catch (error) {
+      console.error("Error fetching suspicious sessions:", error);
+      return res.status(500).json({ message: "Failed to fetch suspicious sessions" });
+    }
+  });
+  
+  // Mark session as suspicious (admin only)
+  app.put("/api/admin/sessions/:id/mark-suspicious", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can access this endpoint" });
+      }
+      
+      const sessionId = parseInt(req.params.id, 10);
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      const success = await storage.updateUserSession(sessionId, { 
+        status: 'suspicious' as const 
+      });
+      
+      if (!success) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      return res.json({ success: true, message: "Session marked as suspicious" });
+    } catch (error) {
+      console.error("Error marking session as suspicious:", error);
+      return res.status(500).json({ message: "Failed to update session" });
+    }
+  });
+  
+  // Revoke session (admin only)
+  app.delete("/api/admin/sessions/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      
+      if (user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can access this endpoint" });
+      }
+      
+      const sessionId = parseInt(req.params.id, 10);
+      
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      const reason = req.body.reason || "Revoked by admin";
+      const success = await storage.revokeUserSession(sessionId, reason);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      return res.json({ success: true, message: "Session revoked successfully" });
+    } catch (error) {
+      console.error("Error revoking session:", error);
+      return res.status(500).json({ message: "Failed to revoke session" });
+    }
+  });
+  
+  // Revoke all sessions for a user (admin only)
+  app.delete("/api/admin/users/:userId/sessions", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const admin = req.user as SelectUser;
+      
+      if (admin.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can access this endpoint" });
+      }
+      
+      const userId = parseInt(req.params.userId, 10);
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const success = await storage.revokeAllUserSessions(userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "No sessions found for user" });
+      }
+      
+      return res.json({ success: true, message: "All sessions revoked successfully" });
+    } catch (error) {
+      console.error("Error revoking all sessions:", error);
+      return res.status(500).json({ message: "Failed to revoke sessions" });
+    }
   });
   
   // Forgot password - request password reset with rate limiting
