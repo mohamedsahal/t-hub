@@ -85,11 +85,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // More specific messages based on the constraint
       if (constraint === 'specialist_programs_code_key') {
-        message = "A specialist program with this code already exists. Please use a different code.";
+        message = "A specialist program with this code already exists. Please use a different code. Note: Codes are not case-sensitive in the database.";
       } else if (detail && detail.includes('Key (code)=')) {
         const codeMatch = detail.match(/Key \(code\)=\(([^)]+)\)/);
         const code = codeMatch ? codeMatch[1] : '';
-        message = `A program with the code "${code}" already exists. Please use a different code.`;
+        message = `A program with the code "${code}" already exists. Please use a different code. Note: Codes are not case-sensitive.`;
+      } else if (detail && detail.includes('already exists')) {
+        // Generic duplicate key error with detail
+        message = detail;
       }
       
       return res.status(409).json({ message });
@@ -4555,13 +4558,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Specialist program not found" });
       }
       
+      // If code is being changed, check if it already exists
+      if (req.body.code && req.body.code !== program.code) {
+        try {
+          const existingProgram = await storage.getSpecialistProgramByCode(req.body.code);
+          if (existingProgram && existingProgram.id !== programId) {
+            return res.status(409).json({ 
+              message: `A program with the code "${req.body.code}" already exists. Please use a different code. Note: Codes are not case-sensitive.`
+            });
+          }
+        } catch (error) {
+          console.error("Error checking for duplicate code:", error);
+        }
+      }
+      
       const programData = req.body;
       const updatedProgram = await storage.updateSpecialistProgram(programId, programData);
       
       res.json(updatedProgram);
     } catch (error) {
-      console.error("Error updating specialist program:", error);
-      res.status(500).json({ message: "Error updating specialist program" });
+      handleZodError(error, res);
     }
   });
 

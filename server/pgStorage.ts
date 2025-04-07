@@ -1,5 +1,5 @@
 import { db } from './db';
-import { eq, and, or, desc, asc, gte, inArray } from 'drizzle-orm';
+import { eq, and, or, desc, asc, gte, inArray, sql } from 'drizzle-orm';
 import { 
   User, InsertUser, Course, InsertCourse, CourseSection, InsertCourseSection,
   CourseModule, InsertCourseModule, Payment, InsertPayment, Installment, InsertInstallment, 
@@ -2021,7 +2021,9 @@ export class PgStorage implements IStorage {
   }
 
   async getSpecialistProgramByCode(code: string): Promise<SpecialistProgram | undefined> {
-    const result = await db.select().from(specialistPrograms).where(eq(specialistPrograms.code, code));
+    // PostgreSQL's ILIKE for case-insensitive matching
+    const result = await db.select().from(specialistPrograms)
+      .where(sql`LOWER(${specialistPrograms.code}) = LOWER(${code})`);
     return result[0];
   }
 
