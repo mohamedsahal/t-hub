@@ -687,14 +687,13 @@ export default function UserSessions() {
                         <div className="space-y-6">
                           {/* Group sessions by device type */}
                           {Array.from(new Set(sessions.map(s => s.deviceInfo))).map((deviceInfo) => {
-                            if (!deviceInfo) return null;
                             const deviceSessions = sessions.filter(s => s.deviceInfo === deviceInfo);
                             const latestSession = deviceSessions.sort((a, b) => 
                               new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime()
                             )[0];
                             
                             return (
-                              <div key={deviceInfo} className="bg-muted/20 p-4 rounded-lg">
+                              <div key={deviceInfo || 'unknown-device'} className="bg-muted/20 p-4 rounded-lg">
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-start gap-3">
                                     {latestSession.isMobile ? (
@@ -703,7 +702,7 @@ export default function UserSessions() {
                                       <Laptop className="h-9 w-9 p-1.5 bg-primary/10 rounded-md text-primary mt-1" />
                                     )}
                                     <div>
-                                      <h3 className="font-semibold text-lg mb-0.5">{deviceInfo}</h3>
+                                      <h3 className="font-semibold text-lg mb-0.5">{deviceInfo || 'Unknown Device'}</h3>
                                       <div className="text-sm text-muted-foreground mb-2">
                                         {latestSession.browserName && latestSession.browserVersion && (
                                           <div>{latestSession.browserName} {latestSession.browserVersion}</div>
@@ -769,7 +768,7 @@ export default function UserSessions() {
                                 </div>
                               </div>
                             );
-                          }).filter(Boolean)}
+                          })}
                         </div>
                       )}
                     </CardContent>
