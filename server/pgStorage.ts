@@ -9,9 +9,12 @@ import {
   Exam, InsertExam, ExamQuestion, InsertExamQuestion, ExamResult, InsertExamResult,
   Semester, InsertSemester, Cohort, InsertCohort, CohortEnrollment, InsertCohortEnrollment,
   Alert, InsertAlert, UserSession, InsertUserSession, UserLocationHistory, InsertUserLocationHistory,
+  SpecialistProgram, InsertSpecialistProgram, SpecialistProgramCourse, InsertSpecialistProgramCourse,
+  SpecialistProgramEnrollment, InsertSpecialistProgramEnrollment,
   users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
   products, partners, events, landingContent, exams, examQuestions, examResults,
-  semesters, cohorts, cohortEnrollments, alerts, userSessions, userLocationHistory
+  semesters, cohorts, cohortEnrollments, alerts, userSessions, userLocationHistory,
+  specialistPrograms, specialistProgramCourses, specialistProgramEnrollments
 } from '@shared/schema';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
@@ -2008,6 +2011,166 @@ export class PgStorage implements IStorage {
       }
     } catch (error) {
       console.error("Error analyzing suspicious activity:", error);
+    }
+  }
+
+  // Specialist Program operations
+  async getSpecialistProgram(id: number): Promise<SpecialistProgram | undefined> {
+    const result = await db.select().from(specialistPrograms).where(eq(specialistPrograms.id, id));
+    return result[0];
+  }
+
+  async getSpecialistProgramByCode(code: string): Promise<SpecialistProgram | undefined> {
+    const result = await db.select().from(specialistPrograms).where(eq(specialistPrograms.code, code));
+    return result[0];
+  }
+
+  async getAllSpecialistPrograms(): Promise<SpecialistProgram[]> {
+    return await db.select().from(specialistPrograms);
+  }
+
+  async getActiveSpecialistPrograms(): Promise<SpecialistProgram[]> {
+    return await db.select().from(specialistPrograms).where(eq(specialistPrograms.isActive, true));
+  }
+
+  async createSpecialistProgram(program: InsertSpecialistProgram): Promise<SpecialistProgram> {
+    const result = await db.insert(specialistPrograms).values({
+      ...program,
+      isActive: program.isActive !== undefined ? program.isActive : true,
+      isVisible: program.isVisible !== undefined ? program.isVisible : true,
+      hasDiscounted: program.hasDiscounted !== undefined ? program.hasDiscounted : false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateSpecialistProgram(id: number, programData: Partial<SpecialistProgram>): Promise<SpecialistProgram | undefined> {
+    const result = await db.update(specialistPrograms)
+      .set({
+        ...programData,
+        updatedAt: new Date()
+      })
+      .where(eq(specialistPrograms.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSpecialistProgram(id: number): Promise<boolean> {
+    try {
+      // First delete all related program courses
+      const programCourses = await this.getSpecialistProgramCoursesByProgram(id);
+      for (const programCourse of programCourses) {
+        await this.deleteSpecialistProgramCourse(programCourse.id);
+      }
+
+      // Then delete all related enrollments
+      const programEnrollments = await this.getSpecialistProgramEnrollmentsByProgram(id);
+      for (const enrollment of programEnrollments) {
+        await this.deleteSpecialistProgramEnrollment(enrollment.id);
+      }
+
+      // Finally delete the program itself
+      const result = await db.delete(specialistPrograms)
+        .where(eq(specialistPrograms.id, id))
+        .returning({ id: specialistPrograms.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting specialist program:", error);
+      return false;
+    }
+  }
+
+  // Specialist Program Course operations
+  async getSpecialistProgramCourse(id: number): Promise<SpecialistProgramCourse | undefined> {
+    const result = await db.select().from(specialistProgramCourses).where(eq(specialistProgramCourses.id, id));
+    return result[0];
+  }
+
+  async getSpecialistProgramCoursesByProgram(programId: number): Promise<SpecialistProgramCourse[]> {
+    return await db.select().from(specialistProgramCourses)
+      .where(eq(specialistProgramCourses.programId, programId))
+      .orderBy(asc(specialistProgramCourses.order));
+  }
+
+  async getSpecialistProgramCoursesByCourse(courseId: number): Promise<SpecialistProgramCourse[]> {
+    return await db.select().from(specialistProgramCourses).where(eq(specialistProgramCourses.courseId, courseId));
+  }
+
+  async createSpecialistProgramCourse(programCourse: InsertSpecialistProgramCourse): Promise<SpecialistProgramCourse> {
+    const result = await db.insert(specialistProgramCourses).values({
+      ...programCourse,
+      order: programCourse.order || 1,
+      isRequired: programCourse.isRequired !== undefined ? programCourse.isRequired : true,
+      createdAt: new Date()
+    }).returning();
+    return result[0];
+  }
+
+  async updateSpecialistProgramCourse(id: number, programCourse: Partial<SpecialistProgramCourse>): Promise<SpecialistProgramCourse | undefined> {
+    const result = await db.update(specialistProgramCourses)
+      .set(programCourse)
+      .where(eq(specialistProgramCourses.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSpecialistProgramCourse(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(specialistProgramCourses)
+        .where(eq(specialistProgramCourses.id, id))
+        .returning({ id: specialistProgramCourses.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting specialist program course:", error);
+      return false;
+    }
+  }
+
+  // Specialist Program Enrollment operations
+  async getSpecialistProgramEnrollment(id: number): Promise<SpecialistProgramEnrollment | undefined> {
+    const result = await db.select().from(specialistProgramEnrollments).where(eq(specialistProgramEnrollments.id, id));
+    return result[0];
+  }
+
+  async getSpecialistProgramEnrollmentsByProgram(programId: number): Promise<SpecialistProgramEnrollment[]> {
+    return await db.select().from(specialistProgramEnrollments).where(eq(specialistProgramEnrollments.programId, programId));
+  }
+
+  async getSpecialistProgramEnrollmentsByUser(userId: number): Promise<SpecialistProgramEnrollment[]> {
+    return await db.select().from(specialistProgramEnrollments).where(eq(specialistProgramEnrollments.userId, userId));
+  }
+
+  async createSpecialistProgramEnrollment(enrollment: InsertSpecialistProgramEnrollment): Promise<SpecialistProgramEnrollment> {
+    const result = await db.insert(specialistProgramEnrollments).values({
+      ...enrollment,
+      status: enrollment.status || "active",
+      enrollmentDate: new Date(),
+      completionDate: null
+    }).returning();
+    return result[0];
+  }
+
+  async updateSpecialistProgramEnrollment(id: number, enrollment: Partial<SpecialistProgramEnrollment>): Promise<SpecialistProgramEnrollment | undefined> {
+    const result = await db.update(specialistProgramEnrollments)
+      .set(enrollment)
+      .where(eq(specialistProgramEnrollments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSpecialistProgramEnrollment(id: number): Promise<boolean> {
+    try {
+      const result = await db.delete(specialistProgramEnrollments)
+        .where(eq(specialistProgramEnrollments.id, id))
+        .returning({ id: specialistProgramEnrollments.id });
+      
+      return result.length > 0;
+    } catch (error) {
+      console.error("Error deleting specialist program enrollment:", error);
+      return false;
     }
   }
 }
