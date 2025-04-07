@@ -126,12 +126,12 @@ export default function SpecialistProgramsPage() {
 
   // Navigate to edit specialist program
   const editProgram = (programId: number) => {
-    setLocation(`/admin/specialist-programs/edit/${programId}`);
+    setLocation(`/admin/courses/specialist/edit/${programId}`);
   };
 
   // Navigate to create new specialist program
   const createNewProgram = () => {
-    setLocation('/admin/specialist-programs/create');
+    setLocation('/admin/courses/specialist/create');
   };
 
   // Confirm delete handler
