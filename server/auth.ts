@@ -90,6 +90,24 @@ export function setupAuth(app: Express) {
               // Continue login even if upgrade fails
             }
           }
+          
+          // If user's email is not verified, send a new verification code
+          if (!user.isVerified) {
+            try {
+              // Generate verification code
+              const verificationCode = await storage.createVerificationCode(user.id);
+              
+              // Send verification email
+              const emailSent = await sendVerificationEmail(user, verificationCode);
+              if (!emailSent) {
+                console.error("Failed to send verification email during login to:", user.email);
+              }
+            } catch (verificationError) {
+              console.error("Error generating verification code during login:", verificationError);
+              // Continue with login even if verification email fails
+            }
+          }
+          
           return done(null, user);
         }
       }
@@ -161,23 +179,6 @@ export function setupAuth(app: Express) {
 
   app.post("/api/login", passport.authenticate("local"), async (req, res) => {
     const user = req.user as SelectUser;
-    
-    // Handle unverified users
-    if (!user.isVerified) {
-      try {
-        // Generate a new verification code for login
-        const verificationCode = await storage.createVerificationCode(user.id);
-        
-        // Send verification email
-        const emailSent = await sendVerificationEmail(user, verificationCode);
-        if (!emailSent) {
-          console.error("Failed to send verification email to:", user.email);
-        }
-      } catch (verificationError) {
-        console.error("Error generating verification code:", verificationError);
-        // Continue with login even if verification fails
-      }
-    }
     
     // Store the rememberMe setting in the session
     req.session.rememberMe = !!req.body.rememberMe;
