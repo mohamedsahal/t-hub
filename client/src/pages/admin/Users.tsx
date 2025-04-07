@@ -1,19 +1,15 @@
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import UsersManagement from "@/components/dashboard/UsersManagement";
+import React from 'react';
+import { Helmet } from 'react-helmet';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import UsersManagement from '@/components/admin/UsersManagement';
 
-export default function AdminUsers() {
+export default function Users() {
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight">Users Management</h1>
-          <div className="text-sm text-muted-foreground">
-            Manage all system users and their roles
-          </div>
-        </div>
-        
-        <UsersManagement />
-      </div>
+      <Helmet>
+        <title>User Management - T-Hub Admin</title>
+      </Helmet>
+      <UsersManagement />
     </DashboardLayout>
   );
 }

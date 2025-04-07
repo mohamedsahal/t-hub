@@ -23,6 +23,7 @@ import ResetPassword from "@/pages/ResetPassword";
 // Admin Pages
 import AdminPage from "@/pages/admin";
 import UsersAdminPage from "@/pages/admin/Users";
+import UserSessionsPage from "@/pages/admin/UserSessions";
 import CoursesAdminPage from "@/pages/admin/Courses";
 import ShortCoursesPage from "@/pages/admin/ShortCoursesPage";
 import SpecialistProgramsPage from "@/pages/admin/SpecialistProgramsPage";
@@ -79,6 +80,7 @@ function Router() {
       {/* Admin Routes */}
       <AdminProtectedRoute path="/admin" component={() => <AdminPage />} />
       <AdminProtectedRoute path="/admin/users" component={() => <UsersAdminPage />} />
+      <AdminProtectedRoute path="/admin/users/:userId/sessions" component={() => <UserSessionsPage />} />
       
       {/* Course Management Routes */}
       <AdminProtectedRoute path="/admin/courses" component={() => <CoursesAdminPage />} />
