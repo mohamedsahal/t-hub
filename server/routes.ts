@@ -74,6 +74,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const formattedError = fromZodError(err);
       return res.status(400).json({ message: formattedError.message });
     }
+    
+    // Handle PostgreSQL unique constraint violation errors
+    if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+      // This is a unique constraint violation
+      const detail = 'detail' in err ? String(err.detail) : '';
+      const constraint = 'constraint' in err ? String(err.constraint) : '';
+      
+      let message = "A record with this unique identifier already exists.";
+      
+      // More specific messages based on the constraint
+      if (constraint === 'specialist_programs_code_key') {
+        message = "A specialist program with this code already exists. Please use a different code.";
+      } else if (detail && detail.includes('Key (code)=')) {
+        const codeMatch = detail.match(/Key \(code\)=\(([^)]+)\)/);
+        const code = codeMatch ? codeMatch[1] : '';
+        message = `A program with the code "${code}" already exists. Please use a different code.`;
+      }
+      
+      return res.status(409).json({ message });
+    }
+    
     console.error("Server error:", err);
     return res.status(500).json({ message: "Internal server error", error: err instanceof Error ? err.message : String(err) });
   };
