@@ -4181,5 +4181,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Session Management endpoints
+  
+  // Get all user sessions (for admin)
+  app.get("/api/admin/sessions", checkRole(["admin"]), async (req, res) => {
+    try {
+      // Fetch all sessions from storage
+      const sessions = await storage.getAllUserSessions();
+      
+      // Get user information for each session
+      const sessionsWithUserInfo = await Promise.all(
+        sessions.map(async (session) => {
+          const user = await storage.getUser(session.userId);
+          return {
+            ...session,
+            userName: user ? user.name : null,
+            userEmail: user ? user.email : null
+          };
+        })
+      );
+      
+      res.json({ data: sessionsWithUserInfo });
+    } catch (error) {
+      console.error('Error fetching sessions:', error);
+      res.status(500).json({ message: "Failed to fetch sessions" });
+    }
+  });
+
+  // Get suspicious sessions (for admin)
+  app.get("/api/admin/sessions/suspicious", checkRole(["admin"]), async (req, res) => {
+    try {
+      // Fetch suspicious sessions from storage
+      const suspiciousSessions = await storage.getSuspiciousSessions();
+      
+      // Get user information for each session
+      const sessionsWithUserInfo = await Promise.all(
+        suspiciousSessions.map(async (session) => {
+          const user = await storage.getUser(session.userId);
+          return {
+            ...session,
+            userName: user ? user.name : null,
+            userEmail: user ? user.email : null
+          };
+        })
+      );
+      
+      res.json({ data: sessionsWithUserInfo });
+    } catch (error) {
+      console.error('Error fetching suspicious sessions:', error);
+      res.status(500).json({ message: "Failed to fetch suspicious sessions" });
+    }
+  });
+
+  // Get sessions for a specific user (for admin)
+  app.get("/api/admin/users/:userId/sessions", checkRole(["admin"]), async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Fetch user sessions from storage
+      const userSessions = await storage.getUserSessions(userId);
+      
+      // Add user information to each session
+      const sessionsWithUserInfo = userSessions.map(session => ({
+        ...session,
+        userName: user.name,
+        userEmail: user.email
+      }));
+      
+      res.json({ data: sessionsWithUserInfo });
+    } catch (error) {
+      console.error('Error fetching user sessions:', error);
+      res.status(500).json({ message: "Failed to fetch user sessions" });
+    }
+  });
+
+  // Revoke a specific session (for admin)
+  app.delete("/api/admin/sessions/:sessionId", checkRole(["admin"]), async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId, 10);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      // Check if session exists
+      const session = await storage.getUserSessionById(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      const reason = req.body.reason || "Revoked by administrator";
+      
+      // Revoke the session
+      const success = await storage.revokeUserSession(sessionId, reason);
+      
+      if (success) {
+        res.status(200).json({ message: "Session revoked successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to revoke session" });
+      }
+    } catch (error) {
+      console.error('Error revoking session:', error);
+      res.status(500).json({ message: "Failed to revoke session" });
+    }
+  });
+
+  // Mark a session as suspicious (for admin)
+  app.put("/api/admin/sessions/:sessionId/mark-suspicious", checkRole(["admin"]), async (req, res) => {
+    try {
+      const sessionId = parseInt(req.params.sessionId, 10);
+      if (isNaN(sessionId)) {
+        return res.status(400).json({ message: "Invalid session ID" });
+      }
+      
+      // Check if session exists
+      const session = await storage.getUserSessionById(sessionId);
+      if (!session) {
+        return res.status(404).json({ message: "Session not found" });
+      }
+      
+      // Mark the session as suspicious
+      const success = await storage.markSessionAsSuspicious(sessionId);
+      
+      if (success) {
+        res.status(200).json({ message: "Session marked as suspicious" });
+      } else {
+        res.status(500).json({ message: "Failed to mark session as suspicious" });
+      }
+    } catch (error) {
+      console.error('Error marking session as suspicious:', error);
+      res.status(500).json({ message: "Failed to mark session as suspicious" });
+    }
+  });
+
+  // Revoke all sessions for a user (for admin)
+  app.delete("/api/admin/users/:userId/sessions", checkRole(["admin"]), async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Check if user exists
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Revoke all sessions for the user
+      const success = await storage.revokeAllUserSessions(userId, "Revoked by administrator");
+      
+      if (success) {
+        res.status(200).json({ message: "All sessions for user revoked successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to revoke user sessions" });
+      }
+    } catch (error) {
+      console.error('Error revoking user sessions:', error);
+      res.status(500).json({ message: "Failed to revoke user sessions" });
+    }
+  });
+
   return httpServer;
 }

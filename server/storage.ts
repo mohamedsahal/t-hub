@@ -56,6 +56,10 @@ export interface IStorage {
   revokeAllUserSessions(userId: number, exceptSessionId?: string): Promise<boolean>;
   getActiveSessions(userId: number): Promise<UserSession[]>;
   getSuspiciousSessions(): Promise<UserSession[]>;
+  getSessions(): Promise<UserSession[]>;
+  getAllUserSessions(): Promise<UserSession[]>;
+  getUserSessionById(id: number): Promise<UserSession | undefined>;
+  markSessionAsSuspicious(id: number): Promise<boolean>;
   
   // User Location History operations
   getUserLocationHistory(id: number): Promise<UserLocationHistory | undefined>;
@@ -64,6 +68,17 @@ export interface IStorage {
   createUserLocation(location: InsertUserLocationHistory): Promise<UserLocationHistory>;
   getSuspiciousLocations(): Promise<UserLocationHistory[]>;
   markLocationAsSuspicious(id: number): Promise<boolean>;
+  
+  // Security analysis operations
+  detectSuspiciousActivity(
+    userId: number, 
+    sessionId: string, 
+    ipAddress: string | null, 
+    location: string | null, 
+    deviceInfo: string | null
+  ): Promise<{isSuspicious: boolean, reason: string | null}>;
+  
+  analyzeSuspiciousActivity(userId: number): Promise<void>;
   
   // Course operations
   getCourse(id: number): Promise<Course | undefined>;
@@ -1892,6 +1907,196 @@ export class MemStorage implements IStorage {
 
   async getSuspiciousSessions(): Promise<UserSession[]> {
     return Array.from(this.userSessions.values()).filter(session => session.status === 'suspicious');
+  }
+  
+  async getSessions(): Promise<UserSession[]> {
+    return Array.from(this.userSessions.values());
+  }
+  
+  // Method to get all user sessions for the admin dashboard
+  async getAllUserSessions(): Promise<UserSession[]> {
+    return this.getSessions();
+  }
+  
+  // Method to get a specific user session by ID
+  async getUserSessionById(id: number): Promise<UserSession | undefined> {
+    return this.getUserSession(id);
+  }
+  
+  // Method to mark a session as suspicious (for admin)
+  async markSessionAsSuspicious(id: number): Promise<boolean> {
+    const session = this.userSessions.get(id);
+    if (!session) return false;
+    
+    const updatedSession = { 
+      ...session, 
+      status: 'suspicious' as const
+    };
+    
+    this.userSessions.set(id, updatedSession);
+    return true;
+  }
+  
+  /**
+   * Analyzes a login attempt to detect suspicious activity
+   * This algorithm checks for:
+   * - Unusual locations compared to previous logins
+   * - Multiple logins from different geographical areas in a short time
+   * - Unusual device/browser combinations
+   * - Rapid switching between devices
+   */
+  async detectSuspiciousActivity(
+    userId: number, 
+    sessionId: string, 
+    ipAddress: string | null, 
+    location: string | null, 
+    deviceInfo: string | null
+  ): Promise<{isSuspicious: boolean, reason: string | null}> {
+    try {
+      // Default response
+      const response = {
+        isSuspicious: false,
+        reason: null
+      };
+      
+      // Get user's previous sessions
+      const userSessions = await this.getUserSessions(userId);
+      
+      // For first-time logins, we don't have enough data
+      if (userSessions.length <= 1) {
+        return response;
+      }
+      
+      // Get active sessions within the last 24 hours
+      const recentSessions = userSessions.filter(session => {
+        const sessionTime = new Date(session.createdAt).getTime();
+        const now = new Date().getTime();
+        const hoursDiff = (now - sessionTime) / (1000 * 60 * 60);
+        return hoursDiff < 24 && session.sessionId !== sessionId;
+      });
+      
+      // Check for rapid login from different locations
+      if (recentSessions.length > 0 && location) {
+        const differentLocationSessions = recentSessions.filter(session => 
+          session.location && session.location !== location
+        );
+        
+        if (differentLocationSessions.length > 0) {
+          // Calculate the minimum time between logins from different locations
+          const latestDiffLocationSession = differentLocationSessions.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )[0];
+          
+          const timeDiff = (new Date().getTime() - new Date(latestDiffLocationSession.createdAt).getTime()) / (1000 * 60);
+          
+          // If logins from different locations happened within 30 minutes
+          if (timeDiff < 30) {
+            response.isSuspicious = true;
+            response.reason = `Rapid login from different location (${latestDiffLocationSession.location} → ${location}) within ${Math.round(timeDiff)} minutes`;
+            return response;
+          }
+        }
+      }
+      
+      // Check for unusual device
+      if (deviceInfo) {
+        const commonDevices = userSessions
+          .filter(session => session.deviceInfo)
+          .reduce((acc, session) => {
+            const device = session.deviceInfo || '';
+            acc[device] = (acc[device] || 0) + 1;
+            return acc;
+          }, {} as Record<string, number>);
+        
+        // If this is a new device and user has at least 3 sessions from other devices
+        if (!commonDevices[deviceInfo] && Object.keys(commonDevices).length >= 3) {
+          response.isSuspicious = true;
+          response.reason = `Login from unusual device: ${deviceInfo}`;
+          return response;
+        }
+      }
+      
+      // Check for too many active sessions
+      const activeSessions = userSessions.filter(session => session.status === 'active');
+      if (activeSessions.length > 5) {
+        response.isSuspicious = true;
+        response.reason = `Unusual number of active sessions (${activeSessions.length})`;
+        return response;
+      }
+      
+      return response;
+    } catch (error) {
+      console.error("Error in suspicious activity detection:", error);
+      return { isSuspicious: false, reason: null };
+    }
+  }
+  
+  /**
+   * Analyze user's session history for patterns indicating account sharing
+   * This performs deeper analysis across all of a user's sessions
+   */
+  async analyzeSuspiciousActivity(userId: number): Promise<void> {
+    try {
+      // Get all of user's sessions
+      const userSessions = await this.getUserSessions(userId);
+      if (userSessions.length < 3) return; // Not enough data for analysis
+      
+      // Get locations
+      const locations = userSessions
+        .filter(session => session.location)
+        .map(session => session.location);
+      
+      // Count unique locations
+      const uniqueLocations = new Set(locations);
+      
+      // If more than 5 different locations, flag all active sessions as suspicious
+      if (uniqueLocations.size > 5) {
+        const activeSessions = userSessions.filter(session => session.status === 'active');
+        for (const session of activeSessions) {
+          await this.updateUserSession(session.id, { 
+            status: 'suspicious' as const,
+          });
+        }
+      }
+      
+      // Analyze concurrent usage patterns using time-based analysis
+      const sessionTimestamps = userSessions.map(session => ({
+        id: session.id,
+        start: new Date(session.createdAt).getTime(),
+        lastActivity: session.lastActivity ? new Date(session.lastActivity).getTime() : null,
+        location: session.location,
+        device: session.deviceInfo
+      }));
+      
+      // Check for overlapping sessions from different locations/devices
+      for (let i = 0; i < sessionTimestamps.length; i++) {
+        for (let j = i + 1; j < sessionTimestamps.length; j++) {
+          const session1 = sessionTimestamps[i];
+          const session2 = sessionTimestamps[j];
+          
+          // If different locations/devices and overlapping time periods
+          if (
+            session1.location !== session2.location && 
+            session1.device !== session2.device
+          ) {
+            // Check time overlap
+            const session1End = session1.lastActivity || (session1.start + 30 * 60 * 1000); // 30 min default
+            const session2End = session2.lastActivity || (session2.start + 30 * 60 * 1000);
+            
+            if (
+              (session1.start <= session2.start && session1End >= session2.start) ||
+              (session2.start <= session1.start && session2End >= session1.start)
+            ) {
+              // Overlapping sessions from different locations - strong indicator of sharing
+              await this.updateUserSession(session1.id, { status: 'suspicious' as const });
+              await this.updateUserSession(session2.id, { status: 'suspicious' as const });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error analyzing suspicious activity:", error);
+    }
   }
 
   // User Location History operations

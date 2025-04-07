@@ -20,7 +20,8 @@ import {
   LogOut,
   ClipboardCheck,
   Info,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ThubLogo from "@/components/ui/ThubLogo";
@@ -192,6 +193,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 label="Users" 
                 href="/admin/users" 
                 isActive={location === "/admin/users"} 
+              />
+              <SidebarItem 
+                icon={<ShieldAlert size={18} />} 
+                label="Session Management" 
+                href="/admin/session-management" 
+                isActive={location === "/admin/session-management"} 
               />
             </SidebarCategory>
             

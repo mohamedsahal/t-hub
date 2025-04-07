@@ -112,6 +112,11 @@ async function main() {
 }
 
 // Run the migration when this script is executed directly
-if (require.main === module) {
+// Using ESM module format, checking import.meta.url
+import { fileURLToPath } from 'url';
+const currentFilePath = fileURLToPath(import.meta.url);
+const isMainModule = process.argv[1] === currentFilePath;
+
+if (isMainModule) {
   main();
 }
