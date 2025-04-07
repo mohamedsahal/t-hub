@@ -16,6 +16,9 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  verifyEmailMutation: UseMutationResult<any, Error, { code: string }>;
+  resendVerificationMutation: UseMutationResult<any, Error, void>;
+  requiresVerification: boolean;
 };
 
 type LoginData = {
@@ -37,6 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
     initialData: null,
   });
+  
+  // Check if user needs email verification
+  const requiresVerification = user !== null && user.isVerified === false;
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
@@ -104,6 +110,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     },
   });
+  
+  // Email verification mutation
+  const verifyEmailMutation = useMutation({
+    mutationFn: async ({ code }: { code: string }) => {
+      return await apiRequest('/api/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      });
+    },
+    onSuccess: () => {
+      // Refetch user to update verification status
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      
+      toast({
+        title: "Email verified",
+        description: "Your email has been successfully verified.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Verification failed",
+        description: error.message || "Invalid verification code. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Resend verification code mutation
+  const resendVerificationMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest('/api/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Verification code sent",
+        description: "A new verification code has been sent to your email.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to resend code",
+        description: error.message || "Could not send verification code. Please try again later.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <AuthContext.Provider
@@ -114,6 +170,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        verifyEmailMutation,
+        resendVerificationMutation,
+        requiresVerification
       }}
     >
       {children}

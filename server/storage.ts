@@ -38,6 +38,16 @@ export interface IStorage {
   getUserByResetToken(token: string): Promise<User | undefined>;
   resetPassword(token: string, newPassword: string): Promise<boolean>;
   
+  // Email verification operations
+  createVerificationCode(userId: number): Promise<string>;
+  verifyEmail(userId: number, code: string): Promise<boolean>;
+  getUserByVerificationCode(code: string): Promise<User | undefined>;
+  
+  // Email verification operations
+  createVerificationCode(userId: number): Promise<string>;
+  verifyEmail(userId: number, code: string): Promise<boolean>;
+  getUserByVerificationCode(code: string): Promise<User | undefined>;
+  
   // Course operations
   getCourse(id: number): Promise<Course | undefined>;
   getCoursesByType(type: string): Promise<Course[]>;
@@ -599,6 +609,94 @@ export class MemStorage implements IStorage {
     
     this.users.set(user.id, updatedUser);
     return true;
+  }
+
+  /**
+   * Create verification code for user email verification
+   * 
+   * @param userId User ID
+   * @returns Verification code
+   */
+  async createVerificationCode(userId: number): Promise<string> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+    // Generate a 6-digit verification code
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Set expiration time (10 minutes from now)
+    const verificationCodeExpiry = new Date();
+    verificationCodeExpiry.setMinutes(verificationCodeExpiry.getMinutes() + 10);
+    
+    // Update the user with the verification code
+    const updatedUser = {
+      ...user,
+      verificationCode,
+      verificationCodeExpiry
+    };
+    
+    this.users.set(user.id, updatedUser);
+    return verificationCode;
+  }
+
+  /**
+   * Verify user email with verification code
+   * 
+   * @param userId User ID
+   * @param code Verification code
+   * @returns True if verification succeeded
+   */
+  async verifyEmail(userId: number, code: string): Promise<boolean> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      return false;
+    }
+
+    // Check code and expiration
+    if (user.verificationCode !== code) {
+      return false;
+    }
+    
+    // Check if code has expired
+    if (user.verificationCodeExpiry && new Date() > user.verificationCodeExpiry) {
+      return false;
+    }
+
+    // Mark user as verified and clear verification code
+    const updatedUser = {
+      ...user,
+      isVerified: true,
+      verificationCode: null,
+      verificationCodeExpiry: null
+    };
+    
+    this.users.set(user.id, updatedUser);
+    return true;
+  }
+
+  /**
+   * Get user by verification code
+   * 
+   * @param code Verification code
+   * @returns User if found and code is valid
+   */
+  async getUserByVerificationCode(code: string): Promise<User | undefined> {
+    const now = new Date();
+    
+    // Find the user with the matching code and valid expiry
+    for (const user of this.users.values()) {
+      if (
+        user.verificationCode === code && 
+        user.verificationCodeExpiry && 
+        user.verificationCodeExpiry > now
+      ) {
+        return user;
+      }
+    }
+    
+    return undefined;
   }
 
   // Course operations

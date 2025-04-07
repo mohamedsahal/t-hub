@@ -14,7 +14,7 @@ type RateLimitRecord = {
   windowMs: number;
 };
 
-// Store for email-based rate limiting (for password reset)
+// Store for email-based rate limiting (for password reset and verification)
 type EmailRateLimitRecord = {
   count: number;
   resetAt: number;
@@ -25,6 +25,7 @@ type EmailRateLimitRecord = {
 // In-memory stores
 const ipStore: Map<string, RateLimitRecord> = new Map();
 const emailStore: Map<string, EmailRateLimitRecord> = new Map();
+const verificationStore: Map<string, EmailRateLimitRecord> = new Map();
 
 // Clean up stores periodically to prevent memory leaks
 setInterval(() => {
@@ -41,6 +42,13 @@ setInterval(() => {
   for (const [email, record] of emailStore.entries()) {
     if (now > record.resetAt) {
       emailStore.delete(email);
+    }
+  }
+  
+  // Clean up verification code store
+  for (const [userId, record] of verificationStore.entries()) {
+    if (now > record.resetAt) {
+      verificationStore.delete(userId);
     }
   }
 }, 60 * 60 * 1000); // Clean up every hour
@@ -177,8 +185,79 @@ export const formatTimeRemaining = (ms: number): string => {
   return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
 };
 
+/**
+ * Rate limit verification code requests by user ID
+ * @param userId User ID
+ * @param windowMs Time window in milliseconds
+ * @param maxRequests Maximum requests allowed in window
+ * @param cooldownMs Minimum time between requests
+ * @returns Object containing limit info and whether the request is allowed
+ */
+export const rateLimitVerificationCode = (
+  userId: string | number,
+  windowMs: number = 5 * 60 * 1000, // 5 minutes
+  maxRequests: number = 5, // Max 5 requests per 5 min
+  cooldownMs: number = 30 * 1000 // 30 second cooldown between requests
+): { 
+  allowed: boolean; 
+  remainingRequests: number; 
+  msBeforeNext: number;
+  cooldownRemaining: number;
+} => {
+  const userKey = userId.toString();
+  const now = Date.now();
+  let record = verificationStore.get(userKey);
+  
+  // Create new record if it doesn't exist or if the window has passed
+  if (!record || now > record.resetAt) {
+    record = {
+      count: 0,
+      resetAt: now + windowMs,
+      lastRequestAt: 0,
+      windowMs
+    };
+    verificationStore.set(userKey, record);
+  }
+  
+  // Check cooldown - minimum time between requests
+  const timeSinceLastRequest = now - (record.lastRequestAt || 0);
+  const cooldownRemaining = Math.max(0, cooldownMs - timeSinceLastRequest);
+  const cooldownActive = cooldownRemaining > 0;
+  
+  // Only increment count if cooldown is not active
+  if (!cooldownActive) {
+    record.count += 1;
+    record.lastRequestAt = now;
+  }
+  
+  // Determine if request is allowed (under max count and not in cooldown)
+  const underMaxRequests = record.count <= maxRequests;
+  const isAllowed = underMaxRequests && !cooldownActive;
+  
+  // Log rate limit hit
+  if (!isAllowed) {
+    if (cooldownActive) {
+      log(`Verification code cooldown active for user: ${userId}`, 'rate-limit');
+    } else {
+      log(`Verification code rate limit exceeded for user: ${userId}`, 'rate-limit');
+    }
+  }
+  
+  // Calculate remaining requests and time before reset
+  const remainingRequests = Math.max(0, maxRequests - record.count);
+  const msBeforeNext = Math.max(0, record.resetAt - now);
+  
+  return {
+    allowed: isAllowed,
+    remainingRequests,
+    msBeforeNext,
+    cooldownRemaining
+  };
+};
+
 export default {
   rateLimit,
   rateLimitPasswordReset,
+  rateLimitVerificationCode,
   formatTimeRemaining
 };

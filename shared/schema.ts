@@ -37,6 +37,9 @@ export const users = pgTable("users", {
   preferredCourse: courseTypeEnum("preferred_course"),
   resetToken: text("reset_token"), // Password reset token
   resetTokenExpiry: timestamp("reset_token_expiry"), // Token expiration
+  verificationCode: text("verification_code"), // Email verification code
+  verificationCodeExpiry: timestamp("verification_code_expiry"), // Code expiration time
+  isVerified: boolean("is_verified").default(false).notNull(), // Whether email is verified
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -333,7 +336,13 @@ export const alerts = pgTable("alerts", {
 });
 
 // Define insert schemas
-export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
+export const insertUserSchema = createInsertSchema(users).omit({ 
+  id: true, 
+  createdAt: true, 
+  verificationCode: true, 
+  verificationCodeExpiry: true, 
+  isVerified: true 
+});
 export const insertCourseSchema = createInsertSchema(courses).omit({ id: true, createdAt: true });
 export const insertSemesterSchema = createInsertSchema(semesters).omit({ id: true });
 export const insertCourseModuleSchema = createInsertSchema(courseModules).omit({ id: true });

@@ -194,6 +194,101 @@ export class PgStorage implements IStorage {
     }
   }
 
+  /**
+   * Create verification code for user email verification
+   * 
+   * @param userId User ID
+   * @returns Verification code
+   */
+  async createVerificationCode(userId: number): Promise<string> {
+    try {
+      // Generate a 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Set expiration time (10 minutes from now)
+      const expiryTime = new Date();
+      expiryTime.setMinutes(expiryTime.getMinutes() + 10);
+      
+      // Update user with verification code
+      await db.update(users)
+        .set({
+          verificationCode: verificationCode,
+          verificationCodeExpiry: expiryTime
+        })
+        .where(eq(users.id, userId));
+      
+      return verificationCode;
+    } catch (error) {
+      console.error('Error creating verification code:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verify user email with verification code
+   * 
+   * @param userId User ID
+   * @param code Verification code
+   * @returns True if verification succeeded
+   */
+  async verifyEmail(userId: number, code: string): Promise<boolean> {
+    try {
+      // Find user
+      const user = await this.getUser(userId);
+      if (!user) {
+        return false;
+      }
+
+      // Check code and expiration
+      if (user.verificationCode !== code) {
+        return false;
+      }
+      
+      // Check if code has expired
+      if (user.verificationCodeExpiry && new Date() > user.verificationCodeExpiry) {
+        return false;
+      }
+
+      // Mark user as verified and clear verification code
+      await db.update(users)
+        .set({
+          isVerified: true,
+          verificationCode: null,
+          verificationCodeExpiry: null
+        })
+        .where(eq(users.id, userId));
+
+      return true;
+    } catch (error) {
+      console.error('Error verifying email:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get user by verification code
+   * 
+   * @param code Verification code
+   * @returns User if found and code is valid
+   */
+  async getUserByVerificationCode(code: string): Promise<User | undefined> {
+    try {
+      // Find user with matching verification code
+      const result = await db.select().from(users).where(eq(users.verificationCode, code));
+      const user = result[0];
+      
+      // Check if user exists and code hasn't expired
+      if (user && user.verificationCodeExpiry && new Date() <= user.verificationCodeExpiry) {
+        return user;
+      }
+      
+      return undefined;
+    } catch (error) {
+      console.error('Error getting user by verification code:', error);
+      return undefined;
+    }
+  }
+
   // Course operations
   async getCourse(id: number): Promise<Course | undefined> {
     const result = await db.select().from(courses).where(eq(courses.id, id));

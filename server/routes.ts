@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { addPasswordResetFieldsToUsers } from "./password-reset-migration";
+import { addVerificationFieldsToUsers } from "./verification-migration";
 import { 
   insertUserSchema, insertCourseSchema, insertPaymentSchema, 
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
@@ -18,7 +19,6 @@ import { ZodError } from "zod";
 import waafiPayService from "./services/waafiPayService";
 import notificationService from "./services/notificationService";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
-import { addPasswordResetFieldsToUsers } from "./password-reset-migration";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -27,6 +27,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   try {
     // Add password reset fields to users table
     await addPasswordResetFieldsToUsers();
+    
+    // Add email verification fields to users table
+    await addVerificationFieldsToUsers();
   } catch (error) {
     console.error("Failed to run migrations:", error);
   }

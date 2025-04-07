@@ -4,6 +4,39 @@ import { User, Course, Payment, Installment } from '../../shared/schema';
 
 // Email templates
 const templates = {
+  emailVerification: (user: User, verificationCode: string) => {
+    // Get the base URL from environment or use a default
+    const baseUrl = process.env.BASE_URL || (
+      process.env.NODE_ENV === 'production' 
+      ? 'https://thub-edu.replit.app' 
+      : 'http://localhost:5000'
+    );
+    
+    return {
+      subject: `[THUB] Email Verification Code`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <h1 style="color: #0080c9; margin: 0;">THUB</h1>
+            <p style="color: #3cb878; font-weight: bold;">Career Development Center</p>
+          </div>
+          <div style="margin-bottom: 30px;">
+            <h2 style="color: #333;">Verify Your Email</h2>
+            <p>Hello ${user.name},</p>
+            <p>Thank you for registering with THUB. To complete your registration, please use the verification code below:</p>
+            <div style="text-align: center; margin: 30px 0; font-size: 24px; letter-spacing: 8px; font-weight: bold; background-color: #f0f0f0; padding: 15px; border-radius: 8px;">
+              ${verificationCode}
+            </div>
+            <p>This code will expire in 10 minutes. If you didn't request this code, please ignore this email.</p>
+          </div>
+          <div style="margin-top: 30px; font-size: 12px; color: #888; text-align: center;">
+            <p>THUB Innovation Center • Mogadishu, Somalia</p>
+            <p>Email: info@t-hub.so • WhatsApp: +2525251111</p>
+          </div>
+        </div>
+      `,
+    };
+  },
   courseUpdate: (user: User, course: Course) => ({
     subject: `[THUB] Course Update: ${course.title}`,
     html: `
@@ -345,6 +378,16 @@ export const sendPasswordResetEmail = async (user: User, resetToken: string): Pr
 };
 
 // Export the email service module
+/**
+ * Send an email verification code
+ * @param user User to verify
+ * @param verificationCode Verification code
+ */
+export const sendVerificationEmail = async (user: User, verificationCode: string): Promise<boolean> => {
+  const { subject, html } = templates.emailVerification(user, verificationCode);
+  return sendEmail(user.email, subject, html);
+};
+
 export default {
   initializeEmailService,
   askForEmailCredentials,
@@ -354,4 +397,5 @@ export default {
   sendInstallmentReminder,
   sendEnrollmentConfirmation,
   sendPasswordResetEmail,
+  sendVerificationEmail,
 };

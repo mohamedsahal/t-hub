@@ -6,8 +6,8 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
-import { sendPasswordResetEmail } from './services/emailService';
-import { rateLimitPasswordReset, formatTimeRemaining } from './services/rateLimiter';
+import { sendPasswordResetEmail, sendVerificationEmail } from './services/emailService';
+import { rateLimitPasswordReset, formatTimeRemaining, rateLimitVerificationCode } from './services/rateLimiter';
 
 // Define additional session properties
 declare module 'express-session' {
@@ -112,7 +112,22 @@ export function setupAuth(app: Express) {
       const user = await storage.createUser({
         ...req.body,
         password: await hashPassword(req.body.password),
+        isVerified: false // Make sure user starts as unverified
       });
+      
+      // Generate verification code
+      try {
+        const verificationCode = await storage.createVerificationCode(user.id);
+        
+        // Send verification email
+        const emailSent = await sendVerificationEmail(user, verificationCode);
+        if (!emailSent) {
+          console.error("Failed to send verification email to:", user.email);
+        }
+      } catch (verificationError) {
+        console.error("Error generating verification code:", verificationError);
+        // Continue with registration even if verification fails
+      }
 
       req.login(user, (err) => {
         if (err) return next(err);
@@ -132,17 +147,37 @@ export function setupAuth(app: Express) {
             id: user.id,
             name: user.name,
             email: user.email,
-            role: user.role
+            role: user.role,
+            isVerified: user.isVerified,
+            requiresVerification: true
           });
         });
       });
     } catch (error) {
+      console.error("Registration error:", error);
       res.status(500).json({ message: "Failed to register user" });
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
+  app.post("/api/login", passport.authenticate("local"), async (req, res) => {
     const user = req.user as SelectUser;
+    
+    // Handle unverified users
+    if (!user.isVerified) {
+      try {
+        // Generate a new verification code for login
+        const verificationCode = await storage.createVerificationCode(user.id);
+        
+        // Send verification email
+        const emailSent = await sendVerificationEmail(user, verificationCode);
+        if (!emailSent) {
+          console.error("Failed to send verification email to:", user.email);
+        }
+      } catch (verificationError) {
+        console.error("Error generating verification code:", verificationError);
+        // Continue with login even if verification fails
+      }
+    }
     
     // Store the rememberMe setting in the session
     req.session.rememberMe = !!req.body.rememberMe;
@@ -180,12 +215,14 @@ export function setupAuth(app: Express) {
             console.error("Session save error:", saveErr);
           }
           
-          // Add rememberMe to response so client knows the setting was applied
+          // Add verification status and rememberMe to response
           res.status(200).json({
             id: user.id,
             name: user.name,
             email: user.email,
             role: user.role,
+            isVerified: user.isVerified,
+            requiresVerification: !user.isVerified,
             rememberMe: !!req.body.rememberMe
           });
         });
@@ -225,7 +262,9 @@ export function setupAuth(app: Express) {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      isVerified: user.isVerified,
+      requiresVerification: !user.isVerified
     });
   });
   
@@ -338,6 +377,93 @@ export function setupAuth(app: Express) {
     } catch (error) {
       console.error("Password reset error:", error);
       res.status(500).json({ message: "Password reset failed" });
+    }
+  });
+  
+  // Email verification endpoint
+  app.post("/api/verify-email", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      const { code } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({ message: "Verification code is required" });
+      }
+      
+      // Verify the code
+      const success = await storage.verifyEmail(user.id, code);
+      
+      if (!success) {
+        return res.status(400).json({ message: "Invalid or expired verification code" });
+      }
+      
+      // Update the user in session with verified status
+      const updatedUser = await storage.getUser(user.id);
+      if (updatedUser) {
+        req.login(updatedUser, (loginErr) => {
+          if (loginErr) {
+            console.error("Re-login error after verification:", loginErr);
+          }
+        });
+      }
+      
+      return res.status(200).json({ 
+        success: true,
+        message: "Email successfully verified"
+      });
+    } catch (error) {
+      console.error("Email verification error:", error);
+      res.status(500).json({ message: "Email verification failed" });
+    }
+  });
+  
+  // Resend verification code endpoint
+  app.post("/api/resend-verification", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = req.user as SelectUser;
+      
+      // Apply rate limiting
+      const rateLimit = rateLimitVerificationCode(user.id);
+      
+      // If rate limited, return error with timing information
+      if (!rateLimit.allowed) {
+        const message = rateLimit.cooldownRemaining > 0
+          ? `Please wait ${formatTimeRemaining(rateLimit.cooldownRemaining)} before requesting another verification code.`
+          : `Too many verification requests. Please try again in ${formatTimeRemaining(rateLimit.msBeforeNext)}.`;
+        
+        return res.status(429).json({ 
+          message,
+          cooldownRemaining: rateLimit.cooldownRemaining,
+          msBeforeNext: rateLimit.msBeforeNext
+        });
+      }
+      
+      // Generate new verification code
+      const verificationCode = await storage.createVerificationCode(user.id);
+      
+      // Send verification email
+      const emailSent = await sendVerificationEmail(user, verificationCode);
+      
+      if (!emailSent) {
+        console.error("Failed to send verification email to:", user.email);
+        return res.status(500).json({ message: "Failed to send verification email" });
+      }
+      
+      return res.status(200).json({ 
+        success: true,
+        message: "Verification code sent successfully" 
+      });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ message: "Failed to resend verification code" });
     }
   });
 }
