@@ -2034,8 +2034,12 @@ export class PgStorage implements IStorage {
   }
 
   async createSpecialistProgram(program: InsertSpecialistProgram): Promise<SpecialistProgram> {
+    // Convert discountExpiryDate string to Date object if it exists
+    const discountExpiryDate = program.discountExpiryDate ? new Date(program.discountExpiryDate) : undefined;
+    
     const result = await db.insert(specialistPrograms).values({
       ...program,
+      discountExpiryDate,
       isActive: program.isActive !== undefined ? program.isActive : true,
       isVisible: program.isVisible !== undefined ? program.isVisible : true,
       hasDiscounted: program.hasDiscounted !== undefined ? program.hasDiscounted : false,
@@ -2046,9 +2050,16 @@ export class PgStorage implements IStorage {
   }
 
   async updateSpecialistProgram(id: number, programData: Partial<SpecialistProgram>): Promise<SpecialistProgram | undefined> {
+    // Convert discountExpiryDate string to Date object if it exists
+    const updatedData = { ...programData };
+    
+    if (updatedData.discountExpiryDate && typeof updatedData.discountExpiryDate === 'string') {
+      updatedData.discountExpiryDate = new Date(updatedData.discountExpiryDate);
+    }
+    
     const result = await db.update(specialistPrograms)
       .set({
-        ...programData,
+        ...updatedData,
         updatedAt: new Date()
       })
       .where(eq(specialistPrograms.id, id))
