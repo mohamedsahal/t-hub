@@ -151,6 +151,11 @@ export default function SpecialistProgramCreatePage() {
 
   // Handle form submission
   const onSubmit = (data: FormValues) => {
+    // Prevent double submissions
+    if (createProgramMutation.isPending) {
+      return;
+    }
+    
     if (selectedCourses.length === 0) {
       toast({
         variant: "destructive",

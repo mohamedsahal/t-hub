@@ -280,6 +280,11 @@ export default function SpecialistProgramEditPage() {
 
   // Handle form submission
   const onSubmit = (data: FormValues) => {
+    // Prevent submission if already in progress
+    if (updateProgramMutation.isPending) {
+      return;
+    }
+    
     if (selectedCourses.length === 0) {
       toast({
         variant: "destructive",

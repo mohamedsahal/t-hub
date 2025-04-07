@@ -4575,8 +4575,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const programData = req.body;
       const updatedProgram = await storage.updateSpecialistProgram(programId, programData);
       
+      if (!updatedProgram) {
+        return res.status(500).json({ message: "Failed to update specialist program. Please try again." });
+      }
+      
       res.json(updatedProgram);
     } catch (error) {
+      console.error("Error updating specialist program:", error);
+      
+      // Check for common database constraint errors
+      if (error instanceof Error && error.message && error.message.includes('duplicate key')) {
+        return res.status(409).json({ 
+          message: "A program with this code already exists. Note: Codes are not case-sensitive."
+        });
+      }
+      
       handleZodError(error, res);
     }
   });
