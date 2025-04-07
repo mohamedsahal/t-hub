@@ -104,7 +104,7 @@ const sectionSchema = z.object({
   content: z.string().optional().or(z.literal('')),
   contentType: z.enum(["text", "video"]).default("text").optional(),
   isPublished: z.boolean().default(true),
-  type: z.enum(["lesson", "quiz", "exam"]).default("lesson"),
+  type: z.enum(["lesson", "exam"]).default("lesson"),
   examId: z.number().optional()
 });
 
@@ -120,7 +120,7 @@ interface CourseSection {
   title: string;
   description?: string | null;
   order: number;
-  type: "lesson" | "quiz" | "exam";
+  type: "lesson" | "exam";
   contentType?: "text" | "video" | null;
   content?: string | null;
   videoUrl?: string | null;
@@ -193,8 +193,6 @@ function SortableSectionItem({ id, section, onEdit, onDelete, onPreview }: Sorta
   // Get icon based on section type
   const getSectionIcon = () => {
     switch(section.type) {
-      case 'quiz':
-        return <FileQuestion className="h-4 w-4 mr-2 text-blue-600" />;
       case 'exam':
         return <FileCheck className="h-4 w-4 mr-2 text-purple-600" />;
       default:
@@ -214,11 +212,9 @@ function SortableSectionItem({ id, section, onEdit, onDelete, onPreview }: Sorta
       className="mb-3 ml-8"
     >
       <Card className={`border-l-4 ${
-        section.type === 'quiz' 
-          ? 'border-l-blue-500' 
-          : section.type === 'exam'
-            ? 'border-l-purple-500'
-            : 'border-l-primary'
+        section.type === 'exam'
+          ? 'border-l-purple-500'
+          : 'border-l-primary'
       }`}>
         <CardHeader className="py-3 flex flex-row items-center justify-between">
           <div className="flex items-center">
@@ -233,7 +229,6 @@ function SortableSectionItem({ id, section, onEdit, onDelete, onPreview }: Sorta
               <CardTitle className="text-lg flex items-center">
                 {getSectionIcon()}
                 {section.title}
-                {section.type === "quiz" && <Badge className="ml-2 bg-blue-500">Quiz</Badge>}
                 {section.type === "exam" && <Badge className="ml-2 bg-purple-500">Exam</Badge>}
               </CardTitle>
               {section.description && (
@@ -1060,9 +1055,9 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
     
     // Update the section type in the form
     if (isAddSectionDialogOpen) {
-      addSectionForm.setValue("type", value as "lesson" | "quiz" | "exam");
+      addSectionForm.setValue("type", value as "lesson" | "exam");
     } else if (isEditSectionDialogOpen) {
-      editSectionForm.setValue("type", value as "lesson" | "quiz" | "exam");
+      editSectionForm.setValue("type", value as "lesson" | "exam");
     }
   };
 
@@ -1089,7 +1084,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
           <Info className="h-4 w-4" />
           <AlertTitle>Getting Started</AlertTitle>
           <AlertDescription>
-            Start by adding a module to organize your course content. Then, add lessons, quizzes, and exams to each module.
+            Start by adding a module to organize your course content. Then, add lessons and exams to each module.
           </AlertDescription>
         </Alert>
       )}
@@ -1326,12 +1321,9 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
           </DialogHeader>
           
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid grid-cols-3 w-full">
+            <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="lesson" className="flex items-center justify-center px-1 sm:px-3">
                 <FileText className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Lesson</span>
-              </TabsTrigger>
-              <TabsTrigger value="quiz" className="flex items-center justify-center px-1 sm:px-3">
-                <FileQuestion className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Quiz</span>
               </TabsTrigger>
               <TabsTrigger value="exam" className="flex items-center justify-center px-1 sm:px-3">
                 <FileCheck className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Exam</span>
@@ -1546,86 +1538,6 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                   />
                 </TabsContent>
                 
-                <TabsContent value="quiz" className="space-y-4 mt-0">
-                  <FormField
-                    control={addSectionForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quiz Title</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter quiz title" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={addSectionForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field} 
-                            placeholder="Enter quiz description" 
-                            rows={3}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={addSectionForm.control}
-                      name="duration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duration (hours)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="e.g. 0.5" 
-                              min="0"
-                              step="0.25"
-                              onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
-                              value={field.value === undefined ? "" : field.value}
-                              name={field.name}
-                              onBlur={field.onBlur}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={addSectionForm.control}
-                      name="unlockDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unlock Date</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field}
-                              type="date" 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Coming Soon</AlertTitle>
-                    <AlertDescription>
-                      After creating this quiz, you'll be able to add questions and answers in the next step.
-                    </AlertDescription>
-                  </Alert>
-                </TabsContent>
                 
                 <TabsContent value="exam" className="space-y-4 mt-0">
                   <Alert className="mb-4 bg-blue-50 border-blue-200 text-blue-800">
@@ -1734,37 +1646,29 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                       )}
                     />
                   </div>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Coming Soon</AlertTitle>
-                    <AlertDescription>
-                      After creating this exam, you'll be able to add questions, set passing criteria, and configure time limits in the next step.
-                    </AlertDescription>
-                  </Alert>
+                  <FormField
+                    control={addSectionForm.control}
+                    name="isPublished"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Publish Content
+                          </FormLabel>
+                          <FormDescription>
+                            When checked, this content will be visible to students.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
                 </TabsContent>
-                
-                <FormField
-                  control={addSectionForm.control}
-                  name="isPublished"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Publish Content
-                        </FormLabel>
-                        <FormDescription>
-                          When checked, this content will be visible to students.
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
                 
                 <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                   <Button 
@@ -1800,12 +1704,9 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
           </DialogHeader>
           
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid grid-cols-3 w-full">
+            <TabsList className="grid grid-cols-2 w-full">
               <TabsTrigger value="lesson" className="flex items-center justify-center px-1 sm:px-3">
                 <FileText className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Lesson</span>
-              </TabsTrigger>
-              <TabsTrigger value="quiz" className="flex items-center justify-center px-1 sm:px-3">
-                <FileQuestion className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Quiz</span>
               </TabsTrigger>
               <TabsTrigger value="exam" className="flex items-center justify-center px-1 sm:px-3">
                 <FileCheck className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Exam</span>
@@ -2020,86 +1921,6 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                   />
                 </TabsContent>
                 
-                <TabsContent value="quiz" className="space-y-4 mt-0">
-                  <FormField
-                    control={editSectionForm.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quiz Title</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="Enter quiz title" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={editSectionForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            {...field} 
-                            placeholder="Enter quiz description" 
-                            rows={3}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={editSectionForm.control}
-                      name="duration"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Duration (hours)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="e.g. 0.5" 
-                              min="0"
-                              step="0.25"
-                              onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
-                              value={field.value === undefined ? "" : field.value}
-                              name={field.name}
-                              onBlur={field.onBlur}
-                              ref={field.ref}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={editSectionForm.control}
-                      name="unlockDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unlock Date</FormLabel>
-                          <FormControl>
-                            <Input 
-                              {...field}
-                              type="date" 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Coming Soon</AlertTitle>
-                    <AlertDescription>
-                      You'll soon be able to edit quiz questions and answers here.
-                    </AlertDescription>
-                  </Alert>
-                </TabsContent>
                 
                 <TabsContent value="exam" className="space-y-4 mt-0">
                   <FormField
@@ -2173,37 +1994,29 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                       )}
                     />
                   </div>
-                  <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Coming Soon</AlertTitle>
-                    <AlertDescription>
-                      You'll soon be able to edit exam questions, passing criteria, and time limits here.
-                    </AlertDescription>
-                  </Alert>
+                  <FormField
+                    control={editSectionForm.control}
+                    name="isPublished"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Publish Content
+                          </FormLabel>
+                          <FormDescription>
+                            When checked, this content will be visible to students.
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
                 </TabsContent>
-                
-                <FormField
-                  control={editSectionForm.control}
-                  name="isPublished"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Publish Content
-                        </FormLabel>
-                        <FormDescription>
-                          When checked, this content will be visible to students.
-                        </FormDescription>
-                      </div>
-                    </FormItem>
-                  )}
-                />
                 
                 <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                   <Button 

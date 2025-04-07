@@ -14,7 +14,7 @@ export const enrollmentStatusEnum = pgEnum('enrollment_status', ['active', 'comp
 export const examTypeEnum = pgEnum('exam_type', ['quiz', 'midterm', 'final', 're_exam', 'assignment', 'project', 'practical']);
 export const examStatusEnum = pgEnum('exam_status', ['pending', 'completed', 'failed', 'passed']);
 export const gradeEnum = pgEnum('grade', ['A', 'B', 'C', 'D', 'F', 'incomplete', 'not_graded']);
-export const sectionTypeEnum = pgEnum('section_type', ['lesson', 'quiz', 'exam']);
+export const sectionTypeEnum = pgEnum('section_type', ['lesson', 'exam']);
 export const lessonContentTypeEnum = pgEnum('lesson_content_type', ['text', 'video']);
 export const questionTypeEnum = pgEnum('question_type', ['multiple_choice', 'true_false', 'short_answer', 'essay']);
 export const productTypeEnum = pgEnum('product_type', [
@@ -95,7 +95,7 @@ export const courseModules = pgTable("course_modules", {
   isPublished: boolean("is_published").default(true),
 });
 
-// Course Sections (parts of a module, can be lessons, quizzes, or exams)
+// Course Sections (parts of a module, can be lessons or exams)
 export const courseSections = pgTable("course_sections", {
   id: serial("id").primaryKey(),
   courseId: integer("course_id").references(() => courses.id).notNull(),
@@ -104,7 +104,7 @@ export const courseSections = pgTable("course_sections", {
   title: varchar("title").notNull(),
   description: text("description"),
   order: integer("sort_order").default(1).notNull(),
-  type: sectionTypeEnum("type").default('lesson').notNull(), // Can be lesson, quiz, or exam
+  type: sectionTypeEnum("type").default('lesson').notNull(), // Can be lesson or exam
   contentType: lessonContentTypeEnum("content_type"), // Type of content (text or video)
   content: text("content"), // For text-based lessons
   videoUrl: text("video_url"), // For video-based lessons
@@ -351,6 +351,7 @@ export const insertCourseSectionSchema = createInsertSchema(courseSections)
   .omit({ id: true })
   .extend({
     description: z.string().optional().nullable(),
+    type: z.enum(["lesson", "exam"]).default("lesson"),
     contentType: z.enum(["text", "video"]).optional().nullable(),
     content: z.string().optional().nullable(),
     videoUrl: z.string().optional().nullable(),
