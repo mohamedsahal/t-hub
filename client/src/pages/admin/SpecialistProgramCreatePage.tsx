@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import axios from "axios";
 import {
   Form,
   FormControl,
@@ -68,6 +69,9 @@ export default function SpecialistProgramCreatePage() {
   const queryClient = useQueryClient();
   const [selectedCourses, setSelectedCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Create form
   const form = useForm<FormValues>({
@@ -187,6 +191,50 @@ export default function SpecialistProgramCreatePage() {
     form.setValue("duration", totalDuration);
   }, [selectedCourses]);
   
+  // Handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Preview the image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload the file
+    setIsUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await axios.post('/api/upload/specialist-program-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data && response.data.fileUrl) {
+        form.setValue('imageUrl', response.data.fileUrl);
+        toast({
+          title: "Image uploaded",
+          description: "The image was uploaded successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: "Failed to upload the image. Please try again."
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Show/hide discounted price field
   const watchHasDiscounted = form.watch("hasDiscounted");
 
@@ -307,11 +355,57 @@ export default function SpecialistProgramCreatePage() {
                       name="imageUrl"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Image URL</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://example.com/image.jpg" {...field} />
-                          </FormControl>
-                          <FormDescription>Optional: URL for program's featured image</FormDescription>
+                          <FormLabel>Program Image</FormLabel>
+                          <div className="space-y-4">
+                            {/* Hidden input for the URL, managed by the upload process */}
+                            <Input type="hidden" {...field} />
+                            
+                            {/* File upload input */}
+                            <div className="flex flex-col space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  id="programImage"
+                                  ref={fileInputRef}
+                                  className="max-w-xs"
+                                  onChange={handleFileUpload}
+                                  disabled={isUploading}
+                                />
+                                {isUploading && <span className="text-xs text-muted-foreground">Uploading...</span>}
+                              </div>
+                              
+                              <div className="text-sm text-muted-foreground">
+                                Accepted formats: JPG, PNG, GIF, WEBP (max 5MB)
+                              </div>
+                            </div>
+                            
+                            {/* Image preview */}
+                            {(previewImage || field.value) && (
+                              <div className="mt-2 border rounded-md p-2 max-w-xs">
+                                <div className="text-sm font-medium mb-1">Preview:</div>
+                                <img 
+                                  src={previewImage || field.value} 
+                                  alt="Program cover preview" 
+                                  className="max-h-[150px] object-cover rounded-md"
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Manual URL input as fallback */}
+                            {!previewImage && (
+                              <div className="flex flex-col space-y-1">
+                                <div className="text-xs text-muted-foreground mt-2">
+                                  Or enter image URL manually:
+                                </div>
+                                <Input 
+                                  placeholder="https://example.com/image.jpg" 
+                                  value={field.value || ""}
+                                  onChange={(e) => field.onChange(e.target.value)}
+                                />
+                              </div>
+                            )}
+                          </div>
                           <FormMessage />
                         </FormItem>
                       )}

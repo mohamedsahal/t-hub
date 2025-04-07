@@ -1,5 +1,6 @@
 import express, { type Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { storage } from "./storage";
 import { pool } from "./db";
 import { addPasswordResetFieldsToUsers } from "./password-reset-migration";
@@ -21,9 +22,13 @@ import { ZodError } from "zod";
 import waafiPayService from "./services/waafiPayService";
 import notificationService from "./services/notificationService";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import { uploadSpecialistProgramImage } from "./uploadHandler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
+  
+  // Serve static files for uploads
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
   
   // Run database migrations
   try {
@@ -4435,6 +4440,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error revoking user sessions:', error);
       res.status(500).json({ message: "Failed to revoke user sessions" });
+    }
+  });
+
+  // File upload endpoint for specialist program images
+  app.post("/api/upload/specialist-program-image", checkRole(["admin"]), uploadSpecialistProgramImage, (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Return the file path that can be used in the imageUrl field
+      const filePath = `/uploads/specialist-programs/${req.file.filename}`;
+      res.status(200).json({ 
+        message: "File uploaded successfully", 
+        filePath,
+        fileUrl: filePath
+      });
+    } catch (error) {
+      console.error("File upload error:", error);
+      res.status(500).json({ message: "File upload failed" });
     }
   });
 

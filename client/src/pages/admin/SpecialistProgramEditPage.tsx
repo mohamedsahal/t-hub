@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation, useRoute } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -96,6 +97,9 @@ export default function SpecialistProgramEditPage() {
   const [selectedCourses, setSelectedCourses] = useState<ProgramCourse[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Create form
   const form = useForm<FormValues>({
@@ -172,6 +176,13 @@ export default function SpecialistProgramEditPage() {
       setSelectedCourses(programCourses);
     }
   }, [programCourses]);
+
+  // Initialize the preview image
+  useEffect(() => {
+    if (program && program.imageUrl) {
+      setPreviewImage(program.imageUrl);
+    }
+  }, [program]);
 
   // Update program mutation
   const updateProgramMutation = useMutation({
@@ -332,6 +343,50 @@ export default function SpecialistProgramEditPage() {
     setIsConfirmDialogOpen(false);
   };
 
+  // Handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Preview the image
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload the file
+    setIsUploading(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      const response = await axios.post('/api/upload/specialist-program-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      
+      if (response.data && response.data.fileUrl) {
+        form.setValue('imageUrl', response.data.fileUrl);
+        toast({
+          title: "Image uploaded",
+          description: "The image was uploaded successfully",
+        });
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: "Failed to upload the image. Please try again."
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   // Show/hide discounted price field
   const watchHasDiscounted = form.watch("hasDiscounted");
 
@@ -483,11 +538,66 @@ export default function SpecialistProgramEditPage() {
                       name="imageUrl"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Image URL</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://example.com/image.jpg" {...field} />
-                          </FormControl>
-                          <FormDescription>Optional: URL for program's featured image</FormDescription>
+                          <FormLabel>Program Image</FormLabel>
+                          <div className="space-y-4">
+                            {previewImage && (
+                              <div className="rounded-md overflow-hidden border w-40 h-40 flex items-center justify-center">
+                                <img
+                                  src={previewImage}
+                                  alt="Program preview"
+                                  className="max-w-full max-h-full object-cover"
+                                />
+                              </div>
+                            )}
+
+                            <div className="flex flex-col gap-2">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                                className="hidden"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  disabled={isUploading}
+                                >
+                                  {isUploading ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Uploading...
+                                    </>
+                                  ) : (
+                                    <>Browse Images</>
+                                  )}
+                                </Button>
+                                {field.value && (
+                                  <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                      field.onChange("");
+                                      setPreviewImage(null);
+                                    }}
+                                  >
+                                    Remove Image
+                                  </Button>
+                                )}
+                              </div>
+                              <FormControl>
+                                <Input
+                                  placeholder="Or enter image URL directly"
+                                  {...field}
+                                  className="mt-2"
+                                />
+                              </FormControl>
+                            </div>
+                          </div>
+                          <FormDescription>Upload an image or provide a URL</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
