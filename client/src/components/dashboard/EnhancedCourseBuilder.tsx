@@ -1142,7 +1142,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
 
       {/* Add Module Dialog */}
       <Dialog open={isAddModuleDialogOpen} onOpenChange={setIsAddModuleDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-lg overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Add New Module</DialogTitle>
             <DialogDescription>
@@ -1167,15 +1167,20 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                   </FormItem>
                 )}
               />
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={() => setIsAddModuleDialogOpen(false)}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={addModuleMutation.isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={addModuleMutation.isPending}
+                  className="w-full sm:w-auto"
+                >
                   {addModuleMutation.isPending ? "Adding..." : "Add Module"}
                 </Button>
               </DialogFooter>
@@ -1186,7 +1191,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
 
       {/* Edit Module Dialog */}
       <Dialog open={isEditModuleDialogOpen} onOpenChange={setIsEditModuleDialogOpen}>
-        <DialogContent>
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-lg overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Edit Module</DialogTitle>
             <DialogDescription>
@@ -1288,15 +1293,20 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                   </FormItem>
                 )}
               />
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                 <Button 
                   type="button" 
                   variant="outline" 
                   onClick={() => setIsEditModuleDialogOpen(false)}
+                  className="w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={editModuleMutation.isPending}>
+                <Button 
+                  type="submit" 
+                  disabled={editModuleMutation.isPending}
+                  className="w-full sm:w-auto"
+                >
                   {editModuleMutation.isPending ? "Updating..." : "Update Module"}
                 </Button>
               </DialogFooter>
@@ -1307,7 +1317,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
 
       {/* Add Section Dialog */}
       <Dialog open={isAddSectionDialogOpen} onOpenChange={setIsAddSectionDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-3xl overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Add New Content</DialogTitle>
             <DialogDescription>
@@ -1316,15 +1326,15 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
           </DialogHeader>
           
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid grid-cols-3">
-              <TabsTrigger value="lesson" className="flex items-center">
-                <FileText className="mr-2 h-4 w-4" /> Lesson
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="lesson" className="flex items-center justify-center px-1 sm:px-3">
+                <FileText className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Lesson</span>
               </TabsTrigger>
-              <TabsTrigger value="quiz" className="flex items-center">
-                <FileQuestion className="mr-2 h-4 w-4" /> Quiz
+              <TabsTrigger value="quiz" className="flex items-center justify-center px-1 sm:px-3">
+                <FileQuestion className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Quiz</span>
               </TabsTrigger>
-              <TabsTrigger value="exam" className="flex items-center">
-                <FileCheck className="mr-2 h-4 w-4" /> Exam
+              <TabsTrigger value="exam" className="flex items-center justify-center px-1 sm:px-3">
+                <FileCheck className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Exam</span>
               </TabsTrigger>
             </TabsList>
             
@@ -1756,15 +1766,20 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                   )}
                 />
                 
-                <DialogFooter>
+                <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                   <Button 
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsAddSectionDialogOpen(false)}
+                    className="w-full sm:w-auto"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={addSectionMutation.isPending}>
+                  <Button 
+                    type="submit" 
+                    disabled={addSectionMutation.isPending}
+                    className="w-full sm:w-auto"
+                  >
                     {addSectionMutation.isPending ? "Adding..." : "Add Content"}
                   </Button>
                 </DialogFooter>
@@ -1776,7 +1791,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
 
       {/* Edit Section Dialog */}
       <Dialog open={isEditSectionDialogOpen} onOpenChange={setIsEditSectionDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-3xl overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>Edit Content</DialogTitle>
             <DialogDescription>
@@ -1785,15 +1800,15 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
           </DialogHeader>
           
           <Tabs value={activeTab} onValueChange={handleTabChange}>
-            <TabsList className="grid grid-cols-3">
-              <TabsTrigger value="lesson" className="flex items-center">
-                <FileText className="mr-2 h-4 w-4" /> Lesson
+            <TabsList className="grid grid-cols-3 w-full">
+              <TabsTrigger value="lesson" className="flex items-center justify-center px-1 sm:px-3">
+                <FileText className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Lesson</span>
               </TabsTrigger>
-              <TabsTrigger value="quiz" className="flex items-center">
-                <FileQuestion className="mr-2 h-4 w-4" /> Quiz
+              <TabsTrigger value="quiz" className="flex items-center justify-center px-1 sm:px-3">
+                <FileQuestion className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Quiz</span>
               </TabsTrigger>
-              <TabsTrigger value="exam" className="flex items-center">
-                <FileCheck className="mr-2 h-4 w-4" /> Exam
+              <TabsTrigger value="exam" className="flex items-center justify-center px-1 sm:px-3">
+                <FileCheck className="mr-1 sm:mr-2 h-4 w-4" /> <span className="text-xs sm:text-sm">Exam</span>
               </TabsTrigger>
             </TabsList>
             
@@ -2190,15 +2205,20 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
                   )}
                 />
                 
-                <DialogFooter>
+                <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
                   <Button 
                     type="button" 
                     variant="outline" 
                     onClick={() => setIsEditSectionDialogOpen(false)}
+                    className="w-full sm:w-auto"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={editSectionMutation.isPending}>
+                  <Button 
+                    type="submit" 
+                    disabled={editSectionMutation.isPending}
+                    className="w-full sm:w-auto"
+                  >
                     {editSectionMutation.isPending ? "Updating..." : "Update Content"}
                   </Button>
                 </DialogFooter>
@@ -2210,7 +2230,7 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
       
       {/* Preview Section Dialog */}
       <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-full max-w-[95vw] sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Lesson Preview</DialogTitle>
           </DialogHeader>
@@ -2225,7 +2245,11 @@ export default function EnhancedCourseBuilder({ courseId }: EnhancedCourseBuilde
           )}
           
           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsPreviewDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPreviewDialogOpen(false)} 
+              className="w-full sm:w-auto"
+            >
               Close Preview
             </Button>
           </DialogFooter>
