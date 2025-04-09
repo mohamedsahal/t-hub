@@ -2096,12 +2096,13 @@ export class MemStorage implements IStorage {
     ipAddress: string | null, 
     location: string | null, 
     deviceInfo: string | null
-  ): Promise<{isSuspicious: boolean, reason: string | null}> {
+  ): Promise<{isSuspicious: boolean, reason: string | null, shouldSuspendUser?: boolean}> {
     try {
       // Default response
       const response = {
         isSuspicious: false,
-        reason: null
+        reason: null,
+        shouldSuspendUser: false
       };
       
       // Get user's previous sessions
@@ -2119,6 +2120,35 @@ export class MemStorage implements IStorage {
         const hoursDiff = (now - sessionTime) / (1000 * 60 * 60);
         return hoursDiff < 24 && session.sessionId !== sessionId;
       });
+      
+      // Check for different devices with different locations (auto-suspension feature)
+      if (recentSessions.length > 0 && location && deviceInfo) {
+        const activeSessions = userSessions.filter(session => session.status === 'active');
+        
+        // Extract unique device-location combinations
+        const deviceLocationCombinations = new Set<string>();
+        activeSessions.forEach(session => {
+          if (session.deviceInfo && session.location) {
+            deviceLocationCombinations.add(`${session.deviceInfo}|${session.location}`);
+          }
+        });
+        
+        // Current device-location
+        deviceLocationCombinations.add(`${deviceInfo}|${location}`);
+        
+        // If we have 3 or more different device-location combinations, this is highly suspicious
+        // and should trigger user suspension
+        if (deviceLocationCombinations.size >= 3) {
+          response.isSuspicious = true;
+          response.shouldSuspendUser = true;
+          response.reason = `Login from multiple devices (${deviceLocationCombinations.size}) in different locations - account suspended`;
+          
+          // Log this suspicious activity for admin review
+          console.warn(`Suspicious admin login: ${response.reason} for user ${userId}`);
+          
+          return response;
+        }
+      }
       
       // Check for rapid login from different locations
       if (recentSessions.length > 0 && location) {

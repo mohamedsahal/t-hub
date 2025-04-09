@@ -4389,6 +4389,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Get all active users with their session counts (for admin)
+  app.get("/api/admin/active-users", checkRole(["admin"]), async (req, res) => {
+    try {
+      // Get all sessions
+      const allSessions = await storage.getAllUserSessions();
+      const activeUserIds = new Set<number>();
+      
+      // Filter active sessions and collect unique user IDs
+      allSessions
+        .filter(session => session.status === 'active')
+        .forEach(session => activeUserIds.add(session.userId));
+      
+      // Get user information for each active user
+      const activeUsers = await Promise.all(
+        Array.from(activeUserIds).map(async (userId) => {
+          const user = await storage.getUser(userId);
+          const userSessions = await storage.getUserSessions(userId);
+          const activeSessions = userSessions.filter(s => s.status === 'active');
+          
+          return {
+            id: userId,
+            name: user?.name || `User #${userId}`,
+            email: user?.email || null,
+            role: user?.role || 'unknown',
+            activeSessions: activeSessions.length,
+            latestActivity: activeSessions.length > 0 
+              ? new Date(Math.max(...activeSessions.map(s => new Date(s.lastActivity).getTime())))
+              : null,
+            locations: Array.from(new Set(activeSessions.map(s => s.location).filter(Boolean))) as string[]
+          };
+        })
+      );
+      
+      res.json(activeUsers);
+    } catch (error) {
+      console.error('Error fetching active users:', error);
+      res.status(500).json({ message: "Failed to fetch active users" });
+    }
+  });
+  
   // Get session statistics for admin dashboard
   app.get("/api/admin/sessions/stats", checkRole(["admin"]), async (req, res) => {
     try {

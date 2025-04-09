@@ -142,7 +142,7 @@ function extractLocationInfo(req: Request): { ipAddress: string, location: strin
   return { ipAddress, location };
 }
 
-async function createUserSessionRecord(req: Request, userId: number): Promise<{sessionId?: number, isSuspicious?: boolean, reason?: string | null}> {
+async function createUserSessionRecord(req: Request, userId: number): Promise<{sessionId?: number, isSuspicious?: boolean, reason?: string | null, userSuspended?: boolean}> {
   try {
     // Extract info from the request
     const deviceData = extractDeviceInfo(req);
@@ -205,6 +205,37 @@ async function createUserSessionRecord(req: Request, userId: number): Promise<{s
           
           // Log suspicious activity
           console.warn(`Suspicious login detected for user ${userId}: ${suspiciousCheck.reason}`);
+          
+          // Check if this suspicious activity should trigger user suspension
+          if (suspiciousCheck.shouldSuspendUser) {
+            try {
+              // Get the user
+              const user = await storage.getUser(userId);
+              if (user) {
+                // Mark user as suspended
+                const suspended = await storage.updateUser(userId, {
+                  isActive: false,
+                  suspensionReason: suspiciousCheck.reason || 'Automatic suspension due to suspicious activity'
+                });
+                
+                if (suspended) {
+                  console.warn(`User ${userId} automatically suspended due to suspicious activity: ${suspiciousCheck.reason}`);
+                  
+                  // Revoke all sessions
+                  await storage.revokeAllUserSessions(userId);
+                  
+                  return {
+                    sessionId: session.id,
+                    isSuspicious: true,
+                    reason: suspiciousCheck.reason,
+                    userSuspended: true
+                  };
+                }
+              }
+            } catch (suspendError) {
+              console.error(`Error suspending user ${userId}:`, suspendError);
+            }
+          }
           
           return {
             sessionId: session.id,
@@ -457,6 +488,22 @@ export function setupAuth(app: Express) {
               if (user.role === 'admin') {
                 // In a real implementation, send an email to the admin
                 console.warn(`Suspicious admin login: ${sessionResult.reason}`);
+              }
+              
+              // If user was automatically suspended due to suspicious activity
+              if (sessionResult.userSuspended) {
+                Object.assign(response, {
+                  accountSuspended: true,
+                  suspensionReason: sessionResult.reason
+                });
+                console.warn(`User ${user.id} account suspended due to suspicious activity: ${sessionResult.reason}`);
+                
+                // Force logout by destroying the session
+                req.session.destroy((destroyErr) => {
+                  if (destroyErr) {
+                    console.error("Session destroy error after suspension:", destroyErr);
+                  }
+                });
               }
             }
             
