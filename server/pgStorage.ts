@@ -2439,4 +2439,214 @@ export class PgStorage implements IStorage {
     // This is handled in memory from the shared/achievements.ts file
     return getAchievementsByCategory(category as AchievementCategory).map(a => a.id);
   }
+
+  // User Progress operations
+  async getUserProgress(id: number): Promise<UserProgress | undefined> {
+    try {
+      const progress = await db.select().from(userProgress).where(eq(userProgress.id, id));
+      if (progress.length > 0) {
+        return progress[0];
+      }
+      return undefined;
+    } catch (error) {
+      console.error("Error getting user progress:", error);
+      return undefined;
+    }
+  }
+
+  async getUserProgressBySection(userId: number, sectionId: number): Promise<UserProgress | undefined> {
+    try {
+      const progress = await db
+        .select()
+        .from(userProgress)
+        .where(and(
+          eq(userProgress.userId, userId),
+          eq(userProgress.sectionId, sectionId)
+        ));
+      
+      if (progress.length > 0) {
+        return progress[0];
+      }
+      return undefined;
+    } catch (error) {
+      console.error("Error getting user progress by section:", error);
+      return undefined;
+    }
+  }
+
+  async getUserProgressByCourse(userId: number, courseId: number): Promise<UserProgress[]> {
+    try {
+      const progress = await db
+        .select()
+        .from(userProgress)
+        .where(and(
+          eq(userProgress.userId, userId),
+          eq(userProgress.courseId, courseId)
+        ));
+      
+      return progress;
+    } catch (error) {
+      console.error("Error getting user progress by course:", error);
+      return [];
+    }
+  }
+
+  async createUserProgress(progress: InsertUserProgress): Promise<UserProgress> {
+    try {
+      // Check if a record already exists for this user and section
+      const existingProgress = await this.getUserProgressBySection(progress.userId, progress.sectionId);
+      
+      if (existingProgress) {
+        // If record exists, update it
+        return await this.updateUserProgress(existingProgress.id, progress);
+      }
+      
+      const result = await db.insert(userProgress).values(progress).returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error creating user progress:", error);
+      throw error;
+    }
+  }
+
+  async updateUserProgress(id: number, progress: Partial<UserProgress>): Promise<UserProgress | undefined> {
+    try {
+      const result = await db
+        .update(userProgress)
+        .set(progress)
+        .where(eq(userProgress.id, id))
+        .returning();
+      
+      if (result.length > 0) {
+        return result[0];
+      }
+      return undefined;
+    } catch (error) {
+      console.error("Error updating user progress:", error);
+      return undefined;
+    }
+  }
+
+  async completeSection(userId: number, courseId: number, sectionId: number): Promise<UserProgress | undefined> {
+    try {
+      // Check if a record already exists
+      let progressRecord = await this.getUserProgressBySection(userId, sectionId);
+      
+      if (progressRecord) {
+        // Update existing record to mark as completed
+        return await this.updateUserProgress(progressRecord.id, {
+          isCompleted: true,
+          completionDate: new Date()
+        });
+      } else {
+        // Create new record marked as completed
+        const newProgress = await this.createUserProgress({
+          userId,
+          courseId,
+          sectionId,
+          isCompleted: true,
+          completionDate: new Date(),
+          timeSpent: 0,
+          lastPosition: 0
+        });
+        
+        return newProgress;
+      }
+    } catch (error) {
+      console.error("Error completing section:", error);
+      return undefined;
+    }
+  }
+
+  async updateVideoProgress(
+    userId: number, 
+    courseId: number, 
+    sectionId: number, 
+    lastPosition: number, 
+    timeSpent: number
+  ): Promise<UserProgress | undefined> {
+    try {
+      // Check if a record already exists
+      let progressRecord = await this.getUserProgressBySection(userId, sectionId);
+      
+      if (progressRecord) {
+        // Update existing record with new video progress info
+        const updatedTimeSpent = progressRecord.timeSpent + timeSpent;
+        
+        return await this.updateUserProgress(progressRecord.id, {
+          lastPosition,
+          timeSpent: updatedTimeSpent,
+          // If the video has been watched till the end (threshold can be adjusted)
+          isCompleted: progressRecord.isCompleted || lastPosition >= 95, // 95% considered complete
+          completionDate: progressRecord.isCompleted ? progressRecord.completionDate : (lastPosition >= 95 ? new Date() : null)
+        });
+      } else {
+        // Create new progress record
+        const isCompleted = lastPosition >= 95; // 95% considered complete
+        
+        const newProgress = await this.createUserProgress({
+          userId,
+          courseId,
+          sectionId,
+          lastPosition,
+          timeSpent,
+          isCompleted,
+          completionDate: isCompleted ? new Date() : null
+        });
+        
+        return newProgress;
+      }
+    } catch (error) {
+      console.error("Error updating video progress:", error);
+      return undefined;
+    }
+  }
+
+  async getCourseProgress(userId: number, courseId: number): Promise<number> {
+    try {
+      // Get all sections for this course
+      const sections = await db
+        .select()
+        .from(courseSections)
+        .where(eq(courseSections.courseId, courseId));
+      
+      if (sections.length === 0) {
+        return 0; // No sections, so 0% progress
+      }
+      
+      // Get completed sections for this user and course
+      const completedSections = await db
+        .select()
+        .from(userProgress)
+        .where(and(
+          eq(userProgress.userId, userId),
+          eq(userProgress.courseId, courseId),
+          eq(userProgress.isCompleted, true)
+        ));
+      
+      // Calculate percentage
+      const completionPercentage = (completedSections.length / sections.length) * 100;
+      
+      // Update the enrollment record with the latest progress percentage
+      const enrollments = await db
+        .select()
+        .from(enrollments)
+        .where(and(
+          eq(enrollments.userId, userId),
+          eq(enrollments.courseId, courseId)
+        ));
+      
+      if (enrollments.length > 0) {
+        await db
+          .update(enrollments)
+          .set({ progressPercentage: completionPercentage })
+          .where(eq(enrollments.id, enrollments[0].id));
+      }
+      
+      return completionPercentage;
+    } catch (error) {
+      console.error("Error calculating course progress:", error);
+      return 0;
+    }
+  }
 }

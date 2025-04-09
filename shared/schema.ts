@@ -218,6 +218,20 @@ export const enrollments = pgTable("enrollments", {
   status: enrollmentStatusEnum("status").notNull().default('active'),
   enrollmentDate: timestamp("enrollment_date").defaultNow().notNull(),
   completionDate: timestamp("completion_date"),
+  progressPercentage: integer("progress_percentage").default(0),
+});
+
+// User course progress tracking
+export const userProgress = pgTable("user_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  courseId: integer("course_id").references(() => courses.id).notNull(),
+  sectionId: integer("section_id").references(() => courseSections.id).notNull(),
+  completed: boolean("completed").default(false).notNull(),
+  completionDate: timestamp("completion_date"),
+  timeSpent: integer("time_spent").default(0), // in seconds
+  lastPosition: integer("last_position").default(0), // for video position tracking
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Certificates table
@@ -504,6 +518,14 @@ export const insertUserAchievementSchema = createInsertSchema(userAchievements).
 export const insertAchievementProgressSchema = createInsertSchema(achievementProgress).omit({ id: true, lastUpdated: true });
 export const insertAchievementPointsSchema = createInsertSchema(achievementPoints).omit({ id: true, lastUpdated: true });
 
+// User Progress Schema
+export const insertUserProgressSchema = createInsertSchema(userProgress)
+  .omit({ id: true, completionDate: true, createdAt: true })
+  .extend({
+    lastPosition: z.number().optional().default(0),
+    timeSpent: z.number().optional().default(0),
+  });
+
 // Define types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -585,6 +607,10 @@ export type InsertAchievementProgress = z.infer<typeof insertAchievementProgress
 export type AchievementPoints = typeof achievementPoints.$inferSelect;
 export type InsertAchievementPoints = z.infer<typeof insertAchievementPointsSchema>;
 
+// User Progress Types
+export type UserProgress = typeof userProgress.$inferSelect;
+export type InsertUserProgress = z.infer<typeof insertUserProgressSchema>;
+
 // User Sessions and Device Tracking
 export const userSessions = pgTable("user_sessions", {
   id: serial("id").primaryKey(),
@@ -664,6 +690,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   achievements: many(userAchievements),
   achievementProgress: many(achievementProgress),
   achievementPoints: many(achievementPoints),
+  progress: many(userProgress),
 }));
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
@@ -681,6 +708,7 @@ export const coursesRelations = relations(courses, ({ one, many }) => ({
   sections: many(courseSections),
   exams: many(exams),
   specialistPrograms: many(specialistProgramCourses),
+  progress: many(userProgress),
 }));
 
 export const paymentsRelations = relations(payments, ({ one, many }) => ({
@@ -766,7 +794,8 @@ export const courseSectionsRelations = relations(courseSections, ({ one, many })
     fields: [courseSections.semesterId],
     references: [semesters.id]
   }),
-  exams: many(exams)
+  exams: many(exams),
+  progress: many(userProgress)
 }));
 
 export const examsRelations = relations(exams, ({ one, many }) => ({
@@ -875,5 +904,21 @@ export const achievementPointsRelations = relations(achievementPoints, ({ one })
   user: one(users, {
     fields: [achievementPoints.userId],
     references: [users.id]
+  })
+}));
+
+// User Progress relations
+export const userProgressRelations = relations(userProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [userProgress.userId],
+    references: [users.id]
+  }),
+  course: one(courses, {
+    fields: [userProgress.courseId],
+    references: [courses.id]
+  }),
+  section: one(courseSections, {
+    fields: [userProgress.sectionId],
+    references: [courseSections.id]
   })
 }));

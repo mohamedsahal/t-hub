@@ -6,7 +6,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/hooks/use-auth";
 import { formatCurrency, formatDuration, getCourseTypeLabel, getCourseTypeColor } from "@/lib/utils";
-import { CheckCircle, Clock, Users, BookOpen, Award } from "lucide-react";
+import { CheckCircle, Clock, Users, BookOpen, Award, Play } from "lucide-react";
+import CourseProgressTracker from "./CourseProgressTracker";
+import YouTubeVideoPlayer from "./YouTubeVideoPlayer";
+
+// Helper function to extract YouTube video ID from URL
+const extractYouTubeId = (url: string | undefined): string | null => {
+  if (!url) return null;
+  
+  // Try to match YouTube URL patterns
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  
+  return (match && match[2].length === 11) ? match[2] : null;
+};
 
 // Define the Course type
 interface Course {
@@ -100,6 +113,8 @@ const CourseDetail = ({ courseId }: CourseDetailProps) => {
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
                 <TabsTrigger value="instructor">Instructor</TabsTrigger>
+                {isAuthenticated && <TabsTrigger value="progress">Progress</TabsTrigger>}
+                {course.videoUrl && <TabsTrigger value="video">Video</TabsTrigger>}
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
@@ -166,6 +181,30 @@ const CourseDetail = ({ courseId }: CourseDetailProps) => {
                   </div>
                 </div>
               </TabsContent>
+              
+              {isAuthenticated && (
+                <TabsContent value="progress">
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-semibold mb-3">Your Progress</h3>
+                    <CourseProgressTracker courseId={Number(course.id)} courseTitle={course.title} />
+                  </div>
+                </TabsContent>
+              )}
+              
+              {course.videoUrl && (
+                <TabsContent value="video">
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-semibold mb-3">Course Video</h3>
+                    <YouTubeVideoPlayer 
+                      videoId={extractYouTubeId(course.videoUrl) || ''} 
+                      courseId={Number(course.id)}
+                      sectionId={0} // Main video doesn't have a section
+                      title={course.title}
+                      isCompleted={false}
+                    />
+                  </div>
+                </TabsContent>
+              )}
             </Tabs>
           </div>
         </div>

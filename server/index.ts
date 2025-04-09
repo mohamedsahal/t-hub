@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import notificationService from "./services/notificationService";
 import emailService from "./services/emailService";
 import { runPaymentMigration } from './payment-schema-migration';
+import { runUserProgressMigration } from './user-progress-migration';
 
 const app = express();
 app.use(express.json());
@@ -56,8 +57,12 @@ app.use((req, res, next) => {
     // Payment migration
     await runPaymentMigration();
     log("Payment schema migration completed", "migration");
+    
+    // User progress tracking migration
+    await runUserProgressMigration();
+    log("User progress tracking migration completed", "migration");
   } catch (migrationError) {
-    log(`Failed to run payment migration: ${migrationError}`, "migration");
+    log(`Failed to run migrations: ${migrationError}`, "migration");
   }
 
   // Initialize notification service

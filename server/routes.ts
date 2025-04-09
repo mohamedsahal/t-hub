@@ -228,6 +228,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User Progress routes
+  app.get("/api/user-progress/:courseId", isAuthenticated, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const courseId = parseInt(req.params.courseId);
+      
+      // Get all progress records for this user and course
+      const progressRecords = await storage.getUserProgressByCourse(user.id, courseId);
+      
+      // Calculate overall course progress percentage
+      const courseProgress = await storage.getCourseProgress(user.id, courseId);
+      
+      res.json({
+        progressRecords,
+        completionPercentage: courseProgress
+      });
+    } catch (error) {
+      console.error("Error fetching user progress:", error);
+      res.status(500).json({ message: "Error fetching user progress" });
+    }
+  });
+
+  app.post("/api/user-progress/complete-section", isAuthenticated, async (req, res) => {
+    try {
+      const { courseId, sectionId } = req.body;
+      const user = req.user as any;
+      
+      if (!courseId || !sectionId) {
+        return res.status(400).json({ message: "Course ID and Section ID are required" });
+      }
+      
+      const progress = await storage.completeSection(user.id, courseId, sectionId);
+      
+      if (!progress) {
+        return res.status(404).json({ message: "Failed to update progress" });
+      }
+      
+      // Get the updated completion percentage
+      const courseProgress = await storage.getCourseProgress(user.id, courseId);
+      
+      res.json({
+        progress,
+        completionPercentage: courseProgress
+      });
+    } catch (error) {
+      console.error("Error updating progress:", error);
+      res.status(500).json({ message: "Error updating progress" });
+    }
+  });
+
+  app.post("/api/user-progress/update-video", isAuthenticated, async (req, res) => {
+    try {
+      const { courseId, sectionId, lastPosition, timeSpent } = req.body;
+      const user = req.user as any;
+      
+      if (!courseId || !sectionId || lastPosition === undefined || timeSpent === undefined) {
+        return res.status(400).json({ 
+          message: "Course ID, Section ID, last position, and time spent are required" 
+        });
+      }
+      
+      const progress = await storage.updateVideoProgress(
+        user.id, 
+        courseId, 
+        sectionId, 
+        lastPosition, 
+        timeSpent
+      );
+      
+      if (!progress) {
+        return res.status(404).json({ message: "Failed to update video progress" });
+      }
+      
+      // Get the updated completion percentage
+      const courseProgress = await storage.getCourseProgress(user.id, courseId);
+      
+      res.json({
+        progress,
+        completionPercentage: courseProgress
+      });
+    } catch (error) {
+      console.error("Error updating video progress:", error);
+      res.status(500).json({ message: "Error updating video progress" });
+    }
+  });
+
   // Payment routes
   app.post("/api/payments", isAuthenticated, async (req, res) => {
     try {

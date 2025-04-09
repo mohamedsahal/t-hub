@@ -26,7 +26,8 @@ import {
   specialistProgramEnrollments, type SpecialistProgramEnrollment, type InsertSpecialistProgramEnrollment,
   userAchievements, type UserAchievement, type InsertUserAchievement,
   achievementProgress, type AchievementProgress, type InsertAchievementProgress,
-  achievementPoints, type AchievementPoints, type InsertAchievementPoints
+  achievementPoints, type AchievementPoints, type InsertAchievementPoints,
+  userProgress, type UserProgress, type InsertUserProgress
 } from "@shared/schema";
 import session from "express-session";
 
@@ -274,6 +275,16 @@ export interface IStorage {
   awardAchievement(userId: number, achievementId: string): Promise<UserAchievement>;
   getUserPoints(userId: number): Promise<number>;
   getAchievementsByCategory(category: string): Promise<string[]>;
+  
+  // User Progress operations
+  getUserProgress(id: number): Promise<UserProgress | undefined>;
+  getUserProgressBySection(userId: number, sectionId: number): Promise<UserProgress | undefined>;
+  getUserProgressByCourse(userId: number, courseId: number): Promise<UserProgress[]>;
+  createUserProgress(progress: InsertUserProgress): Promise<UserProgress>;
+  updateUserProgress(id: number, progress: Partial<UserProgress>): Promise<UserProgress | undefined>;
+  completeSection(userId: number, courseId: number, sectionId: number): Promise<UserProgress | undefined>;
+  updateVideoProgress(userId: number, courseId: number, sectionId: number, lastPosition: number, timeSpent: number): Promise<UserProgress | undefined>;
+  getCourseProgress(userId: number, courseId: number): Promise<number>; // Returns percentage completed
   
   // User Session operations
   getUserSession(id: number): Promise<UserSession | undefined>;
