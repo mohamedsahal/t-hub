@@ -4823,15 +4823,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(achievements);
       }
       
-      // If no category specified, return empty array as we don't have a route to get all achievements
-      // The achievements themselves are stored in shared/achievements.ts
-      res.json([]);
+      // Return all achievements from the shared/achievements.ts file
+      const { achievements } = await import("../shared/achievements");
+      res.json(achievements);
     } catch (error) {
       console.error("Error fetching achievements:", error);
       res.status(500).json({ message: "Error fetching achievements" });
     }
   });
 
+  // Route with hyphen (original)
   app.get("/api/user-achievements", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any).id;
@@ -4842,8 +4843,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error fetching user achievements" });
     }
   });
+  
+  // Route with slash (for frontend compatibility)
+  app.get("/api/user/achievements", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const achievements = await storage.getUserAchievements(userId);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching user achievements:", error);
+      res.status(500).json({ message: "Error fetching user achievements" });
+    }
+  });
 
+  // Routes for user points - supporting both formats for consistency
   app.get("/api/user-points", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const points = await storage.getUserPoints(userId);
+      res.json({ points });
+    } catch (error) {
+      console.error("Error fetching user points:", error);
+      res.status(500).json({ message: "Error fetching user points" });
+    }
+  });
+  
+  // Route with slash (for frontend consistency)
+  app.get("/api/user/points", isAuthenticated, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const points = await storage.getUserPoints(userId);
