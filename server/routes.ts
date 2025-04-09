@@ -1690,175 +1690,289 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/dashboard", isAuthenticated, async (req, res) => {
     try {
       const user = req.user as any;
+      console.log("Dashboard request for user:", user.id, "with role:", user.role);
       
       if (user.role === "student") {
         // Get student dashboard data
-        const enrollments = await storage.getEnrollmentsByUser(user.id);
-        const courses = [];
-        
-        for (const enrollment of enrollments) {
-          const course = await storage.getCourse(enrollment.courseId);
-          if (course) {
-            courses.push(course);
+        try {
+          console.log("Fetching enrollments for student:", user.id);
+          const enrollments = await storage.getEnrollmentsByUser(user.id);
+          console.log("Enrollments found:", enrollments.length);
+          
+          const courses = [];
+          
+          for (const enrollment of enrollments) {
+            console.log("Fetching course:", enrollment.courseId, "for enrollment:", enrollment.id);
+            try {
+              const course = await storage.getCourse(enrollment.courseId);
+              if (course) {
+                courses.push(course);
+              }
+            } catch (courseError) {
+              console.error("Error fetching course:", enrollment.courseId, courseError);
+              // Continue with other enrollments even if one fails
+            }
           }
+          
+          console.log("Fetching payments for student:", user.id);
+          const payments = await storage.getPaymentsByUser(user.id);
+          
+          console.log("Fetching certificates for student:", user.id);
+          const certificates = await storage.getCertificatesByUser(user.id);
+          
+          // Add user achievements and points to the dashboard
+          console.log("Fetching achievements for student:", user.id);
+          const achievements = await storage.getUserAchievements(user.id);
+          
+          console.log("Fetching achievement points for student:", user.id);
+          const points = await storage.getUserPoints(user.id);
+          
+          res.json({
+            enrolledCourses: courses,
+            payments,
+            certificates,
+            achievements,
+            points
+          });
+        } catch (studentDataError) {
+          console.error("Error fetching student dashboard data:", studentDataError);
+          throw studentDataError; // Re-throw to be caught by outer catch
         }
-        
-        const payments = await storage.getPaymentsByUser(user.id);
-        const certificates = await storage.getCertificatesByUser(user.id);
-        
-        res.json({
-          enrolledCourses: courses,
-          payments,
-          certificates
-        });
       } else if (user.role === "teacher") {
         // Get teacher dashboard data
-        const allCourses = await storage.getAllCourses();
-        const teacherCourses = allCourses.filter(course => course.teacherId === user.id);
-        
-        let totalStudents = 0;
-        for (const course of teacherCourses) {
-          const enrollments = await storage.getEnrollmentsByCourse(course.id);
-          totalStudents += enrollments.length;
+        try {
+          console.log("Fetching courses for teacher:", user.id);
+          const allCourses = await storage.getAllCourses();
+          const teacherCourses = allCourses.filter(course => course.teacherId === user.id);
+          console.log("Teacher courses found:", teacherCourses.length);
+          
+          let totalStudents = 0;
+          for (const course of teacherCourses) {
+            console.log("Fetching enrollments for course:", course.id);
+            try {
+              const enrollments = await storage.getEnrollmentsByCourse(course.id);
+              totalStudents += enrollments.length;
+            } catch (enrollmentError) {
+              console.error("Error fetching enrollments for course:", course.id, enrollmentError);
+              // Continue with other courses even if enrollment fetch fails for one
+            }
+          }
+          
+          res.json({
+            courses: teacherCourses,
+            totalStudents,
+            activeStudents: totalStudents // For simplicity, considering all are active
+          });
+        } catch (teacherDataError) {
+          console.error("Error fetching teacher dashboard data:", teacherDataError);
+          throw teacherDataError; // Re-throw to be caught by outer catch
         }
-        
-        res.json({
-          courses: teacherCourses,
-          totalStudents,
-          activeStudents: totalStudents // For simplicity, considering all are active
-        });
       } else if (user.role === "admin") {
         // Get admin dashboard data
-        const allCourses = await storage.getAllCourses();
-        const allUsers = await storage.getAllUsers();
-        const allEnrollments = await storage.getAllEnrollments();
-        
-        const studentCount = allUsers.filter(u => u.role === "student").length;
-        const teacherCount = allUsers.filter(u => u.role === "teacher").length;
-        
-        let totalRevenue = 0;
-        const allPayments = await storage.getAllPayments();
-        
-        for (const payment of allPayments) {
-          if (payment.status === "completed") {
-            totalRevenue += payment.amount;
+        try {
+          console.log("Fetching admin dashboard data for user:", user.id);
+          
+          console.log("Fetching all courses for admin dashboard");
+          const allCourses = await storage.getAllCourses();
+          console.log("All courses found:", allCourses.length);
+          
+          console.log("Fetching all users for admin dashboard");
+          const allUsers = await storage.getAllUsers();
+          console.log("All users found:", allUsers.length);
+          
+          console.log("Fetching all enrollments for admin dashboard");
+          const allEnrollments = await storage.getAllEnrollments();
+          console.log("All enrollments found:", allEnrollments.length);
+          
+          const studentCount = allUsers.filter(u => u.role === "student").length;
+          const teacherCount = allUsers.filter(u => u.role === "teacher").length;
+          
+          console.log("Fetching all payments for admin dashboard");
+          let allPayments = [];
+          let totalRevenue = 0;
+          
+          try {
+            allPayments = await storage.getAllPayments();
+            console.log("All payments found:", allPayments.length);
+            
+            for (const payment of allPayments) {
+              if (payment.status === "completed") {
+                totalRevenue += payment.amount;
+              }
+            }
+            console.log("Total revenue calculated:", totalRevenue);
+          } catch (paymentError) {
+            console.error("Error fetching payments for admin dashboard:", paymentError);
+            // Continue with execution, just log the error
+            console.log("Continuing with empty payments array due to error");
+            allPayments = [];
+            totalRevenue = 0;
           }
-        }
 
-        // Get monthly enrollment data
-        const enrollmentsByMonth = new Array(12).fill(0);
-        const currentYear = new Date().getFullYear();
-        
-        for (const enrollment of allEnrollments) {
-          const enrollDate = new Date(enrollment.enrollmentDate);
-          if (enrollDate.getFullYear() === currentYear) {
-            enrollmentsByMonth[enrollDate.getMonth()]++;
-          }
-        }
-        
-        const monthlyEnrollmentData = enrollmentsByMonth.map((count, index) => {
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-          return {
-            name: months[index],
-            count
-          };
-        });
-        
-        // Get course distribution data
-        const courseTypes = ["multimedia", "accounting", "marketing", "development", "diploma"];
-        const courseDistribution = courseTypes.map(type => {
-          return {
-            name: type.charAt(0).toUpperCase() + type.slice(1),
-            value: allCourses.filter(course => course.type === type).length
-          };
-        });
-        
-        // Calculate top performing courses
-        const courseEnrollments = new Map();
-        for (const enrollment of allEnrollments) {
-          const count = courseEnrollments.get(enrollment.courseId) || 0;
-          courseEnrollments.set(enrollment.courseId, count + 1);
-        }
-        
-        const topCourses = [];
-        // Use Array.from to convert Map entries to array for iteration
-        const courseEntriesArray = Array.from(courseEnrollments.entries());
-        for (const entry of courseEntriesArray) {
-          const courseId = entry[0];
-          const count = entry[1];
-          const course = await storage.getCourse(courseId);
-          if (course) {
-            topCourses.push({
-              id: course.id,
-              title: course.title,
-              enrollments: count
+          // Get monthly enrollment data
+          console.log("Generating monthly enrollment data");
+          let monthlyEnrollmentData = [];
+          
+          try {
+            const enrollmentsByMonth = new Array(12).fill(0);
+            const currentYear = new Date().getFullYear();
+            
+            for (const enrollment of allEnrollments) {
+              const enrollDate = new Date(enrollment.enrollmentDate);
+              if (enrollDate.getFullYear() === currentYear) {
+                enrollmentsByMonth[enrollDate.getMonth()]++;
+              }
+            }
+            
+            monthlyEnrollmentData = enrollmentsByMonth.map((count, index) => {
+              const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              return {
+                name: months[index],
+                count
+              };
             });
+            
+            console.log("Generated monthly enrollment data");
+          } catch (enrollmentError) {
+            console.error("Error generating monthly enrollment data:", enrollmentError);
+            // Continue with execution, just log the error
+            console.log("Using empty monthly enrollment data due to error");
+            monthlyEnrollmentData = [];
           }
-        }
         
-        topCourses.sort((a, b) => b.enrollments - a.enrollments);
-        
-        // Get weekly revenue data
-        const now = new Date();
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const twoWeeksAgo = new Date(oneWeekAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const threeWeeksAgo = new Date(twoWeeksAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const fourWeeksAgo = new Date(threeWeeksAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
-        
-        const revenueData = [
-          { name: "Week 1", oneTime: 0, installment: 0 },
-          { name: "Week 2", oneTime: 0, installment: 0 },
-          { name: "Week 3", oneTime: 0, installment: 0 },
-          { name: "Week 4", oneTime: 0, installment: 0 }
-        ];
-        
-        for (const payment of allPayments) {
-          if (payment.status !== "completed") continue;
+          // Get course distribution data
+          console.log("Generating course distribution data");
+          let courseDistribution = [];
           
-          const paymentDate = new Date(payment.paymentDate);
-          
-          if (paymentDate >= oneWeekAgo) {
-            if (payment.type === "one_time") {
-              revenueData[3].oneTime += payment.amount;
-            } else {
-              revenueData[3].installment += payment.amount;
-            }
-          } else if (paymentDate >= twoWeeksAgo) {
-            if (payment.type === "one_time") {
-              revenueData[2].oneTime += payment.amount;
-            } else {
-              revenueData[2].installment += payment.amount;
-            }
-          } else if (paymentDate >= threeWeeksAgo) {
-            if (payment.type === "one_time") {
-              revenueData[1].oneTime += payment.amount;
-            } else {
-              revenueData[1].installment += payment.amount;
-            }
-          } else if (paymentDate >= fourWeeksAgo) {
-            if (payment.type === "one_time") {
-              revenueData[0].oneTime += payment.amount;
-            } else {
-              revenueData[0].installment += payment.amount;
-            }
+          try {
+            const courseTypes = ["multimedia", "accounting", "marketing", "development", "diploma"];
+            courseDistribution = courseTypes.map(type => {
+              return {
+                name: type.charAt(0).toUpperCase() + type.slice(1),
+                value: allCourses.filter(course => course.type === type).length
+              };
+            });
+            console.log("Generated course distribution data");
+          } catch (distributionError) {
+            console.error("Error generating course distribution data:", distributionError);
+            courseDistribution = [];
           }
-        }
         
-        res.json({
-          courseCount: allCourses.length,
-          studentCount,
-          teacherCount,
-          totalRevenue,
-          recentPayments: allPayments
-            .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
-            .slice(0, 5),
-          monthlyEnrollments: monthlyEnrollmentData,
-          courseDistribution,
-          topCourses: topCourses.slice(0, 5),
-          revenueData
-        });
+          // Calculate top performing courses
+          console.log("Calculating top performing courses");
+          let topCourses = [];
+          
+          try {
+            const courseEnrollments = new Map();
+            for (const enrollment of allEnrollments) {
+              const count = courseEnrollments.get(enrollment.courseId) || 0;
+              courseEnrollments.set(enrollment.courseId, count + 1);
+            }
+            
+            // Use Array.from to convert Map entries to array for iteration
+            const courseEntriesArray = Array.from(courseEnrollments.entries());
+            for (const entry of courseEntriesArray) {
+              const courseId = entry[0];
+              const count = entry[1];
+              const course = await storage.getCourse(courseId);
+              if (course) {
+                topCourses.push({
+                  id: course.id,
+                  title: course.title,
+                  enrollments: count
+                });
+              }
+            }
+            
+            topCourses.sort((a, b) => b.enrollments - a.enrollments);
+            console.log("Generated top performing courses data");
+          } catch (topCoursesError) {
+            console.error("Error calculating top performing courses:", topCoursesError);
+            topCourses = [];
+          }
+        
+          // Get weekly revenue data
+          console.log("Generating weekly revenue data");
+          let revenueData = [
+            { name: "Week 1", oneTime: 0, installment: 0 },
+            { name: "Week 2", oneTime: 0, installment: 0 },
+            { name: "Week 3", oneTime: 0, installment: 0 },
+            { name: "Week 4", oneTime: 0, installment: 0 }
+          ];
+          
+          try {
+            const now = new Date();
+            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const twoWeeksAgo = new Date(oneWeekAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const threeWeeksAgo = new Date(twoWeeksAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const fourWeeksAgo = new Date(threeWeeksAgo.getTime() - 7 * 24 * 60 * 60 * 1000);
+            
+            for (const payment of allPayments) {
+              if (payment.status !== "completed") continue;
+              
+              const paymentDate = new Date(payment.paymentDate);
+              
+              if (paymentDate >= oneWeekAgo) {
+                if (payment.type === "one_time") {
+                  revenueData[3].oneTime += payment.amount;
+                } else {
+                  revenueData[3].installment += payment.amount;
+                }
+              } else if (paymentDate >= twoWeeksAgo) {
+                if (payment.type === "one_time") {
+                  revenueData[2].oneTime += payment.amount;
+                } else {
+                  revenueData[2].installment += payment.amount;
+                }
+              } else if (paymentDate >= threeWeeksAgo) {
+                if (payment.type === "one_time") {
+                  revenueData[1].oneTime += payment.amount;
+                } else {
+                  revenueData[1].installment += payment.amount;
+                }
+              } else if (paymentDate >= fourWeeksAgo) {
+                if (payment.type === "one_time") {
+                  revenueData[0].oneTime += payment.amount;
+                } else {
+                  revenueData[0].installment += payment.amount;
+                }
+              }
+            }
+            console.log("Generated weekly revenue data");
+          } catch (revenueError) {
+            console.error("Error generating weekly revenue data:", revenueError);
+            // Keep default revenueData with zeros
+          }
+          
+          // Prepare final response
+          let recentPayments = [];
+          try {
+            recentPayments = allPayments
+              .sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime())
+              .slice(0, 5);
+          } catch (sortError) {
+            console.error("Error sorting recent payments:", sortError);
+          }
+          
+          res.json({
+            courseCount: allCourses.length,
+            studentCount,
+            teacherCount,
+            totalRevenue,
+            recentPayments,
+            monthlyEnrollments: monthlyEnrollmentData,
+            courseDistribution,
+            topCourses: topCourses.slice(0, 5),
+            revenueData
+          });
+          console.log("Admin dashboard data successfully sent");
+        } catch (adminDashboardError) {
+          console.error("Error in admin dashboard data generation:", adminDashboardError);
+          throw adminDashboardError; // Re-throw to be caught by outer catch
+        }
       }
     } catch (error) {
+      console.error("Error fetching dashboard data:", error);
       res.status(500).json({ message: "Error fetching dashboard data" });
     }
   });
@@ -1883,6 +1997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const modules = await storage.getCourseModules(courseId);
       res.json(modules);
     } catch (error) {
+      console.error("Error fetching course modules:", error);
       res.status(500).json({ message: "Error fetching course modules" });
     }
   });
@@ -1947,6 +2062,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedModule);
     } catch (error) {
+      console.error("Error updating course module:", error);
       res.status(500).json({ message: "Error updating course module" });
     }
   });
@@ -1982,6 +2098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ success: true });
     } catch (error) {
+      console.error("Error deleting course module:", error);
       res.status(500).json({ message: "Error deleting course module" });
     }
   });
@@ -2017,6 +2134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedModules = await storage.getCourseModules(courseId);
       res.json(updatedModules);
     } catch (error) {
+      console.error("Error reordering course modules:", error);
       res.status(500).json({ message: "Error reordering course modules" });
     }
   });
@@ -2041,6 +2159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sections = await storage.getCourseSections(courseId);
       res.json(sections);
     } catch (error) {
+      console.error("Error fetching course sections:", error);
       res.status(500).json({ message: "Error fetching course sections" });
     }
   });
@@ -2099,6 +2218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(updatedSection);
     } catch (error) {
+      console.error("Error updating course section:", error);
       res.status(500).json({ message: "Error updating course section" });
     }
   });
@@ -2128,6 +2248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting course section:", error);
       res.status(500).json({ message: "Error deleting course section" });
     }
   });
@@ -2164,6 +2285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedSections = await storage.getCourseSections(courseId);
       res.json(updatedSections);
     } catch (error) {
+      console.error("Error reordering course sections:", error);
       res.status(500).json({ message: "Error reordering course sections" });
     }
   });
@@ -4880,6 +5002,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Route with hyphen (original)
   app.post("/api/user-achievements/award", checkRole(["admin", "teacher"]), async (req, res) => {
     try {
       const { userId, achievementId } = req.body;
@@ -4900,8 +5023,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Error awarding achievement" });
     }
   });
+  
+  // Route with slash (for frontend consistency)
+  app.post("/api/user/achievements/award", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const { userId, achievementId } = req.body;
+      
+      if (!userId || !achievementId) {
+        return res.status(400).json({ message: "User ID and achievement ID are required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const achievement = await storage.awardAchievement(userId, achievementId);
+      res.status(201).json(achievement);
+    } catch (error) {
+      console.error("Error awarding achievement:", error);
+      res.status(500).json({ message: "Error awarding achievement" });
+    }
+  });
 
+  // Route with hyphen (original)
   app.post("/api/user-achievements/progress", isAuthenticated, async (req, res) => {
+    try {
+      const { achievementId, progress } = req.body;
+      const userId = (req.user as any).id;
+      
+      if (!achievementId || progress === undefined) {
+        return res.status(400).json({ message: "Achievement ID and progress are required" });
+      }
+      
+      const result = await storage.updateAchievementProgress(userId, achievementId, progress);
+      
+      // If an achievement was awarded, return it
+      if (result) {
+        return res.status(200).json({ awarded: true, achievement: result });
+      }
+      
+      // Otherwise just return success status
+      res.status(200).json({ awarded: false });
+    } catch (error) {
+      console.error("Error updating achievement progress:", error);
+      res.status(500).json({ message: "Error updating achievement progress" });
+    }
+  });
+  
+  // Route with slash (for frontend consistency)
+  app.post("/api/user/achievements/progress", isAuthenticated, async (req, res) => {
     try {
       const { achievementId, progress } = req.body;
       const userId = (req.user as any).id;
