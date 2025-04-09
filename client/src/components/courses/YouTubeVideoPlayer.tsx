@@ -91,7 +91,7 @@ export default function YouTubeVideoPlayer({
       queryClient.invalidateQueries({ queryKey: ['/api/user-progress', courseId] });
       
       // If the video is now marked as completed
-      if (data.progress.completed && !isVideoCompleted) {
+      if (data.progress.isCompleted && !isVideoCompleted) {
         setIsVideoCompleted(true);
         toast({
           title: "Video completed",

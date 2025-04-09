@@ -10,6 +10,7 @@ import { formatCurrency, formatDuration, getCourseTypeLabel, getCourseTypeColor 
 import { CheckCircle, Clock, Users, BookOpen, Award, Play, ChevronLeft, ChevronRight } from "lucide-react";
 import CourseProgressTracker from "./CourseProgressTracker";
 import YouTubeVideoPlayer from "./YouTubeVideoPlayer";
+import CourseContentView from "./CourseContentView";
 
 // Helper function to extract YouTube video ID from URL
 const extractYouTubeId = (url: string | undefined): string | null => {
@@ -91,9 +92,6 @@ const CourseDetail = ({ courseId }: CourseDetailProps) => {
 
   // If the user is enrolled, show the learning interface with real course sections and modules
   if (isEnrolled) {
-    // Import the CourseContentView component
-    const CourseContentView = require('./CourseContentView').default;
-    
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="mb-6">
@@ -103,7 +101,7 @@ const CourseDetail = ({ courseId }: CourseDetailProps) => {
           <h1 className="text-3xl font-bold text-gray-900 mt-2">{course.title}</h1>
         </div>
         
-        {/* Use the new CourseContentView component */}
+        {/* Use the CourseContentView component */}
         <CourseContentView courseId={Number(course.id)} userId={user?.id} />
       </div>
     );

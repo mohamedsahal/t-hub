@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDuration } from "@/lib/utils";
 import AchievementBadges from "./AchievementBadges";
 import { 
   BookOpen, 
@@ -16,7 +16,17 @@ import {
   CheckCircle, 
   Award, 
   CreditCard, 
-  Download 
+  Download,
+  Bell,
+  Bookmark,
+  TrendingUp,
+  BarChart,
+  Info,
+  Star,
+  AlertCircle,
+  ArrowRight,
+  FileText,
+  RefreshCw
 } from "lucide-react";
 
 const StudentDashboard = () => {
@@ -33,9 +43,108 @@ const StudentDashboard = () => {
   const payments = data?.payments || [];
   const certificates = data?.certificates || [];
 
+  // Calculate completed courses
+  const completedCourses = enrolledCourses.filter(
+    (course: any) => course.progressPercentage === 100 || course.status === 'completed'
+  ).length;
+  
+  // Calculate average progress across all courses
+  const averageProgress = enrolledCourses.length > 0 
+    ? Math.round(
+        enrolledCourses.reduce(
+          (sum: number, course: any) => sum + (course.progressPercentage || 0), 
+          0
+        ) / enrolledCourses.length
+      )
+    : 0;
+  
+  // Get recently active courses (last 3)
+  const recentCourses = [...enrolledCourses]
+    .sort((a: any, b: any) => new Date(b.lastActive || 0).getTime() - new Date(a.lastActive || 0).getTime())
+    .slice(0, 3);
+  
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Student Dashboard</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Learning Dashboard</h1>
+        <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh Data
+        </Button>
+      </div>
+      
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <div className="bg-primary/10 p-2 rounded-full mr-3">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">My Courses</p>
+                  <p className="text-xs text-gray-500">Currently enrolled</p>
+                </div>
+              </div>
+              <p className="text-2xl font-bold">{enrolledCourses.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <div className="bg-green-100 p-2 rounded-full mr-3">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Completed</p>
+                  <p className="text-xs text-gray-500">Finished courses</p>
+                </div>
+              </div>
+              <p className="text-2xl font-bold">{completedCourses}</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <div className="bg-blue-100 p-2 rounded-full mr-3">
+                  <BarChart className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Progress</p>
+                  <p className="text-xs text-gray-500">Average completion</p>
+                </div>
+              </div>
+              <div className="flex items-center">
+                <p className="text-2xl font-bold">{averageProgress}%</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <div className="bg-amber-100 p-2 rounded-full mr-3">
+                  <Award className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Certificates</p>
+                  <p className="text-xs text-gray-500">Achievements earned</p>
+                </div>
+              </div>
+              <p className="text-2xl font-bold">{certificates.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
       
       <Tabs defaultValue="courses">
         <TabsList className="grid w-full grid-cols-4 md:w-auto">
@@ -46,11 +155,60 @@ const StudentDashboard = () => {
         </TabsList>
         
         <TabsContent value="courses" className="space-y-6">
+          {/* Recent Activity */}
+          {recentCourses.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="mr-2 h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+                <CardDescription>Pick up where you left off</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {recentCourses.map((course: any) => (
+                    <Card key={`recent-${course.id}`} className="overflow-hidden border shadow-sm hover:shadow transition-shadow">
+                      <div className="h-3 bg-primary w-full" />
+                      <CardContent className="p-4">
+                        <h3 className="font-medium text-base line-clamp-1 mb-1">{course.title}</h3>
+                        <div className="flex flex-col space-y-3">
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="text-gray-500">Progress</span>
+                              <span className="font-medium">{course.progressPercentage || 0}%</span>
+                            </div>
+                            <Progress value={course.progressPercentage || 0} className="h-1" />
+                          </div>
+                          <Link href={`/courses/${course.id}`}>
+                            <Button size="sm" variant="outline" className="w-full">
+                              {course.progressPercentage > 0 ? 'Continue Learning' : 'Start Course'}
+                            </Button>
+                          </Link>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="md:col-span-2">
-              <CardHeader>
-                <CardTitle>Your Enrolled Courses</CardTitle>
-                <CardDescription>Track your progress and continue learning</CardDescription>
+              <CardHeader className="pb-3 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center">
+                    <BookOpen className="mr-2 h-5 w-5" />
+                    Your Enrolled Courses
+                  </CardTitle>
+                  <CardDescription>Track your progress and continue learning</CardDescription>
+                </div>
+                <Link href="/courses">
+                  <Button variant="outline" size="sm">
+                    Browse More Courses
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent>
                 {enrolledCourses.length > 0 ? (
@@ -59,17 +217,29 @@ const StudentDashboard = () => {
                       <div key={course.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                         <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-lg truncate">{course.title}</h3>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-medium text-lg truncate">{course.title}</h3>
+                              {course.progressPercentage >= 75 && course.progressPercentage < 100 && (
+                                <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-200">
+                                  Almost Complete
+                                </Badge>
+                              )}
+                              {course.progressPercentage === 100 && (
+                                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                                  Completed
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-gray-500 mb-3 line-clamp-2">{course.description}</p>
                             
                             <div className="flex items-center text-sm gap-3 mb-3 flex-wrap">
                               <div className="flex items-center">
                                 <Clock className="h-4 w-4 mr-1 text-gray-500" />
-                                <span>{course.duration} weeks</span>
+                                <span>{formatDuration(course.duration)}</span>
                               </div>
                               <div className="flex items-center">
                                 <Calendar className="h-4 w-4 mr-1 text-gray-500" />
-                                <span>Enrolled: {formatDate(new Date())}</span>
+                                <span>Enrolled: {formatDate(new Date(course.enrollmentDate || new Date()))}</span>
                               </div>
                             </div>
                             
@@ -83,12 +253,6 @@ const StudentDashboard = () => {
                           </div>
                           
                           <div className="flex flex-col items-end gap-2 min-w-[120px]">
-                            <Badge 
-                              variant="outline"
-                              className="bg-primary/10 text-primary border-primary/20"
-                            >
-                              {course.status === 'completed' ? 'Completed' : 'In Progress'}
-                            </Badge>
                             <Link href={`/courses/${course.id}`}>
                               <Button size="sm" className="w-full">
                                 <BookOpen className="h-4 w-4 mr-2" /> 
@@ -115,69 +279,109 @@ const StudentDashboard = () => {
               </CardContent>
             </Card>
             
-            <Card>
-              <CardHeader>
-                <CardTitle>Learning Stats</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-primary/10 p-2 rounded-full mr-3">
-                        <BookOpen className="h-5 w-5 text-primary" />
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-base">
+                    <Bell className="mr-2 h-5 w-5" />
+                    Notifications
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-blue-100 p-2 rounded-full">
+                        <Info className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Courses</p>
-                        <p className="text-xs text-gray-500">Enrolled</p>
+                        <p className="text-sm font-medium">New course content available</p>
+                        <p className="text-xs text-gray-500 mt-1">Check out the updated materials in your enrolled courses.</p>
                       </div>
                     </div>
-                    <p className="text-2xl font-bold">{enrolledCourses.length}</p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-green-100 p-2 rounded-full mr-3">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
+                    
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-amber-100 p-2 rounded-full">
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Completed</p>
-                        <p className="text-xs text-gray-500">Courses</p>
+                        <p className="text-sm font-medium">Assignment deadline approaching</p>
+                        <p className="text-xs text-gray-500 mt-1">You have assignments due in the next 48 hours.</p>
                       </div>
                     </div>
-                    <p className="text-2xl font-bold">0</p>
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="bg-amber-100 p-2 rounded-full mr-3">
-                        <Award className="h-5 w-5 text-amber-600" />
+                    
+                    <div className="flex gap-3 items-start">
+                      <div className="bg-green-100 p-2 rounded-full">
+                        <Star className="h-4 w-4 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Certificates</p>
-                        <p className="text-xs text-gray-500">Earned</p>
+                        <p className="text-sm font-medium">Achievement unlocked</p>
+                        <p className="text-xs text-gray-500 mt-1">You've earned the "Quick Learner" badge.</p>
                       </div>
                     </div>
-                    <p className="text-2xl font-bold">{certificates.length}</p>
                   </div>
-                </div>
-                
-                <div className="mt-6 pt-6 border-t">
-                  <h4 className="font-medium mb-2">Suggested Courses</h4>
-                  <div className="space-y-2">
-                    <Link href="/courses?type=multimedia">
-                      <span className="text-primary hover:underline text-sm block cursor-pointer">
-                        Multimedia Group Course Bundle
-                      </span>
-                    </Link>
-                    <Link href="/courses?type=development">
-                      <span className="text-primary hover:underline text-sm block cursor-pointer">
-                        Full Stack Web Development
-                      </span>
-                    </Link>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Button variant="link" className="text-xs h-auto p-0">
+                    View all notifications
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center text-base">
+                    <Bookmark className="mr-2 h-5 w-5" />
+                    Recommended for You
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="border rounded-md p-3 hover:shadow-sm transition-shadow">
+                      <Link href="/courses?type=multimedia">
+                        <h4 className="font-medium text-sm mb-1">Multimedia Group Course Bundle</h4>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Clock className="h-3 w-3 mr-1" />
+                          <span>12 weeks</span>
+                          <span className="mx-2">•</span>
+                          <FileText className="h-3 w-3 mr-1" />
+                          <span>5 courses</span>
+                        </div>
+                      </Link>
+                    </div>
+                    
+                    <div className="border rounded-md p-3 hover:shadow-sm transition-shadow">
+                      <Link href="/courses?type=development">
+                        <h4 className="font-medium text-sm mb-1">Full Stack Web Development</h4>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <Clock className="h-3 w-3 mr-1" />
+                          <span>16 weeks</span>
+                          <span className="mx-2">•</span>
+                          <Star className="h-3 w-3 mr-1" />
+                          <span>Bestseller</span>
+                        </div>
+                      </Link>
+                    </div>
+                    
+                    <div className="border rounded-md p-3 hover:shadow-sm transition-shadow">
+                      <Link href="/specialist-programs">
+                        <h4 className="font-medium text-sm mb-1">Specialist Programs</h4>
+                        <div className="flex items-center text-xs text-gray-500">
+                          <GraduationCap className="h-3 w-3 mr-1" />
+                          <span>Industry-recognized credentials</span>
+                        </div>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+                <CardFooter className="pt-0">
+                  <Link href="/courses">
+                    <Button variant="link" className="text-xs h-auto p-0 flex items-center">
+                      Browse all courses <ArrowRight className="ml-1 h-3 w-3" />
+                    </Button>
+                  </Link>
+                </CardFooter>
+              </Card>
+            </div>
           </div>
         </TabsContent>
         
