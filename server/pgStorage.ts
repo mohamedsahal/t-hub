@@ -2535,7 +2535,7 @@ export class PgStorage implements IStorage {
       if (progressRecord) {
         // Update existing record to mark as completed
         return await this.updateUserProgress(progressRecord.id, {
-          isCompleted: true,
+          completed: true,
           completionDate: new Date()
         });
       } else {
@@ -2544,7 +2544,7 @@ export class PgStorage implements IStorage {
           userId,
           courseId,
           sectionId,
-          isCompleted: true,
+          completed: true,
           completionDate: new Date(),
           timeSpent: 0,
           lastPosition: 0
@@ -2571,18 +2571,18 @@ export class PgStorage implements IStorage {
       
       if (progressRecord) {
         // Update existing record with new video progress info
-        const updatedTimeSpent = progressRecord.timeSpent + timeSpent;
+        const updatedTimeSpent = progressRecord.timeSpent ? progressRecord.timeSpent + timeSpent : timeSpent;
         
         return await this.updateUserProgress(progressRecord.id, {
           lastPosition,
           timeSpent: updatedTimeSpent,
           // If the video has been watched till the end (threshold can be adjusted)
-          isCompleted: progressRecord.isCompleted || lastPosition >= 95, // 95% considered complete
-          completionDate: progressRecord.isCompleted ? progressRecord.completionDate : (lastPosition >= 95 ? new Date() : null)
+          completed: progressRecord.completed || lastPosition >= 95, // 95% considered complete
+          completionDate: progressRecord.completed ? progressRecord.completionDate : (lastPosition >= 95 ? new Date() : null)
         });
       } else {
         // Create new progress record
-        const isCompleted = lastPosition >= 95; // 95% considered complete
+        const completed = lastPosition >= 95; // 95% considered complete
         
         const newProgress = await this.createUserProgress({
           userId,
@@ -2590,8 +2590,8 @@ export class PgStorage implements IStorage {
           sectionId,
           lastPosition,
           timeSpent,
-          isCompleted,
-          completionDate: isCompleted ? new Date() : null
+          completed,
+          completionDate: completed ? new Date() : null
         });
         
         return newProgress;
@@ -2621,14 +2621,14 @@ export class PgStorage implements IStorage {
         .where(and(
           eq(userProgress.userId, userId),
           eq(userProgress.courseId, courseId),
-          eq(userProgress.isCompleted, true)
+          eq(userProgress.completed, true)
         ));
       
       // Calculate percentage
       const completionPercentage = (completedSections.length / sections.length) * 100;
       
       // Update the enrollment record with the latest progress percentage
-      const enrollments = await db
+      const userEnrollments = await db
         .select()
         .from(enrollments)
         .where(and(
@@ -2636,11 +2636,11 @@ export class PgStorage implements IStorage {
           eq(enrollments.courseId, courseId)
         ));
       
-      if (enrollments.length > 0) {
+      if (userEnrollments.length > 0) {
         await db
           .update(enrollments)
           .set({ progressPercentage: completionPercentage })
-          .where(eq(enrollments.id, enrollments[0].id));
+          .where(eq(enrollments.id, userEnrollments[0].id));
       }
       
       return completionPercentage;

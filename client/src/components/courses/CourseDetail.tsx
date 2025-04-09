@@ -89,135 +89,22 @@ const CourseDetail = ({ courseId }: CourseDetailProps) => {
     "Certificate upon completion",
   ];
 
-  // If the user is enrolled, show the learning interface
+  // If the user is enrolled, show the learning interface with real course sections and modules
   if (isEnrolled) {
+    // Import the CourseContentView component
+    const CourseContentView = require('./CourseContentView').default;
+    
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">{course.title}</h1>
-        
-        <div className="flex flex-col lg:flex-row gap-8">
-          {/* Left sidebar - Course modules */}
-          <div className="lg:w-1/4">
-            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-24">
-              <h3 className="text-lg font-semibold mb-4">Course Content</h3>
-              
-              <div className="space-y-3">
-                {[1, 2, 3, 4].map((module) => (
-                  <div key={module} className="border rounded-md p-3">
-                    <h4 className="font-medium text-base mb-2">Module {module}</h4>
-                    <ul className="space-y-2">
-                      {[1, 2, 3].map((lesson) => (
-                        <li key={lesson}>
-                          <button 
-                            className="flex items-center text-sm text-gray-600 hover:text-primary w-full text-left"
-                          >
-                            <BookOpen className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
-                            <span className="truncate">Lesson {lesson}: {course.title.substring(0, 15)}...</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          {/* Right content - Course preview */}
-          <div className="lg:w-3/4">
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <Tabs defaultValue="content">
-                <TabsList className="mb-6">
-                  <TabsTrigger value="content">Course Material</TabsTrigger>
-                  <TabsTrigger value="progress">Your Progress</TabsTrigger>
-                  {course.videoUrl && <TabsTrigger value="video">Video</TabsTrigger>}
-                </TabsList>
-                
-                <TabsContent value="content" className="space-y-4">
-                  <div>
-                    <h2 className="text-xl font-semibold mb-3">Module 1: Introduction</h2>
-                    <p className="text-gray-600 mb-4">
-                      Welcome to {course.title}! In this module, you'll learn the fundamentals and get set up with everything you need to start.
-                    </p>
-                    
-                    <div className="p-4 bg-gray-50 rounded-lg border mb-4">
-                      <h3 className="font-medium mb-2">Learning Objectives:</h3>
-                      <ul className="list-disc pl-5 space-y-1">
-                        <li>Understand the core concepts of {course.title}</li>
-                        <li>Set up your environment for optimal learning</li>
-                        <li>Complete your first practical exercise</li>
-                      </ul>
-                    </div>
-                    
-                    <div className="aspect-w-16 aspect-h-9 mb-4">
-                      <img 
-                        src={course.imageUrl || `https://images.unsplash.com/photo-1587440871875-191322ee64b0?ixlib=rb-1.2.1&auto=format&fit=crop&w=1471&q=80`}
-                        alt="Module preview"
-                        className="object-cover rounded-lg"
-                      />
-                    </div>
-                    
-                    <div className="prose max-w-none">
-                      <h3>Getting Started</h3>
-                      <p>
-                        This course is designed to take you from beginner to proficient in {course.title}. 
-                        We'll start with the basics and gradually move to more advanced topics.
-                      </p>
-                      
-                      <h3>Required Materials</h3>
-                      <p>
-                        To get the most out of this course, make sure you have:
-                      </p>
-                      <ul>
-                        <li>A computer with internet access</li>
-                        <li>The required software installed (details in the next lesson)</li>
-                        <li>A notebook for taking notes</li>
-                      </ul>
-                      
-                      <h3>Course Structure</h3>
-                      <p>
-                        Each module contains video lessons, reading materials, practical exercises, 
-                        and quizzes to test your knowledge. We recommend completing the modules in order.
-                      </p>
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="progress">
-                  <div className="space-y-4">
-                    <h3 className="text-xl font-semibold mb-3">Your Progress</h3>
-                    <CourseProgressTracker courseId={Number(course.id)} courseTitle={course.title} />
-                  </div>
-                </TabsContent>
-                
-                {course.videoUrl && (
-                  <TabsContent value="video">
-                    <div className="space-y-4">
-                      <h3 className="text-xl font-semibold mb-3">Course Video</h3>
-                      <YouTubeVideoPlayer 
-                        videoId={extractYouTubeId(course.videoUrl) || ''} 
-                        courseId={Number(course.id)}
-                        sectionId={0} 
-                        title={course.title}
-                        isCompleted={false}
-                      />
-                    </div>
-                  </TabsContent>
-                )}
-              </Tabs>
-              
-              <div className="mt-8 flex justify-between items-center pt-4 border-t">
-                <Button variant="outline" disabled>
-                  <ChevronLeft className="h-4 w-4 mr-2" /> Previous Lesson
-                </Button>
-                
-                <Button>
-                  Next Lesson <ChevronRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          </div>
+        <div className="mb-6">
+          <Link href="/courses" className="inline-flex items-center text-sm text-gray-500 hover:text-primary">
+            <ChevronLeft className="h-4 w-4 mr-1" /> Back to All Courses
+          </Link>
+          <h1 className="text-3xl font-bold text-gray-900 mt-2">{course.title}</h1>
         </div>
+        
+        {/* Use the new CourseContentView component */}
+        <CourseContentView courseId={Number(course.id)} userId={user?.id} />
       </div>
     );
   }

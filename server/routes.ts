@@ -228,6 +228,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Course Sections and Modules routes (for students)
+  app.get("/api/course-sections", async (req, res) => {
+    try {
+      // Get query parameters
+      const courseId = req.query.courseId ? parseInt(req.query.courseId as string) : undefined;
+      
+      if (!courseId) {
+        return res.status(400).json({ message: "Course ID is required" });
+      }
+      
+      // Get the course first to check if it exists
+      const course = await storage.getCourse(courseId);
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
+      
+      // Get all modules for the course
+      const modules = await storage.getCourseModules(courseId);
+      
+      // Get all sections for the course
+      const sections = await storage.getCourseSections(courseId);
+      
+      // Structure the data in a hierarchical format
+      const structuredData = modules.map(module => {
+        const moduleSections = sections.filter(section => section.moduleId === module.id);
+        return {
+          ...module,
+          sections: moduleSections.sort((a, b) => a.order - b.order)
+        };
+      }).sort((a, b) => a.order - b.order);
+      
+      // Include any sections that don't belong to modules
+      const orphanedSections = sections
+        .filter(section => section.moduleId === null)
+        .sort((a, b) => a.order - b.order);
+      
+      res.json({
+        modules: structuredData,
+        sections: orphanedSections
+      });
+    } catch (error) {
+      console.error("Error fetching course sections and modules:", error);
+      res.status(500).json({ message: "Error fetching course content" });
+    }
+  });
+
+  // Get specific section
+  app.get("/api/course-sections/:sectionId", async (req, res) => {
+    try {
+      const sectionId = parseInt(req.params.sectionId);
+      
+      // Get the section
+      const section = await storage.getCourseSection(sectionId);
+      if (!section) {
+        return res.status(404).json({ message: "Section not found" });
+      }
+      
+      res.json(section);
+    } catch (error) {
+      console.error("Error fetching course section:", error);
+      res.status(500).json({ message: "Error fetching section" });
+    }
+  });
+
   // User Progress routes
   app.get("/api/user-progress/:courseId", isAuthenticated, async (req, res) => {
     try {

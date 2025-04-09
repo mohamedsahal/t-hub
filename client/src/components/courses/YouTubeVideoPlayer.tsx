@@ -8,10 +8,11 @@ import { apiRequest } from '@/lib/queryClient';
 import { PlayCircle, PauseCircle, RotateCw, CheckCircle, Loader2 } from 'lucide-react';
 
 interface YouTubeVideoPlayerProps {
-  videoId: string;
+  videoId?: string;
+  videoUrl?: string;
   courseId: number;
   sectionId: number;
-  title: string;
+  title?: string;
   isCompleted?: boolean;
 }
 
@@ -22,13 +23,39 @@ declare global {
   }
 }
 
+// Helper function to extract YouTube video ID from URL
+const extractYouTubeId = (url: string | undefined): string | null => {
+  if (!url) return null;
+  
+  // Try to match YouTube URL patterns
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
 export default function YouTubeVideoPlayer({ 
   videoId, 
+  videoUrl,
   courseId, 
   sectionId, 
-  title,
+  title = "Video Lesson",
   isCompleted = false 
 }: YouTubeVideoPlayerProps) {
+  // Extract video ID from URL if provided
+  const actualVideoId = videoId || (videoUrl ? extractYouTubeId(videoUrl) : null);
+  
+  // If no valid video ID is available, show an error
+  if (!actualVideoId) {
+    return (
+      <div className="bg-gray-100 aspect-video flex items-center justify-center">
+        <div className="text-center p-4">
+          <p className="font-medium text-red-500">Invalid video link</p>
+          <p className="text-sm text-gray-500 mt-1">The video URL is not supported or is missing.</p>
+        </div>
+      </div>
+    );
+  }
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const playerRef = useRef<any>(null);
@@ -64,7 +91,7 @@ export default function YouTubeVideoPlayer({
       queryClient.invalidateQueries({ queryKey: ['/api/user-progress', courseId] });
       
       // If the video is now marked as completed
-      if (data.progress.isCompleted && !isVideoCompleted) {
+      if (data.progress.completed && !isVideoCompleted) {
         setIsVideoCompleted(true);
         toast({
           title: "Video completed",
@@ -126,13 +153,13 @@ export default function YouTubeVideoPlayer({
         playerRef.current.destroy();
       }
     };
-  }, [videoId]);
+  }, [actualVideoId]); // Use actualVideoId as the dependency instead of videoId
   
   // Initialize the YouTube Player
   const initPlayer = () => {
-    if (window.YT && window.YT.Player && playerContainerRef.current) {
+    if (window.YT && window.YT.Player && playerContainerRef.current && actualVideoId) {
       playerRef.current = new window.YT.Player(playerContainerRef.current, {
-        videoId: videoId,
+        videoId: actualVideoId,
         playerVars: {
           autoplay: 0,
           controls: 1,
