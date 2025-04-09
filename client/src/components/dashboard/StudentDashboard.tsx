@@ -76,9 +76,9 @@ const StudentDashboard = () => {
                             <div className="space-y-1">
                               <div className="flex items-center justify-between text-sm">
                                 <span>Progress</span>
-                                <span className="font-medium">45%</span>
+                                <span className="font-medium">{course.progressPercentage || 0}%</span>
                               </div>
-                              <Progress value={45} className="h-2" />
+                              <Progress value={course.progressPercentage || 0} className="h-2" />
                             </div>
                           </div>
                           
@@ -87,11 +87,14 @@ const StudentDashboard = () => {
                               variant="outline"
                               className="bg-primary/10 text-primary border-primary/20"
                             >
-                              In Progress
+                              {course.status === 'completed' ? 'Completed' : 'In Progress'}
                             </Badge>
-                            <Button size="sm" className="w-full">
-                              <BookOpen className="h-4 w-4 mr-2" /> Continue
-                            </Button>
+                            <Link href={`/courses/${course.id}`}>
+                              <Button size="sm" className="w-full">
+                                <BookOpen className="h-4 w-4 mr-2" /> 
+                                {course.progressPercentage > 0 ? 'Continue' : 'Get Started'}
+                              </Button>
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -162,14 +165,14 @@ const StudentDashboard = () => {
                   <h4 className="font-medium mb-2">Suggested Courses</h4>
                   <div className="space-y-2">
                     <Link href="/courses?type=multimedia">
-                      <a className="text-primary hover:underline text-sm block">
+                      <span className="text-primary hover:underline text-sm block cursor-pointer">
                         Multimedia Group Course Bundle
-                      </a>
+                      </span>
                     </Link>
                     <Link href="/courses?type=development">
-                      <a className="text-primary hover:underline text-sm block">
+                      <span className="text-primary hover:underline text-sm block cursor-pointer">
                         Full Stack Web Development
-                      </a>
+                      </span>
                     </Link>
                   </div>
                 </div>
