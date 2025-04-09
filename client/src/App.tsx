@@ -14,6 +14,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import CourseDetail from "@/pages/CourseDetail";
 import Courses from "@/pages/Courses";
+import SpecialistProgramDetail from "@/pages/SpecialistProgramDetail";
 import Payment from "@/pages/Payment";
 import PaymentResult from "@/pages/PaymentResult";
 import VerifyCertificate from "@/pages/VerifyCertificate";
@@ -71,6 +72,7 @@ function Router() {
       <Route path="/login" component={AuthPage} />
       <Route path="/courses" component={Courses} />
       <Route path="/courses/:id" component={CourseDetail} />
+      <Route path="/specialist-programs/:id" component={SpecialistProgramDetail} />
       <Route path="/verify-certificate" component={VerifyCertificate} />
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password/:token" component={ResetPassword} />

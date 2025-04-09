@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import SpecialistProgramCard from "@/components/courses/SpecialistProgramCard";
 
 // Interface for course type
 interface Course {
@@ -18,6 +19,24 @@ interface Course {
   price: number;
   duration: number;
   imageUrl?: string;
+}
+
+// Interface for specialist program type
+interface SpecialistProgram {
+  id: number;
+  name: string;
+  code: string;
+  description: string;
+  price: number;
+  duration: number;
+  imageUrl: string | null;
+  isActive: boolean;
+  isVisible: boolean;
+  hasDiscounted: boolean;
+  discountedPrice: number | null;
+  discountExpiryDate: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Course card component
@@ -107,9 +126,16 @@ const ProgramCategories = () => {
   const [activeTab, setActiveTab] = useState("all");
   
   // Fetch courses data
-  const { data: courses = [], isLoading } = useQuery<Course[]>({
+  const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
     queryKey: ["/api/courses"],
   });
+  
+  // Fetch specialist programs data
+  const { data: specialistPrograms = [], isLoading: specialistProgramsLoading } = useQuery<SpecialistProgram[]>({
+    queryKey: ["/api/specialist-programs"],
+  });
+
+  const isLoading = coursesLoading || specialistProgramsLoading;
 
   // Organize courses by type
   const shortCourses = courses.filter((course) => course.type === "short");
@@ -236,15 +262,19 @@ const ProgramCategories = () => {
                   </Card>
                 ))}
               </div>
-            ) : specialistCourses.length > 0 ? (
+            ) : specialistPrograms.length > 0 ? (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {specialistCourses.map((course) => (
-                    <CourseCard key={course.id} course={course} />
+                  {specialistPrograms.map((program) => (
+                    <SpecialistProgramCard 
+                      key={program.id} 
+                      program={program} 
+                      courseCount={3} // Hard-coded for now, ideally this would come from an API call
+                    />
                   ))}
                 </div>
                 
-                {specialistCourses.length > 3 && (
+                {specialistPrograms.length > 3 && (
                   <div className="text-center mt-10">
                     <Link href="/courses?type=specialist">
                       <Button variant="outline" size="lg">
