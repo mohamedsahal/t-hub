@@ -5,6 +5,7 @@ import notificationService from "./services/notificationService";
 import emailService from "./services/emailService";
 import { runPaymentMigration } from './payment-schema-migration';
 import { runUserProgressMigration } from './user-progress-migration';
+import { migrateEnrollments } from './user-enrollment-migration';
 
 const app = express();
 app.use(express.json());
@@ -61,6 +62,10 @@ app.use((req, res, next) => {
     // User progress tracking migration
     await runUserProgressMigration();
     log("User progress tracking migration completed", "migration");
+    
+    // User enrollment migration to add progress_percentage column
+    await migrateEnrollments();
+    log("User enrollment migration completed", "migration");
   } catch (migrationError) {
     log(`Failed to run migrations: ${migrationError}`, "migration");
   }
