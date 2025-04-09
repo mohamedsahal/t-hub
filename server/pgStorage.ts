@@ -12,12 +12,12 @@ import {
   SpecialistProgram, InsertSpecialistProgram, SpecialistProgramCourse, InsertSpecialistProgramCourse,
   SpecialistProgramEnrollment, InsertSpecialistProgramEnrollment,
   UserAchievement, InsertUserAchievement, AchievementProgress, InsertAchievementProgress,
-  AchievementPoints, InsertAchievementPoints,
+  AchievementPoints, InsertAchievementPoints, UserProgress, InsertUserProgress,
   users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
   products, partners, events, landingContent, exams, examQuestions, examResults,
   semesters, cohorts, cohortEnrollments, alerts, userSessions, userLocationHistory,
   specialistPrograms, specialistProgramCourses, specialistProgramEnrollments,
-  userAchievements, achievementProgress, achievementPoints
+  userAchievements, achievementProgress, achievementPoints, userProgress
 } from '@shared/schema';
 import { AchievementCategory, getAchievementById, getAchievementsByCategory } from '@shared/achievements';
 import { IStorage } from './storage';
