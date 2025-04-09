@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import AchievementBadges from "./AchievementBadges";
 import { 
   BookOpen, 
   GraduationCap, 
@@ -37,10 +38,11 @@ const StudentDashboard = () => {
       <h1 className="text-2xl font-bold">Student Dashboard</h1>
       
       <Tabs defaultValue="courses">
-        <TabsList className="grid w-full grid-cols-3 md:w-auto">
+        <TabsList className="grid w-full grid-cols-4 md:w-auto">
           <TabsTrigger value="courses">My Courses</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
           <TabsTrigger value="certificates">Certificates</TabsTrigger>
+          <TabsTrigger value="achievements">Achievements</TabsTrigger>
         </TabsList>
         
         <TabsContent value="courses" className="space-y-6">
@@ -289,6 +291,10 @@ const StudentDashboard = () => {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+        
+        <TabsContent value="achievements" className="space-y-6">
+          <AchievementBadges />
         </TabsContent>
       </Tabs>
     </div>

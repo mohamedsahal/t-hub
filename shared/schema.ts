@@ -2,6 +2,7 @@ import { pgTable, text, serial, integer, boolean, timestamp, doublePrecision, un
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { AchievementCategory, AchievementTier } from "./achievements";
 
 // Enum definitions
 export const userRoleEnum = pgEnum('user_role', ['admin', 'teacher', 'student']);
@@ -356,6 +357,40 @@ export const specialistProgramEnrollments = pgTable("specialist_program_enrollme
   paymentId: integer("payment_id"), // Optional link to a payment
 });
 
+// Achievement category and tier enums
+export const achievementCategoryEnum = pgEnum('achievement_category', Object.values(AchievementCategory) as [string, ...string[]]);
+export const achievementTierEnum = pgEnum('achievement_tier', Object.values(AchievementTier) as [string, ...string[]]);
+
+// User Achievements table - tracks which achievements a user has earned
+export const userAchievements = pgTable("user_achievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  achievementId: text("achievement_id").notNull(), // References the achievement ID from shared/achievements.ts
+  earnedAt: timestamp("earned_at").defaultNow().notNull(),
+  progress: integer("progress").default(0), // For tracking partial progress toward an achievement
+  isNotified: boolean("is_notified").default(false), // Whether user has been notified
+  metadata: text("metadata"), // Any additional data associated with this achievement
+});
+
+// User Achievement Progress tracking for achievements that need incremental progress
+export const achievementProgress = pgTable("achievement_progress", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  achievementId: text("achievement_id").notNull(), // References the achievement ID from shared/achievements.ts
+  currentValue: integer("current_value").default(0).notNull(), // Current progress value
+  targetValue: integer("target_value").notNull(), // Target to reach
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  metadata: text("metadata"), // Additional tracking data if needed
+});
+
+// User Achievement Points - for leaderboard purposes
+export const achievementPoints = pgTable("achievement_points", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  totalPoints: integer("total_points").default(0).notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+});
+
 // Alerts/Notifications table
 export const alerts = pgTable("alerts", {
   id: serial("id").primaryKey(),
@@ -463,6 +498,11 @@ export const insertAlertSchema = createInsertSchema(alerts).omit({ id: true, cre
     buttonText: z.string().optional().nullable(),
     buttonLink: z.string().optional().nullable(),
   });
+  
+// Achievement schemas
+export const insertUserAchievementSchema = createInsertSchema(userAchievements).omit({ id: true, earnedAt: true });
+export const insertAchievementProgressSchema = createInsertSchema(achievementProgress).omit({ id: true, lastUpdated: true });
+export const insertAchievementPointsSchema = createInsertSchema(achievementPoints).omit({ id: true, lastUpdated: true });
 
 // Define types
 export type User = typeof users.$inferSelect;
@@ -534,6 +574,16 @@ export type InsertSpecialistProgramCourse = z.infer<typeof insertSpecialistProgr
 
 export type SpecialistProgramEnrollment = typeof specialistProgramEnrollments.$inferSelect;
 export type InsertSpecialistProgramEnrollment = z.infer<typeof insertSpecialistProgramEnrollmentSchema>;
+
+// Achievement Types
+export type UserAchievement = typeof userAchievements.$inferSelect;
+export type InsertUserAchievement = z.infer<typeof insertUserAchievementSchema>;
+
+export type AchievementProgress = typeof achievementProgress.$inferSelect;
+export type InsertAchievementProgress = z.infer<typeof insertAchievementProgressSchema>;
+
+export type AchievementPoints = typeof achievementPoints.$inferSelect;
+export type InsertAchievementPoints = z.infer<typeof insertAchievementPointsSchema>;
 
 // User Sessions and Device Tracking
 export const userSessions = pgTable("user_sessions", {
@@ -611,6 +661,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(userSessions),
   locationHistory: many(userLocationHistory),
   programEnrollments: many(specialistProgramEnrollments),
+  achievements: many(userAchievements),
+  achievementProgress: many(achievementProgress),
+  achievementPoints: many(achievementPoints),
 }));
 
 export const coursesRelations = relations(courses, ({ one, many }) => ({
@@ -799,6 +852,28 @@ export const specialistProgramEnrollmentsRelations = relations(specialistProgram
   }),
   user: one(users, {
     fields: [specialistProgramEnrollments.userId],
+    references: [users.id]
+  })
+}));
+
+// Achievement relations
+export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
+  user: one(users, {
+    fields: [userAchievements.userId],
+    references: [users.id]
+  })
+}));
+
+export const achievementProgressRelations = relations(achievementProgress, ({ one }) => ({
+  user: one(users, {
+    fields: [achievementProgress.userId],
+    references: [users.id]
+  })
+}));
+
+export const achievementPointsRelations = relations(achievementPoints, ({ one }) => ({
+  user: one(users, {
+    fields: [achievementPoints.userId],
     references: [users.id]
   })
 }));

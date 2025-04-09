@@ -11,11 +11,15 @@ import {
   Alert, InsertAlert, UserSession, InsertUserSession, UserLocationHistory, InsertUserLocationHistory,
   SpecialistProgram, InsertSpecialistProgram, SpecialistProgramCourse, InsertSpecialistProgramCourse,
   SpecialistProgramEnrollment, InsertSpecialistProgramEnrollment,
+  UserAchievement, InsertUserAchievement, AchievementProgress, InsertAchievementProgress,
+  AchievementPoints, InsertAchievementPoints,
   users, courses, courseSections, courseModules, payments, installments, enrollments, certificates, testimonials,
   products, partners, events, landingContent, exams, examQuestions, examResults,
   semesters, cohorts, cohortEnrollments, alerts, userSessions, userLocationHistory,
-  specialistPrograms, specialistProgramCourses, specialistProgramEnrollments
+  specialistPrograms, specialistProgramCourses, specialistProgramEnrollments,
+  userAchievements, achievementProgress, achievementPoints
 } from '@shared/schema';
+import { AchievementCategory, getAchievementById, getAchievementsByCategory } from '@shared/achievements';
 import { IStorage } from './storage';
 import { v4 as uuidv4 } from 'uuid';
 import session from 'express-session';
@@ -2185,5 +2189,254 @@ export class PgStorage implements IStorage {
       console.error("Error deleting specialist program enrollment:", error);
       return false;
     }
+  }
+
+  // Achievement operations
+  async getUserAchievements(userId: number): Promise<UserAchievement[]> {
+    try {
+      return await db.select().from(userAchievements).where(eq(userAchievements.userId, userId));
+    } catch (error) {
+      console.error("Error getting user achievements:", error);
+      return [];
+    }
+  }
+
+  async getUserAchievement(id: number): Promise<UserAchievement | undefined> {
+    try {
+      const result = await db.select().from(userAchievements).where(eq(userAchievements.id, id));
+      return result[0];
+    } catch (error) {
+      console.error("Error getting user achievement:", error);
+      return undefined;
+    }
+  }
+
+  async getUserAchievementByIds(userId: number, achievementId: string): Promise<UserAchievement | undefined> {
+    try {
+      const result = await db.select().from(userAchievements).where(
+        and(
+          eq(userAchievements.userId, userId),
+          eq(userAchievements.achievementId, achievementId)
+        )
+      );
+      return result[0];
+    } catch (error) {
+      console.error("Error getting user achievement by IDs:", error);
+      return undefined;
+    }
+  }
+
+  async createUserAchievement(achievement: InsertUserAchievement): Promise<UserAchievement> {
+    try {
+      const result = await db.insert(userAchievements).values({
+        ...achievement,
+        earnedAt: new Date(),
+        isNotified: false
+      }).returning();
+      
+      // Update user's achievement points
+      await this.updateAchievementPoints(achievement.userId);
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error creating user achievement:", error);
+      throw error;
+    }
+  }
+
+  async updateUserAchievement(id: number, achievementData: Partial<UserAchievement>): Promise<UserAchievement | undefined> {
+    try {
+      const result = await db.update(userAchievements)
+        .set(achievementData)
+        .where(eq(userAchievements.id, id))
+        .returning();
+      return result[0];
+    } catch (error) {
+      console.error("Error updating user achievement:", error);
+      return undefined;
+    }
+  }
+
+  async updateAchievementProgress(userId: number, achievementId: string, progress: number): Promise<UserAchievement | undefined> {
+    try {
+      // Check if the user already has the achievement
+      const existing = await this.getUserAchievementByIds(userId, achievementId);
+      
+      if (existing) {
+        // If they already earned it, no need to update progress
+        return existing;
+      }
+      
+      // Check if there's a progress record
+      const progressRecord = await db.select().from(achievementProgress).where(
+        and(
+          eq(achievementProgress.userId, userId),
+          eq(achievementProgress.achievementId, achievementId)
+        )
+      );
+      
+      if (progressRecord.length > 0) {
+        // Update existing progress
+        const updated = await db.update(achievementProgress)
+          .set({ 
+            currentValue: progress,
+            lastUpdated: new Date()
+          })
+          .where(eq(achievementProgress.id, progressRecord[0].id))
+          .returning();
+        
+        // Check if the achievement should be awarded
+        if (updated[0].currentValue >= updated[0].targetValue) {
+          return await this.awardAchievement(userId, achievementId);
+        }
+        
+        return undefined;
+      } else {
+        // Create new progress record
+        const achievement = getAchievementById(achievementId);
+        if (!achievement) {
+          throw new Error(`Achievement with ID ${achievementId} not found`);
+        }
+        
+        // Determine target value based on achievement
+        let targetValue = 100; // Default
+        
+        // Set specific target values based on achievement ID
+        switch (achievementId) {
+          case 'multi-course-enrollment':
+            targetValue = 5; // 5 courses needed
+            break;
+          case 'multi-completion':
+            targetValue = 5; // 5 courses completed
+            break;
+          case 'helpful-peer':
+            targetValue = 5; // 5 helpful ratings
+            break;
+          case 'community-leader':
+            targetValue = 25; // 25 contributions
+            break;
+          case 'week-streak':
+            targetValue = 7; // 7 days
+            break;
+          case 'month-streak':
+            targetValue = 30; // 30 days
+            break;
+          case 'consistency-king':
+            targetValue = 90; // 90 days (3 months)
+            break;
+          default:
+            targetValue = 100; // Default to percentage
+        }
+        
+        await db.insert(achievementProgress).values({
+          userId,
+          achievementId,
+          currentValue: progress,
+          targetValue,
+          lastUpdated: new Date()
+        });
+        
+        // If progress already meets or exceeds target, award immediately
+        if (progress >= targetValue) {
+          return await this.awardAchievement(userId, achievementId);
+        }
+        
+        return undefined;
+      }
+    } catch (error) {
+      console.error("Error updating achievement progress:", error);
+      return undefined;
+    }
+  }
+
+  async awardAchievement(userId: number, achievementId: string): Promise<UserAchievement> {
+    try {
+      // Check if achievement already exists
+      const existing = await this.getUserAchievementByIds(userId, achievementId);
+      if (existing) {
+        return existing;
+      }
+      
+      const achievement = getAchievementById(achievementId);
+      if (!achievement) {
+        throw new Error(`Achievement with ID ${achievementId} not found`);
+      }
+      
+      // Create the achievement
+      const result = await db.insert(userAchievements).values({
+        userId,
+        achievementId,
+        earnedAt: new Date(),
+        progress: 100, // Fully completed
+        isNotified: false,
+      }).returning();
+      
+      // Update user's achievement points
+      await this.updateAchievementPoints(userId);
+      
+      return result[0];
+    } catch (error) {
+      console.error("Error awarding achievement:", error);
+      throw error;
+    }
+  }
+
+  private async updateAchievementPoints(userId: number): Promise<void> {
+    try {
+      // Get all of user's achievements
+      const userAchs = await this.getUserAchievements(userId);
+      
+      // Calculate total points
+      let totalPoints = 0;
+      for (const userAch of userAchs) {
+        const achievement = getAchievementById(userAch.achievementId);
+        if (achievement) {
+          totalPoints += achievement.points;
+        }
+      }
+      
+      // Check if user already has points record
+      const pointsRecord = await db.select().from(achievementPoints).where(eq(achievementPoints.userId, userId));
+      
+      if (pointsRecord.length > 0) {
+        // Update existing record
+        await db.update(achievementPoints)
+          .set({ 
+            totalPoints,
+            lastUpdated: new Date()
+          })
+          .where(eq(achievementPoints.id, pointsRecord[0].id));
+      } else {
+        // Create new record
+        await db.insert(achievementPoints).values({
+          userId,
+          totalPoints,
+          lastUpdated: new Date()
+        });
+      }
+    } catch (error) {
+      console.error("Error updating achievement points:", error);
+    }
+  }
+
+  async getUserPoints(userId: number): Promise<number> {
+    try {
+      const pointsRecord = await db.select().from(achievementPoints).where(eq(achievementPoints.userId, userId));
+      
+      if (pointsRecord.length > 0) {
+        return pointsRecord[0].totalPoints;
+      }
+      
+      // If no record exists, return 0
+      return 0;
+    } catch (error) {
+      console.error("Error getting user points:", error);
+      return 0;
+    }
+  }
+
+  async getAchievementsByCategory(category: string): Promise<string[]> {
+    // This is handled in memory from the shared/achievements.ts file
+    return getAchievementsByCategory(category as AchievementCategory).map(a => a.id);
   }
 }

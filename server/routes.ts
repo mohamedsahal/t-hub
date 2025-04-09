@@ -6,6 +6,7 @@ import { pool } from "./db";
 import { addPasswordResetFieldsToUsers } from "./password-reset-migration";
 import { addVerificationFieldsToUsers } from "./verification-migration";
 import { createSessionTrackingTables } from "./session-tracking-migration";
+import { addAchievementTables } from "./achievement-migration";
 import { 
   insertUserSchema, insertCourseSchema, insertPaymentSchema, 
   insertInstallmentSchema, insertEnrollmentSchema, insertCertificateSchema, 
@@ -40,6 +41,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     // Create tables for user session tracking (anti-account sharing)
     await createSessionTrackingTables();
+    
+    // Create achievement-related tables
+    await addAchievementTables();
   } catch (error) {
     console.error("Failed to run migrations:", error);
   }
@@ -4806,6 +4810,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting specialist program enrollment:", error);
       res.status(500).json({ message: "Error deleting specialist program enrollment" });
+    }
+  });
+
+  // Achievement routes
+  app.get("/api/achievements", isAuthenticated, async (req, res) => {
+    try {
+      const { category } = req.query;
+      
+      if (category) {
+        const achievements = await storage.getAchievementsByCategory(category as string);
+        return res.json(achievements);
+      }
+      
+      // If no category specified, return empty array as we don't have a route to get all achievements
+      // The achievements themselves are stored in shared/achievements.ts
+      res.json([]);
+    } catch (error) {
+      console.error("Error fetching achievements:", error);
+      res.status(500).json({ message: "Error fetching achievements" });
+    }
+  });
+
+  app.get("/api/user-achievements", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const achievements = await storage.getUserAchievements(userId);
+      res.json(achievements);
+    } catch (error) {
+      console.error("Error fetching user achievements:", error);
+      res.status(500).json({ message: "Error fetching user achievements" });
+    }
+  });
+
+  app.get("/api/user-points", isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      const points = await storage.getUserPoints(userId);
+      res.json({ points });
+    } catch (error) {
+      console.error("Error fetching user points:", error);
+      res.status(500).json({ message: "Error fetching user points" });
+    }
+  });
+
+  app.post("/api/user-achievements/award", checkRole(["admin", "teacher"]), async (req, res) => {
+    try {
+      const { userId, achievementId } = req.body;
+      
+      if (!userId || !achievementId) {
+        return res.status(400).json({ message: "User ID and achievement ID are required" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const achievement = await storage.awardAchievement(userId, achievementId);
+      res.status(201).json(achievement);
+    } catch (error) {
+      console.error("Error awarding achievement:", error);
+      res.status(500).json({ message: "Error awarding achievement" });
+    }
+  });
+
+  app.post("/api/user-achievements/progress", isAuthenticated, async (req, res) => {
+    try {
+      const { achievementId, progress } = req.body;
+      const userId = (req.user as any).id;
+      
+      if (!achievementId || progress === undefined) {
+        return res.status(400).json({ message: "Achievement ID and progress are required" });
+      }
+      
+      const result = await storage.updateAchievementProgress(userId, achievementId, progress);
+      
+      // If an achievement was awarded, return it
+      if (result) {
+        return res.status(200).json({ awarded: true, achievement: result });
+      }
+      
+      // Otherwise just return success status
+      res.status(200).json({ awarded: false });
+    } catch (error) {
+      console.error("Error updating achievement progress:", error);
+      res.status(500).json({ message: "Error updating achievement progress" });
     }
   });
 

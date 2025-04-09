@@ -23,7 +23,10 @@ import {
   userLocationHistory, type UserLocationHistory, type InsertUserLocationHistory,
   specialistPrograms, type SpecialistProgram, type InsertSpecialistProgram,
   specialistProgramCourses, type SpecialistProgramCourse, type InsertSpecialistProgramCourse,
-  specialistProgramEnrollments, type SpecialistProgramEnrollment, type InsertSpecialistProgramEnrollment
+  specialistProgramEnrollments, type SpecialistProgramEnrollment, type InsertSpecialistProgramEnrollment,
+  userAchievements, type UserAchievement, type InsertUserAchievement,
+  achievementProgress, type AchievementProgress, type InsertAchievementProgress,
+  achievementPoints, type AchievementPoints, type InsertAchievementPoints
 } from "@shared/schema";
 import session from "express-session";
 
@@ -260,6 +263,17 @@ export interface IStorage {
   createSpecialistProgramEnrollment(enrollment: InsertSpecialistProgramEnrollment): Promise<SpecialistProgramEnrollment>;
   updateSpecialistProgramEnrollment(id: number, enrollment: Partial<SpecialistProgramEnrollment>): Promise<SpecialistProgramEnrollment | undefined>;
   deleteSpecialistProgramEnrollment(id: number): Promise<boolean>;
+  
+  // Achievement operations
+  getUserAchievements(userId: number): Promise<UserAchievement[]>;
+  getUserAchievement(id: number): Promise<UserAchievement | undefined>;
+  getUserAchievementByIds(userId: number, achievementId: string): Promise<UserAchievement | undefined>;
+  createUserAchievement(achievement: InsertUserAchievement): Promise<UserAchievement>;
+  updateUserAchievement(id: number, achievement: Partial<UserAchievement>): Promise<UserAchievement | undefined>;
+  updateAchievementProgress(userId: number, achievementId: string, progress: number): Promise<UserAchievement | undefined>;
+  awardAchievement(userId: number, achievementId: string): Promise<UserAchievement>;
+  getUserPoints(userId: number): Promise<number>;
+  getAchievementsByCategory(category: string): Promise<string[]>;
   
   // User Session operations
   getUserSession(id: number): Promise<UserSession | undefined>;
