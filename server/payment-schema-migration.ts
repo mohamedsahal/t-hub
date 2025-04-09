@@ -37,32 +37,58 @@ export async function addPaymentGatewayToPayments() {
   }
 }
 
-export async function addGatewayResponseToPayments() {
+export async function addMissingColumnsToPayments() {
   try {
-    // Check if the column already exists
+    // Check which columns we need to add
     const result = await db.execute(sql`
       SELECT column_name 
       FROM information_schema.columns 
-      WHERE table_name = 'payments' AND column_name = 'gateway_response'
+      WHERE table_name = 'payments' AND column_name IN ('gateway_response', 'refund_status', 'redirect_url', 'callback_url')
     `);
     
-    if ((result as any).rows.length === 0) {
-      console.log("Adding gateway_response column to payments table...");
+    const existingColumns = new Set((result as any).rows.map((row: any) => row.column_name));
+    
+    // Build the alter table statement based on what's missing
+    let alterTableParts = [];
+    let columnsAdded = [];
+    
+    if (!existingColumns.has('gateway_response')) {
+      alterTableParts.push(`ADD COLUMN IF NOT EXISTS gateway_response text DEFAULT NULL`);
+      columnsAdded.push('gateway_response');
+    }
+    
+    if (!existingColumns.has('refund_status')) {
+      alterTableParts.push(`ADD COLUMN IF NOT EXISTS refund_status text DEFAULT NULL`);
+      columnsAdded.push('refund_status');
+    }
+    
+    if (!existingColumns.has('redirect_url')) {
+      alterTableParts.push(`ADD COLUMN IF NOT EXISTS redirect_url text DEFAULT NULL`);
+      columnsAdded.push('redirect_url');
+    }
+    
+    if (!existingColumns.has('callback_url')) {
+      alterTableParts.push(`ADD COLUMN IF NOT EXISTS callback_url text DEFAULT NULL`);
+      columnsAdded.push('callback_url');
+    }
+    
+    if (alterTableParts.length > 0) {
+      console.log(`Adding missing columns to payments table: ${columnsAdded.join(', ')}...`);
       
-      // Add the missing column
-      await db.execute(sql`
+      // Add the missing columns
+      await db.execute(sql.raw(`
         ALTER TABLE payments 
-        ADD COLUMN IF NOT EXISTS gateway_response jsonb DEFAULT NULL
-      `);
+        ${alterTableParts.join(', ')}
+      `));
       
-      console.log("Gateway response column added successfully.");
+      console.log("Missing payment columns added successfully.");
       return true;
     } else {
-      console.log("Gateway response column already exists, skipping this part of migration.");
+      console.log("All required payment columns already exist, skipping this part of migration.");
       return false;
     }
   } catch (error) {
-    console.error("Error during gateway response migration:", error);
+    console.error("Error during payments column migration:", error);
     throw error;
   }
 }
@@ -70,7 +96,7 @@ export async function addGatewayResponseToPayments() {
 export async function runPaymentMigration() {
   try {
     await addPaymentGatewayToPayments();
-    await addGatewayResponseToPayments();
+    await addMissingColumnsToPayments();
     console.log("Payment schema migration completed.");
   } catch (error) {
     console.error("Payment schema migration failed:", error);
