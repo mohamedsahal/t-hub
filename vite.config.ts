@@ -4,20 +4,30 @@ import themePlugin from "@replit/vite-plugin-shadcn-theme-json";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-export default defineConfig({
-  plugins: [
+// Define a function that returns the plugin array without top-level await
+function getPlugins() {
+  const plugins = [
     react(),
     runtimeErrorOverlay(),
     themePlugin(),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
-      : []),
-  ],
+  ];
+  
+  // Only add cartographer in development mode on Replit
+  if (process.env.NODE_ENV !== "production" && process.env.REPL_ID !== undefined) {
+    // We'll use a dynamic require approach instead of top-level await
+    try {
+      const cartographer = require("@replit/vite-plugin-cartographer").cartographer;
+      plugins.push(cartographer());
+    } catch (err) {
+      console.warn("Could not load cartographer plugin:", err);
+    }
+  }
+  
+  return plugins;
+}
+
+export default defineConfig({
+  plugins: getPlugins(),
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
