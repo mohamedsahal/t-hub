@@ -56,7 +56,7 @@ async function seedDatabase() {
       {
         title: "Photoshop for Graphic Designers",
         description: "Learn professional graphic design skills with Adobe Photoshop. Master selection tools, layer management, filters, and design principles.",
-        type: "multimedia",
+        type: "short",
         duration: 8,
         price: 120,
         status: "published",
@@ -67,7 +67,7 @@ async function seedDatabase() {
       {
         title: "QuickBooks Accounting",
         description: "Master QuickBooks for small business accounting. Set up company files, manage customers and vendors, reconcile accounts, and generate reports.",
-        type: "accounting",
+        type: "specialist",
         duration: 6,
         price: 90,
         status: "published",
@@ -78,7 +78,7 @@ async function seedDatabase() {
       {
         title: "Full Stack Web Development",
         description: "Comprehensive 24-week bootcamp covering MERN stack development with AI integration. Project-based learning with real-world applications.",
-        type: "development",
+        type: "bootcamp",
         duration: 24,
         price: 1200,
         status: "published",
