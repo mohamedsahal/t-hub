@@ -1692,18 +1692,22 @@ export class PgStorage implements IStorage {
       
       if (sessionsToRevoke.length === 0) return true; // No sessions to revoke
       
-      // Get session IDs to revoke
-      const sessionIds = sessionsToRevoke.map(session => session.id);
+      // Get session IDs to revoke and revoke them individually
+      let success = true;
+      for (const session of sessionsToRevoke) {
+        try {
+          // Use the revokeUserSession method that is known to work
+          const revoked = await this.revokeUserSession(session.id, 'Revoked as part of revoking all sessions');
+          if (!revoked) {
+            success = false;
+          }
+        } catch (error) {
+          console.error(`Error revoking session ${session.id}:`, error);
+          success = false;
+        }
+      }
       
-      // Revoke all sessions in one update
-      await db.update(userSessions)
-        .set({ 
-          status: 'revoked',
-          revocationReason: 'Revoked as part of revoking all sessions'
-        })
-        .where(inArray(userSessions.id, sessionIds));
-      
-      return true;
+      return success;
     } catch (error) {
       console.error("Error revoking all user sessions:", error);
       return false;

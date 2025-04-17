@@ -234,6 +234,18 @@ export const initializeEmailService = async (): Promise<void> => {
     // Check for environment variables
     const email = process.env.EMAIL_USER;
     const password = process.env.EMAIL_PASSWORD;
+    const host = process.env.EMAIL_HOST || 'mail.t-hub.so';
+    const port = process.env.EMAIL_PORT ? parseInt(process.env.EMAIL_PORT) : 465;
+    const secure = process.env.EMAIL_SECURE === 'true';
+    
+    // Debug logging
+    console.log('Email Config:', { 
+      email, 
+      passwordExists: !!password,
+      host,
+      port,
+      secure
+    });
     
     if (!email || !password) {
       log('Email service not configured: Missing credentials', 'email');
@@ -242,9 +254,9 @@ export const initializeEmailService = async (): Promise<void> => {
 
     // Create reusable transporter object using SMTP transport
     transporter = nodemailer.createTransport({
-      host: 'mail.t-hub.so',
-      port: 465,
-      secure: true, // use SSL/TLS
+      host: host,
+      port: port,
+      secure: secure, // use SSL/TLS
       auth: {
         user: email,
         pass: password,
@@ -253,14 +265,16 @@ export const initializeEmailService = async (): Promise<void> => {
         // Do not fail on invalid certificates
         rejectUnauthorized: false
       },
-      // Debug SMTP communication
-      logger: true,
-      debug: process.env.NODE_ENV === 'development',
+      debug: true, // Show debug output
+      logger: true  // Log information to console
     });
-
-    log('Email service initialized', 'email');
+    
+    // Verify the connection
+    await transporter.verify();
+    log(`Email service initialized with ${email}`, 'email');
   } catch (error) {
     log(`Failed to initialize email service: ${error}`, 'email');
+    transporter = null;
   }
 };
 

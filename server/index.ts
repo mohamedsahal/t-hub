@@ -1,3 +1,6 @@
+// Load environment variables first
+import './load-env';
+
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -10,6 +13,20 @@ import { migrateEnrollments } from './user-enrollment-migration';
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Add CORS headers to all responses
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  next();
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -54,24 +71,31 @@ app.use((req, res, next) => {
   });
 
   // Run database migrations
-  try {
-    // Payment migration
-    await runPaymentMigration();
-    log("Payment schema migration completed", "migration");
-    
-    // User progress tracking migration
-    await runUserProgressMigration();
-    log("User progress tracking migration completed", "migration");
-    
-    // User enrollment migration to add progress_percentage column
-    await migrateEnrollments();
-    log("User enrollment migration completed", "migration");
-  } catch (migrationError) {
-    log(`Failed to run migrations: ${migrationError}`, "migration");
+  if (process.env.SKIP_MIGRATIONS !== 'true') {
+    try {
+      // Payment migration
+      await runPaymentMigration();
+      log("Payment schema migration completed", "migration");
+      
+      // User progress tracking migration
+      await runUserProgressMigration();
+      log("User progress tracking migration completed", "migration");
+      
+      // User enrollment migration to add progress_percentage column
+      await migrateEnrollments();
+      log("User enrollment migration completed", "migration");
+    } catch (migrationError) {
+      log(`Failed to run migrations: ${migrationError}`, "migration");
+    }
+  } else {
+    log("Skipping migrations due to SKIP_MIGRATIONS=true", "migration");
   }
 
   // Initialize notification service
   try {
+    // Explicitly initialize email service
+    await emailService.initializeEmailService();
+    
     // Start notification service (handles email credential checking internally)
     await notificationService.startNotificationService();
     log("Notification service setup completed", "notification");
@@ -91,11 +115,10 @@ app.use((req, res, next) => {
   // ALWAYS serve the app on port 5000
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = 5000;
+  const port = 3000; // Hardcoded port to avoid conflicts
   server.listen({
     port,
-    host: "0.0.0.0",
-    reusePort: true,
+    host: "0.0.0.0",  // Allow connections from any IP address
   }, () => {
     log(`serving on port ${port}`);
   });
