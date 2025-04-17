@@ -242,12 +242,16 @@ export const initializeEmailService = async (): Promise<void> => {
 
     // Create reusable transporter object using SMTP transport
     transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'mail.t-hub.so',
-      port: parseInt(process.env.EMAIL_PORT || '465'),
-      secure: true, // use SSL
+      host: 'mail.t-hub.so',
+      port: 465,
+      secure: true, // use SSL/TLS
       auth: {
         user: email,
         pass: password,
+      },
+      tls: {
+        // Do not fail on invalid certificates
+        rejectUnauthorized: false
       },
       // Debug SMTP communication
       logger: true,
